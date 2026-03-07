@@ -21,6 +21,7 @@ describe('loadUserConfig', () => {
         engine: "browser",
         notify: { sound: true },
         heartbeatSeconds: 15,
+        maxFileSizeBytes: 2097152,
         browser: { remoteHost: "host:1234", remoteToken: "abc" },
       }`,
       'utf8',
@@ -31,6 +32,7 @@ describe('loadUserConfig', () => {
     expect(result.config.engine).toBe('browser');
     expect(result.config.notify?.sound).toBe(true);
     expect(result.config.heartbeatSeconds).toBe(15);
+    expect(result.config.maxFileSizeBytes).toBe(2097152);
     expect(result.config.browser?.remoteHost).toBe('host:1234');
     expect(result.config.browser?.remoteToken).toBe('abc');
   });

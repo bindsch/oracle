@@ -14,6 +14,7 @@ import { formatSessionTableHeader, formatSessionTableRow } from '../sessionTable
 import { buildBrowserConfig, resolveBrowserModelLabel } from '../browserConfig.js';
 import { resolveNotificationSettings } from '../notifier.js';
 import { loadUserConfig, type UserConfig } from '../../config.js';
+import { resolveConfiguredMaxFileSizeBytes } from '../fileSize.js';
 import { formatTokenCount } from '../../oracle/runUtils.js';
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY && chalk.level > 0);
@@ -447,6 +448,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
     prompt: promptWithSuffix,
     model: answers.model,
     file: answers.files,
+    maxFileSizeBytes: resolveConfiguredMaxFileSizeBytes(userConfig, process.env),
     models: normalizedMultiModels.length > 1 ? normalizedMultiModels : undefined,
     slug: answers.slug,
     filesReport: false,

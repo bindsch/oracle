@@ -4,7 +4,7 @@ import fg from 'fast-glob';
 import type { FileContent, FileSection, MinimalFsModule, FsStats } from './types.js';
 import { FileValidationError } from './errors.js';
 
-const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
+export const DEFAULT_MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 const DEFAULT_FS = fs as MinimalFsModule;
 const DEFAULT_IGNORED_DIRS = ['node_modules', 'dist', 'coverage', '.git', '.turbo', '.next', 'build', 'tmp'];
 
@@ -20,7 +20,7 @@ export async function readFiles(
   {
     cwd = process.cwd(),
     fsModule = DEFAULT_FS,
-    maxFileSizeBytes = MAX_FILE_SIZE_BYTES,
+    maxFileSizeBytes = DEFAULT_MAX_FILE_SIZE_BYTES,
     readContents = true,
   }: {
     cwd?: string;
@@ -104,7 +104,7 @@ export async function readFiles(
   }
 
   if (oversized.length > 0) {
-    throw new FileValidationError(`The following files exceed the 1 MB limit:\n- ${oversized.join('\n- ')}`, {
+    throw new FileValidationError(`The following files exceed the ${formatBytes(maxFileSizeBytes)} limit:\n- ${oversized.join('\n- ')}`, {
       files: oversized,
       limitBytes: maxFileSizeBytes,
     });
@@ -412,12 +412,33 @@ function stripTrailingSlashes(value: string): string {
 
 function formatBytes(size: number): string {
   if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    return `${formatScaled(size / (1024 * 1024))} MB`;
   }
   if (size >= 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
+    return `${formatScaled(size / 1024)} KB`;
   }
   return `${size} B`;
+}
+
+function formatScaled(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, '');
+}
+
+export function normalizeMaxFileSizeBytes(
+  value: number | string | undefined | null,
+  source = 'max file size',
+): number | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : Number.parseInt(typeof value === 'string' ? value.trim() : String(value), 10);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`${source} must be a positive integer number of bytes.`);
+  }
+  return parsed;
 }
 
 function relativePath(targetPath: string, cwd: string): string {

@@ -49,4 +49,18 @@ describe('buildMarkdownBundle', () => {
     expect(bundle.markdown).not.toMatch(/\[FILE:/);
     expect(bundle.files).toHaveLength(0);
   });
+
+  test('honors maxFileSizeBytes override when rendering markdown bundles', async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), 'oracle-md-'));
+    const filePath = path.join(cwd, 'big.txt');
+    await writeFile(filePath, 'a'.repeat(1_200_000), 'utf8');
+
+    const bundle = await buildMarkdownBundle(
+      { prompt: 'Do it', file: [filePath], maxFileSizeBytes: 2_000_000 },
+      { cwd },
+    );
+
+    expect(bundle.files).toHaveLength(1);
+    expect(bundle.promptWithFiles).toContain('big.txt');
+  });
 });

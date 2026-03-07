@@ -14,12 +14,16 @@ export interface MarkdownBundle {
 }
 
 export async function buildMarkdownBundle(
-  options: Pick<RunOracleOptions, 'prompt' | 'file' | 'system'>,
+  options: Pick<RunOracleOptions, 'prompt' | 'file' | 'system' | 'maxFileSizeBytes'>,
   deps: { cwd?: string; fs?: MinimalFsModule } = {},
 ): Promise<MarkdownBundle> {
   const cwd = deps.cwd ?? process.cwd();
   const fsModule = deps.fs ?? createFsAdapter(fs);
-  const files = await readFiles(options.file ?? [], { cwd, fsModule });
+  const files = await readFiles(options.file ?? [], {
+    cwd,
+    fsModule,
+    maxFileSizeBytes: options.maxFileSizeBytes,
+  });
   const sections = createFileSections(files, cwd);
   const systemPrompt = options.system?.trim() || DEFAULT_SYSTEM_PROMPT;
   const userPrompt = (options.prompt ?? '').trim();

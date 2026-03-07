@@ -7,6 +7,7 @@ import { normalizeModelOption, inferModelFromLabel, resolveApiModel, normalizeBa
 import { resolveGeminiModelId } from '../oracle/gemini.js';
 import { PromptValidationError } from '../oracle/errors.js';
 import { normalizeChatGptModelForBrowser } from './browserConfig.js';
+import { resolveConfiguredMaxFileSizeBytes } from './fileSize.js';
 
 export interface ResolveRunOptionsInput {
   prompt: string;
@@ -77,6 +78,7 @@ export function resolveRunOptionsFromConfig({
 
   const heartbeatIntervalMs =
     userConfig?.heartbeatSeconds !== undefined ? userConfig.heartbeatSeconds * 1000 : 30_000;
+  const maxFileSizeBytes = resolveConfiguredMaxFileSizeBytes(userConfig, env);
 
   const baseUrl = normalizeBaseUrl(
     userConfig?.apiBaseUrl ??
@@ -96,6 +98,7 @@ export function resolveRunOptionsFromConfig({
     model: chosenModel,
     models: uniqueMultiModels.length > 0 ? uniqueMultiModels : undefined,
     file: files ?? [],
+    maxFileSizeBytes,
     search,
     heartbeatIntervalMs,
     filesReport: userConfig?.filesReport,

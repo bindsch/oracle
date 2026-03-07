@@ -56,6 +56,7 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
   },
 
   heartbeatSeconds: 30,     // default heartbeat interval
+  maxFileSizeBytes: 2097152, // raise/lower the per-file attachment guard (bytes)
   filesReport: false,       // default per-file token report
   background: true,         // default background mode for API runs
   sessionRetentionHours: 72, // prune cached sessions older than 72h before each run (0 disables)
@@ -68,13 +69,14 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
 
 CLI flags → `config.json` → environment → built-in defaults.
 
-- `engine`, `model`, `search`, `filesReport`, `heartbeatSeconds`, and `apiBaseUrl` in `config.json` override the auto-detected values unless explicitly set on the CLI.
+- `engine`, `model`, `search`, `filesReport`, `heartbeatSeconds`, `maxFileSizeBytes`, and `apiBaseUrl` in `config.json` override the auto-detected values unless explicitly set on the CLI.
 - `ORACLE_ENGINE=api|browser` is a global override for engine selection (useful for MCP/Codex setups); it wins over `config.json`.
 - If `azure.endpoint` (or `--azure-endpoint`) is set, Oracle reads `AZURE_OPENAI_API_KEY` first and falls back to `OPENAI_API_KEY` for GPT models.
 - Remote browser defaults follow the same order: `--remote-host/--remote-token` win, then `browser.remoteHost` / `browser.remoteToken` in the config, then `ORACLE_REMOTE_HOST` / `ORACLE_REMOTE_TOKEN` if still unset.
 - `OPENAI_API_KEY` only influences engine selection when neither the CLI nor `config.json` specify an engine (API when present, otherwise browser).
 - `ORACLE_NOTIFY*` env vars still layer on top of the config’s `notify` block.
 - `sessionRetentionHours` controls the default value for `--retain-hours`. When unset, `ORACLE_RETAIN_HOURS` (if present) becomes the fallback, and the CLI flag still wins over both.
+- `ORACLE_MAX_FILE_SIZE_BYTES` overrides `maxFileSizeBytes` when set. Oracle validates it as a positive integer number of bytes before reading any `--file` inputs.
 - `browser.chatgptUrl` accepts either the root ChatGPT URL (`https://chatgpt.com/`) or a folder/workspace URL (e.g., `https://chatgpt.com/g/.../project`); `browser.url` remains as a legacy alias.
 - Browser automation defaults can be set under `browser.*`, including `browser.manualLogin`, `browser.manualLoginProfileDir`, and `browser.thinkingTime` (CLI override: `--browser-thinking-time`). On Windows, `browser.manualLogin` defaults to `true` when omitted.
 

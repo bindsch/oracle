@@ -5,6 +5,7 @@
 ## 0.8.7 — Unreleased
 
 ### Fixed
+- CLI: make the per-file `--file` size guard configurable via `ORACLE_MAX_FILE_SIZE_BYTES` or `maxFileSizeBytes` in `~/.oracle/config.json`, and persist that limit for restarts. (#76)
 - Azure: route Responses API runs through Azure's `/openai/v1` endpoint and honor `--azure-deployment` as the dispatched model name. (#92) — thanks @yellowgolfball.
 - Browser: leave headful Chrome/profile state running when a Cloudflare anti-bot challenge interrupts browser mode, and record reuse guidance in the saved session metadata. (#111) — thanks @WinnCook.
 - Browser: keep manual-login sessions reattachable when Chrome disconnects with the DevTools "Inspected target navigated or closed" error. (#110) — thanks @WinnCook.

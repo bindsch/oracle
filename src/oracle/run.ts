@@ -200,7 +200,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   const useBackground = supportsBackground ? options.background ?? isLongRunningModel : false;
 
   const inputTokenBudget = options.maxInput ?? modelConfig.inputLimit;
-  const files = await readFiles(options.file ?? [], { cwd, fsModule });
+  const files = await readFiles(options.file ?? [], { cwd, fsModule, maxFileSizeBytes: options.maxFileSizeBytes });
   const searchEnabled = options.search !== false;
   logVerbose(`cwd: ${cwd}`);
   let pendingNoFilesTip: string | null = null;

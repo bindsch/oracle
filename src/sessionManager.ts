@@ -91,6 +91,7 @@ export interface SessionUserErrorMetadata {
 export interface StoredRunOptions {
   prompt?: string;
   file?: string[];
+  maxFileSizeBytes?: number;
   model?: string;
   models?: ModelName[];
   /** Responses API chaining (maps to `previous_response_id`). */
@@ -409,6 +410,7 @@ export async function initializeSession(
     options: {
       prompt: options.prompt,
       file: options.file ?? [],
+      maxFileSizeBytes: options.maxFileSizeBytes,
       model: options.model,
       models: modelList,
       previousResponseId: options.previousResponseId,

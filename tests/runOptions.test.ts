@@ -64,6 +64,24 @@ describe('resolveRunOptionsFromConfig', () => {
     expect(runOptions.heartbeatIntervalMs).toBe(5000);
   });
 
+  it('uses maxFileSizeBytes from config', () => {
+    const { runOptions } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      userConfig: { maxFileSizeBytes: 2_097_152 },
+    });
+    expect(runOptions.maxFileSizeBytes).toBe(2_097_152);
+  });
+
+  it('lets ORACLE_MAX_FILE_SIZE_BYTES override config', () => {
+    const env = { ORACLE_MAX_FILE_SIZE_BYTES: '3145728' } as NodeJS.ProcessEnv;
+    const { runOptions } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      userConfig: { maxFileSizeBytes: 2_097_152 },
+      env,
+    });
+    expect(runOptions.maxFileSizeBytes).toBe(3_145_728);
+  });
+
   it('passes filesReport/background from config', () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,

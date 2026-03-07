@@ -153,7 +153,10 @@ export async function performSessionRun({
         baseUrl: runOptions.baseUrl,
         openRouterApiKey: process.env.OPENROUTER_API_KEY,
       });
-      const files = await readFiles(runOptions.file ?? [], { cwd });
+      const files = await readFiles(runOptions.file ?? [], {
+        cwd,
+        maxFileSizeBytes: runOptions.maxFileSizeBytes,
+      });
       const promptWithFiles = buildPrompt(runOptions.prompt, files, cwd);
       const requestBody = buildRequestBody({
         modelConfig,

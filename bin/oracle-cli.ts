@@ -73,11 +73,13 @@ import { loadUserConfig, type UserConfig } from '../src/config.js';
 import { applyBrowserDefaultsFromConfig } from '../src/cli/browserDefaults.js';
 import { shouldBlockDuplicatePrompt } from '../src/cli/duplicatePromptGuard.js';
 import { resolveRemoteServiceConfig } from '../src/remote/remoteServiceConfig.js';
+import { resolveConfiguredMaxFileSizeBytes } from '../src/cli/fileSize.js';
 
 interface CliOptions extends OptionValues {
   prompt?: string;
   message?: string;
   file?: string[];
+  maxFileSizeBytes?: number;
   include?: string[];
   files?: string[];
   path?: string[];
@@ -247,7 +249,7 @@ program
   )
   .option(
     '-f, --file <paths...>',
-    'Files/directories or glob patterns to attach (prefix with !pattern to exclude). Files larger than 1 MB are rejected automatically.',
+    'Files/directories or glob patterns to attach (prefix with !pattern to exclude). Oversized files are rejected automatically (default cap: 1 MB; configurable via ORACLE_MAX_FILE_SIZE_BYTES or config.maxFileSizeBytes).',
     collectPaths,
     [],
   )
@@ -755,6 +757,7 @@ function buildRunOptions(options: ResolvedCliOptions, overrides: Partial<RunOrac
     previousResponseId: overrides.previousResponseId ?? options.previousResponseId,
     effectiveModelId: overrides.effectiveModelId ?? options.effectiveModelId ?? options.model,
     file: overrides.file ?? options.file ?? [],
+    maxFileSizeBytes: overrides.maxFileSizeBytes ?? options.maxFileSizeBytes,
     slug: overrides.slug ?? options.slug,
     filesReport: overrides.filesReport ?? options.filesReport,
     maxInput: overrides.maxInput ?? options.maxInput,
@@ -965,6 +968,7 @@ function buildRunOptionsFromMetadata(metadata: SessionMetadata): RunOracleOption
     previousResponseId: stored.previousResponseId,
     effectiveModelId: stored.effectiveModelId ?? stored.model,
     file: stored.file ?? [],
+    maxFileSizeBytes: stored.maxFileSizeBytes,
     slug: stored.slug,
     filesReport: stored.filesReport,
     maxInput: stored.maxInput,
@@ -1195,6 +1199,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   );
   const { models: _rawModels, ...optionsWithoutModels } = options;
   const resolvedOptions: ResolvedCliOptions = { ...optionsWithoutModels, model: resolvedModel };
+  resolvedOptions.maxFileSizeBytes = resolveConfiguredMaxFileSizeBytes(userConfig, process.env);
   if (normalizedMultiModels.length > 0) {
     resolvedOptions.models = normalizedMultiModels;
   }
@@ -1376,7 +1381,10 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     const isBrowserMode = engine === 'browser' || userForcedBrowser;
     const filesToValidate = isBrowserMode ? options.file.filter((f: string) => !isMediaFile(f)) : options.file;
     if (filesToValidate.length > 0) {
-      await readFiles(filesToValidate, { cwd: process.cwd() });
+      await readFiles(filesToValidate, {
+        cwd: process.cwd(),
+        maxFileSizeBytes: resolvedOptions.maxFileSizeBytes,
+      });
     }
   }
 
@@ -1645,7 +1653,10 @@ async function restartSession(sessionId: string, options: RestartCommandOptions)
     const isBrowserMode = engine === 'browser';
     const filesToValidate = isBrowserMode ? runOptions.file.filter((f) => !isMediaFile(f)) : runOptions.file;
     if (filesToValidate.length > 0) {
-      await readFiles(filesToValidate, { cwd });
+      await readFiles(filesToValidate, {
+        cwd,
+        maxFileSizeBytes: runOptions.maxFileSizeBytes,
+      });
     }
   }
 

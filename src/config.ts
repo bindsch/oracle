@@ -73,6 +73,7 @@ export interface UserConfig {
   engine?: EnginePreference;
   model?: string;
   search?: 'on' | 'off';
+  maxFileSizeBytes?: number;
   notify?: NotifyConfig;
   browser?: BrowserConfigDefaults;
   heartbeatSeconds?: number;
