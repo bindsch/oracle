@@ -1,4 +1,4 @@
-import type { BrowserModelStrategy } from './types.js';
+import type { BrowserModelStrategy } from "./types.js";
 
 export function normalizeBrowserModelStrategy(
   value: string | null | undefined,
@@ -10,7 +10,7 @@ export function normalizeBrowserModelStrategy(
   if (!normalized) {
     return undefined;
   }
-  if (normalized === 'select' || normalized === 'current' || normalized === 'ignore') {
+  if (normalized === "select" || normalized === "current" || normalized === "ignore") {
     return normalized as BrowserModelStrategy;
   }
   throw new Error(

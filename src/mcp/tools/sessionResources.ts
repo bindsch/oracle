@@ -1,7 +1,7 @@
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import fs from 'node:fs/promises';
-import { sessionStore } from '../../sessionStore.js';
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import fs from "node:fs/promises";
+import { sessionStore } from "../../sessionStore.js";
 
 // URIs:
 // - oracle-session://<id>/metadata
@@ -9,14 +9,14 @@ import { sessionStore } from '../../sessionStore.js';
 // - oracle-session://<id>/request
 
 export function registerSessionResources(server: McpServer): void {
-  const template = new ResourceTemplate('oracle-session://{id}/{kind}', { list: undefined });
+  const template = new ResourceTemplate("oracle-session://{id}/{kind}", { list: undefined });
 
   server.registerResource(
-    'oracle-session',
+    "oracle-session",
     template,
     {
-      title: 'oracle session resources',
-      description: 'Read stored session metadata, log, or request payload.',
+      title: "oracle session resources",
+      description: "Read stored session metadata, log, or request payload.",
     },
     async (uri, variables) => {
       const idRaw = variables?.id;
@@ -25,10 +25,10 @@ export function registerSessionResources(server: McpServer): void {
       const id = Array.isArray(idRaw) ? idRaw[0] : (idRaw as string);
       const kind = Array.isArray(kindRaw) ? kindRaw[0] : (kindRaw as string);
       if (!id || !kind) {
-        throw new Error('Missing id or kind');
+        throw new Error("Missing id or kind");
       }
       switch (kind) {
-        case 'metadata': {
+        case "metadata": {
           const metadata = await sessionStore.readSession(id);
           if (!metadata) {
             throw new Error(`Session "${id}" not found.`);
@@ -42,7 +42,7 @@ export function registerSessionResources(server: McpServer): void {
             ],
           };
         }
-        case 'log': {
+        case "log": {
           const log = await sessionStore.readLog(id);
           return {
             contents: [
@@ -53,7 +53,7 @@ export function registerSessionResources(server: McpServer): void {
             ],
           };
         }
-        case 'request': {
+        case "request": {
           const request = await sessionStore.readRequest(id);
           if (request) {
             return {
@@ -66,7 +66,7 @@ export function registerSessionResources(server: McpServer): void {
             };
           }
           const paths = await sessionStore.getPaths(id);
-          const raw = await fs.readFile(paths.request, 'utf8');
+          const raw = await fs.readFile(paths.request, "utf8");
           return {
             contents: [
               {

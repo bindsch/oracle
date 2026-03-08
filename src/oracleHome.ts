@@ -1,5 +1,5 @@
-import os from 'node:os';
-import path from 'node:path';
+import os from "node:os";
+import path from "node:path";
 
 let oracleHomeDirOverride: string | null = null;
 
@@ -12,6 +12,5 @@ export function setOracleHomeDirOverrideForTest(dir: string | null): void {
 }
 
 export function getOracleHomeDir(): string {
-  return oracleHomeDirOverride ?? process.env.ORACLE_HOME_DIR ?? path.join(os.homedir(), '.oracle');
+  return oracleHomeDirOverride ?? process.env.ORACLE_HOME_DIR ?? path.join(os.homedir(), ".oracle");
 }
-

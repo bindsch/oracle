@@ -1,5 +1,5 @@
-import type { OracleRequestBody, ModelConfig } from './types.js';
-import { TOKENIZER_OPTIONS } from './config.js';
+import type { OracleRequestBody, ModelConfig } from "./types.js";
+import { TOKENIZER_OPTIONS } from "./config.js";
 
 /**
  * Estimate input tokens from the full request body instead of just system/user text.
@@ -20,7 +20,7 @@ export function estimateRequestTokens(
 
   for (const turn of requestBody.input ?? []) {
     for (const content of turn.content ?? []) {
-      if (typeof content.text === 'string') {
+      if (typeof content.text === "string") {
         parts.push(content.text);
       }
     }
@@ -35,16 +35,16 @@ export function estimateRequestTokens(
   }
 
   if (requestBody.background) {
-    parts.push('background:true');
+    parts.push("background:true");
   }
   if (requestBody.store) {
-    parts.push('store:true');
+    parts.push("store:true");
   }
 
-  const concatenated = parts.join('\n');
+  const concatenated = parts.join("\n");
   const baseEstimate = modelConfig.tokenizer(concatenated, TOKENIZER_OPTIONS);
 
-  const hasWebSearch = requestBody.tools?.some((tool) => tool?.type === 'web_search_preview');
+  const hasWebSearch = requestBody.tools?.some((tool) => tool?.type === "web_search_preview");
   const searchBuffer = hasWebSearch ? SEARCH_RESULT_BUFFER_TOKENS : 0;
 
   return baseEstimate + bufferTokens + searchBuffer;

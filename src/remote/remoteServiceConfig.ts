@@ -1,10 +1,6 @@
-import type { UserConfig } from '../config.js';
+import type { UserConfig } from "../config.js";
 
-export type RemoteServiceConfigSource =
-  | 'cli'
-  | 'config.browser'
-  | 'env'
-  | 'unset';
+export type RemoteServiceConfigSource = "cli" | "config.browser" | "env" | "unset";
 
 export interface ResolvedRemoteServiceConfig {
   host?: string;
@@ -16,7 +12,7 @@ export interface ResolvedRemoteServiceConfig {
 }
 
 function normalizeString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : undefined;
 }
@@ -45,20 +41,20 @@ export function resolveRemoteServiceConfig({
   const token = cliTokenValue ?? configBrowserToken ?? envToken;
 
   const hostSource: RemoteServiceConfigSource = cliHostValue
-    ? 'cli'
+    ? "cli"
     : configBrowserHost
-      ? 'config.browser'
+      ? "config.browser"
       : envHost
-        ? 'env'
-        : 'unset';
+        ? "env"
+        : "unset";
 
   const tokenSource: RemoteServiceConfigSource = cliTokenValue
-    ? 'cli'
+    ? "cli"
     : configBrowserToken
-      ? 'config.browser'
+      ? "config.browser"
       : envToken
-        ? 'env'
-        : 'unset';
+        ? "env"
+        : "unset";
 
   return { host, token, sources: { host: hostSource, token: tokenSource } };
 }

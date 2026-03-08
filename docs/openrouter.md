@@ -25,6 +25,7 @@ export OPENROUTER_TITLE="Oracle CLI"
 ## Headers
 
 When hitting OpenRouter, Oracle forwards optional attribution headers:
+
 - `HTTP-Referer` from `OPENROUTER_REFERER` (or `OPENROUTER_HTTP_REFERER`)
 - `X-Title` from `OPENROUTER_TITLE`
 

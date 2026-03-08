@@ -1,19 +1,25 @@
-import { describe, expect, test } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import { describe, expect, test } from "vitest";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
-import { runOracle } from '@src/oracle.ts';
-import { createMockFs, MockBackgroundClient, MockClient, MockStream, buildResponse } from './helpers.ts';
+import { runOracle } from "@src/oracle.ts";
+import {
+  createMockFs,
+  MockBackgroundClient,
+  MockClient,
+  MockStream,
+  buildResponse,
+} from "./helpers.ts";
 
-const testNonWindows = process.platform === 'win32' ? test.skip : test;
+const testNonWindows = process.platform === "win32" ? test.skip : test;
 
-describe('runOracle streaming output', () => {
-  test('streams deltas and prints stats', async () => {
+describe("runOracle streaming output", () => {
+  test("streams deltas and prints stats", async () => {
     const stream = new MockStream(
       [
-        { type: 'chunk', delta: 'Hello ', output_index: 0, content_index: 0 },
-        { type: 'chunk', delta: 'world', output_index: 0, content_index: 0 },
+        { type: "chunk", delta: "Hello ", output_index: 0, content_index: 0 },
+        { type: "chunk", delta: "world", output_index: 0, content_index: 0 },
       ],
       buildResponse(),
     );
@@ -23,12 +29,12 @@ describe('runOracle streaming output', () => {
     const client = new MockClient(stream);
     const result = await runOracle(
       {
-        prompt: 'Say hello',
-        model: 'gpt-5.2-pro',
+        prompt: "Say hello",
+        model: "gpt-5.2-pro",
         background: false,
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         write: (chunk: string) => {
           writes.push(chunk);
@@ -42,15 +48,17 @@ describe('runOracle streaming output', () => {
       },
     );
 
-    expect(result.mode).toBe('live');
-    expect(writes.join('')).toBe('Hello world');
-    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
-    expect(logs.some((line) => line.includes('↑') && line.includes('↓') && line.includes('Δ'))).toBe(true);
+    expect(result.mode).toBe("live");
+    expect(writes.join("")).toBe("Hello world");
+    expect(logs.some((line) => line.includes("Calling "))).toBe(true);
+    expect(
+      logs.some((line) => line.includes("↑") && line.includes("↓") && line.includes("Δ")),
+    ).toBe(true);
   });
 
-  test('silent mode suppresses streamed answer output', async () => {
+  test("silent mode suppresses streamed answer output", async () => {
     const stream = new MockStream(
-      [{ type: 'chunk', delta: 'hi', output_index: 0, content_index: 0 }],
+      [{ type: "chunk", delta: "hi", output_index: 0, content_index: 0 }],
       buildResponse(),
     );
     const client = new MockClient(stream);
@@ -58,13 +66,13 @@ describe('runOracle streaming output', () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Say nothing',
-        model: 'gpt-5.2-pro',
+        prompt: "Say nothing",
+        model: "gpt-5.2-pro",
         silent: true,
         background: false,
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         write: (chunk: string) => {
           writes.push(chunk);
@@ -75,25 +83,27 @@ describe('runOracle streaming output', () => {
     );
 
     expect(writes).toEqual([]);
-    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
-    const finishedLine = logs.find((line) => line.includes('↑') && line.includes('↓') && line.includes('Δ'));
+    expect(logs.some((line) => line.includes("Calling "))).toBe(true);
+    const finishedLine = logs.find(
+      (line) => line.includes("↑") && line.includes("↓") && line.includes("Δ"),
+    );
     expect(finishedLine).toBeDefined();
   });
 
-  test('accepts OpenAI delta events alongside chunk events', async () => {
+  test("accepts OpenAI delta events alongside chunk events", async () => {
     const stream = new MockStream(
       [
-        { type: 'response.output_text.delta', delta: 'alpha', output_index: 0, content_index: 0 },
-        { type: 'chunk', delta: 'beta', output_index: 0, content_index: 0 },
+        { type: "response.output_text.delta", delta: "alpha", output_index: 0, content_index: 0 },
+        { type: "chunk", delta: "beta", output_index: 0, content_index: 0 },
       ],
       buildResponse(),
     );
     const client = new MockClient(stream);
     const writes: string[] = [];
     await runOracle(
-      { prompt: 'Mix events', model: 'gpt-5.2-pro', background: false },
+      { prompt: "Mix events", model: "gpt-5.2-pro", background: false },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         write: (chunk: string) => {
           writes.push(chunk);
@@ -103,24 +113,24 @@ describe('runOracle streaming output', () => {
       },
     );
 
-    expect(writes.join('')).toContain('alpha');
-    expect(writes.join('')).toContain('beta');
+    expect(writes.join("")).toContain("alpha");
+    expect(writes.join("")).toContain("beta");
   });
 
-  test('handles mixed stream payloads with missing delta text gracefully', async () => {
+  test("handles mixed stream payloads with missing delta text gracefully", async () => {
     const stream = new MockStream(
       [
-        { type: 'response.output_text.delta', output_index: 0, content_index: 0 },
-        { type: 'chunk', delta: 'visible', output_index: 0, content_index: 0 },
+        { type: "response.output_text.delta", output_index: 0, content_index: 0 },
+        { type: "chunk", delta: "visible", output_index: 0, content_index: 0 },
       ],
       buildResponse(),
     );
     const client = new MockClient(stream);
     const writes: string[] = [];
     await runOracle(
-      { prompt: 'Robust stream', model: 'gpt-5.2-pro', background: false },
+      { prompt: "Robust stream", model: "gpt-5.2-pro", background: false },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         write: (chunk: string) => {
           writes.push(chunk);
@@ -130,14 +140,14 @@ describe('runOracle streaming output', () => {
       },
     );
 
-    expect(writes.join('')).toBe('visible');
+    expect(writes.join("")).toBe("visible");
   });
 });
 
-describe('runOracle background mode', () => {
-  test('uses background mode for GPT-5 Pro by default', async () => {
+describe("runOracle background mode", () => {
+  test("uses background mode for GPT-5 Pro by default", async () => {
     const finalResponse = buildResponse();
-    const initialResponse = { ...finalResponse, status: 'in_progress', output: [] };
+    const initialResponse = { ...finalResponse, status: "in_progress", output: [] };
     const client = new MockBackgroundClient([initialResponse, finalResponse]);
     const logs: string[] = [];
     let clock = 0;
@@ -147,27 +157,27 @@ describe('runOracle background mode', () => {
     };
     const result = await runOracle(
       {
-        prompt: 'Background run',
-        model: 'gpt-5.2-pro',
+        prompt: "Background run",
+        model: "gpt-5.2-pro",
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         log: (msg: string) => logs.push(msg),
         now,
         wait,
       },
     );
-    expect(result.mode).toBe('live');
+    expect(result.mode).toBe("live");
     expect(client.createdBodies[0]?.background).toBe(true);
     expect(client.createdBodies[0]?.store).toBe(true);
-    expect(logs.some((line) => line.includes('background response status'))).toBe(true);
+    expect(logs.some((line) => line.includes("background response status"))).toBe(true);
   });
 
-  test('retries polling and logs reconnection after a transport drop', async () => {
+  test("retries polling and logs reconnection after a transport drop", async () => {
     const logs: string[] = [];
     const finalResponse = buildResponse();
-    const initialResponse = { ...finalResponse, status: 'in_progress' };
+    const initialResponse = { ...finalResponse, status: "in_progress" };
     const client = new MockBackgroundClient([initialResponse, finalResponse]);
     client.triggerConnectionDrop();
 
@@ -176,11 +186,11 @@ describe('runOracle background mode', () => {
 
     await runOracle(
       {
-        prompt: 'Retry test',
-        model: 'gpt-5.2-pro',
+        prompt: "Retry test",
+        model: "gpt-5.2-pro",
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         log: (msg) => logs.push(msg),
         wait,
@@ -188,17 +198,17 @@ describe('runOracle background mode', () => {
       },
     );
 
-    expect(logs.some((line) => line.includes('Retrying in'))).toBe(true);
-    expect(logs.some((line) => line.includes('Reconnected to API background response'))).toBe(true);
+    expect(logs.some((line) => line.includes("Retrying in"))).toBe(true);
+    expect(logs.some((line) => line.includes("Reconnected to API background response"))).toBe(true);
   });
 });
 
-describe('runOracle file reports', () => {
-  test('filesReport flag logs token usage per file', async () => {
-    const cwd = '/tmp/oracle-files-report';
+describe("runOracle file reports", () => {
+  test("filesReport flag logs token usage per file", async () => {
+    const cwd = "/tmp/oracle-files-report";
     const files = {
-      [path.resolve(cwd, 'alpha.md')]: 'alpha content',
-      [path.resolve(cwd, 'beta.md')]: 'beta content that is a bit longer',
+      [path.resolve(cwd, "alpha.md")]: "alpha content",
+      [path.resolve(cwd, "beta.md")]: "beta content that is a bit longer",
     };
     const fsMock = createMockFs(files);
     const stream = new MockStream([], buildResponse());
@@ -206,89 +216,89 @@ describe('runOracle file reports', () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Base prompt',
-        model: 'gpt-5.2-pro',
-        file: ['alpha.md', 'beta.md'],
+        prompt: "Base prompt",
+        model: "gpt-5.2-pro",
+        file: ["alpha.md", "beta.md"],
         filesReport: true,
         silent: true,
         background: false,
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         cwd,
         fs: fsMock,
         client,
         log: (msg: string) => logs.push(msg),
       },
     );
-    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
-    const fileUsageIndex = logs.indexOf('File Token Usage');
+    expect(logs.some((line) => line.includes("Calling "))).toBe(true);
+    const fileUsageIndex = logs.indexOf("File Token Usage");
     expect(fileUsageIndex).toBeGreaterThan(-1);
     const fileLines = logs.slice(fileUsageIndex + 1, fileUsageIndex + 3);
-    expect(fileLines[0]).toContain('beta.md');
-    expect(fileLines[1]).toContain('alpha.md');
+    expect(fileLines[0]).toContain("beta.md");
+    expect(fileLines[1]).toContain("alpha.md");
   });
 
-  test('automatically logs file usage when attachments exceed budget and aborts before API call', async () => {
-    const cwd = '/tmp/oracle-files-overflow';
+  test("automatically logs file usage when attachments exceed budget and aborts before API call", async () => {
+    const cwd = "/tmp/oracle-files-overflow";
     const files = {
-      [path.resolve(cwd, 'big.txt')]: 'a'.repeat(10000),
+      [path.resolve(cwd, "big.txt")]: "a".repeat(10000),
     };
     const fsMock = createMockFs(files);
     const logs: string[] = [];
     await expect(
       runOracle(
         {
-          prompt: 'Check budget',
-          model: 'gpt-5.2-pro',
-          file: ['big.txt'],
+          prompt: "Check budget",
+          model: "gpt-5.2-pro",
+          file: ["big.txt"],
           maxInput: 100,
           background: false,
         },
         {
-          apiKey: 'sk-test',
+          apiKey: "sk-test",
           cwd,
           fs: fsMock,
           log: (msg: string) => logs.push(msg),
           clientFactory: () => {
-            throw new Error('Should not create client when over budget');
+            throw new Error("Should not create client when over budget");
           },
         },
       ),
-    ).rejects.toThrow('Input too large');
-    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
-    expect(logs.find((line) => line === 'File Token Usage')).toBeDefined();
+    ).rejects.toThrow("Input too large");
+    expect(logs.some((line) => line.includes("Calling "))).toBe(true);
+    expect(logs.find((line) => line === "File Token Usage")).toBeDefined();
   });
 
-  testNonWindows('accepts directories passed via --file', async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-dir-'));
-    const nestedDir = path.join(dir, 'notes');
+  testNonWindows("accepts directories passed via --file", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "oracle-dir-"));
+    const nestedDir = path.join(dir, "notes");
     await mkdir(nestedDir, { recursive: true });
-    const nestedFile = path.join(nestedDir, 'note.txt');
-    await writeFile(nestedFile, 'nested content', 'utf8');
+    const nestedFile = path.join(nestedDir, "note.txt");
+    await writeFile(nestedFile, "nested content", "utf8");
 
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Directory test',
-        model: 'gpt-5.2-pro',
+        prompt: "Directory test",
+        model: "gpt-5.2-pro",
         file: [dir],
         filesReport: true,
         silent: true,
         background: false,
       },
       {
-        apiKey: 'sk-test',
+        apiKey: "sk-test",
         client,
         log: (msg: string) => logs.push(msg),
         cwd: dir,
       },
     );
 
-    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
-    const listed = logs.some((line) => line.includes('note.txt'));
+    expect(logs.some((line) => line.includes("Calling "))).toBe(true);
+    const listed = logs.some((line) => line.includes("note.txt"));
     expect(listed).toBe(true);
 
     await rm(dir, { recursive: true, force: true });

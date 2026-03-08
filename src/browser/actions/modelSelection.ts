@@ -1,17 +1,17 @@
-import type { ChromeClient, BrowserLogger, BrowserModelStrategy } from '../types.js';
+import type { ChromeClient, BrowserLogger, BrowserModelStrategy } from "../types.js";
 import {
   MENU_CONTAINER_SELECTOR,
   MENU_ITEM_SELECTOR,
   MODEL_BUTTON_SELECTOR,
-} from '../constants.js';
-import { logDomFailure } from '../domDebug.js';
-import { buildClickDispatcher } from './domEvents.js';
+} from "../constants.js";
+import { logDomFailure } from "../domDebug.js";
+import { buildClickDispatcher } from "./domEvents.js";
 
 export async function ensureModelSelection(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   desiredModel: string,
   logger: BrowserLogger,
-  strategy: BrowserModelStrategy = 'select',
+  strategy: BrowserModelStrategy = "select",
 ) {
   const outcome = await Runtime.evaluate({
     expression: buildModelSelectionExpression(desiredModel, strategy),
@@ -20,35 +20,40 @@ export async function ensureModelSelection(
   });
 
   const result = outcome.result?.value as
-    | { status: 'already-selected'; label?: string | null }
-    | { status: 'switched'; label?: string | null }
-    | { status: 'switched-best-effort'; label?: string | null }
-    | { status: 'option-not-found'; hint?: { temporaryChat?: boolean; availableOptions?: string[] } }
-    | { status: 'button-missing' }
+    | { status: "already-selected"; label?: string | null }
+    | { status: "switched"; label?: string | null }
+    | { status: "switched-best-effort"; label?: string | null }
+    | {
+        status: "option-not-found";
+        hint?: { temporaryChat?: boolean; availableOptions?: string[] };
+      }
+    | { status: "button-missing" }
     | undefined;
 
   switch (result?.status) {
-    case 'already-selected':
-    case 'switched':
-    case 'switched-best-effort': {
+    case "already-selected":
+    case "switched":
+    case "switched-best-effort": {
       const label = result.label ?? desiredModel;
       logger(`Model picker: ${label}`);
       return;
     }
-    case 'option-not-found': {
-      await logDomFailure(Runtime, logger, 'model-switcher-option');
+    case "option-not-found": {
+      await logDomFailure(Runtime, logger, "model-switcher-option");
       const isTemporary = result.hint?.temporaryChat ?? false;
       const available = (result.hint?.availableOptions ?? []).filter(Boolean);
-      const availableHint = available.length > 0 ? ` Available: ${available.join(', ')}.` : '';
+      const availableHint = available.length > 0 ? ` Available: ${available.join(", ")}.` : "";
       const tempHint =
         isTemporary && /\bpro\b/i.test(desiredModel)
           ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.2).'
-          : '';
-      throw new Error(`Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`);
+          : "";
+      throw new Error(
+        `Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`,
+      );
     }
     default: {
-      await logDomFailure(Runtime, logger, 'model-switcher-button');
-      throw new Error('Unable to locate the ChatGPT model selector button.');
+      await logDomFailure(Runtime, logger, "model-switcher-button");
+      throw new Error("Unable to locate the ChatGPT model selector button.");
     }
   }
 }
@@ -57,7 +62,10 @@ export async function ensureModelSelection(
  * Builds the DOM expression that runs inside the ChatGPT tab to select a model.
  * The string is evaluated inside Chrome, so keep it self-contained and well-commented.
  */
-function buildModelSelectionExpression(targetModel: string, strategy: BrowserModelStrategy): string {
+function buildModelSelectionExpression(
+  targetModel: string,
+  strategy: BrowserModelStrategy,
+): string {
   const matchers = buildModelMatchersLiteral(targetModel);
   const labelLiteral = JSON.stringify(matchers.labelTokens);
   const idLiteral = JSON.stringify(matchers.testIdTokens);
@@ -408,7 +416,10 @@ export function buildModelMatchersLiteralForTest(targetModel: string) {
   return buildModelMatchersLiteral(targetModel);
 }
 
-function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]; testIdTokens: string[] } {
+function buildModelMatchersLiteral(targetModel: string): {
+  labelTokens: string[];
+  testIdTokens: string[];
+} {
   const base = targetModel.trim().toLowerCase();
   const labelTokens = new Set<string>();
   const testIdTokens = new Set<string>();
@@ -421,115 +432,115 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
   };
 
   push(base, labelTokens);
-  push(base.replace(/\s+/g, ' '), labelTokens);
-  const collapsed = base.replace(/\s+/g, '');
+  push(base.replace(/\s+/g, " "), labelTokens);
+  const collapsed = base.replace(/\s+/g, "");
   push(collapsed, labelTokens);
-  const dotless = base.replace(/[.]/g, '');
+  const dotless = base.replace(/[.]/g, "");
   push(dotless, labelTokens);
   push(`chatgpt ${base}`, labelTokens);
   push(`chatgpt ${dotless}`, labelTokens);
   push(`gpt ${base}`, labelTokens);
   push(`gpt ${dotless}`, labelTokens);
   // Numeric variations (5.4 ↔ 54 ↔ gpt-5-4)
-  if (base.includes('5.4') || base.includes('5-4') || base.includes('54')) {
-    push('5.4', labelTokens);
-    push('gpt-5.4', labelTokens);
-    push('gpt5.4', labelTokens);
-    push('gpt-5-4', labelTokens);
-    push('gpt5-4', labelTokens);
-    push('gpt54', labelTokens);
-    push('chatgpt 5.4', labelTokens);
-    if (!base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-4');
+  if (base.includes("5.4") || base.includes("5-4") || base.includes("54")) {
+    push("5.4", labelTokens);
+    push("gpt-5.4", labelTokens);
+    push("gpt5.4", labelTokens);
+    push("gpt-5-4", labelTokens);
+    push("gpt5-4", labelTokens);
+    push("gpt54", labelTokens);
+    push("chatgpt 5.4", labelTokens);
+    if (!base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-4");
     }
-    testIdTokens.add('gpt-5-4');
-    testIdTokens.add('gpt5-4');
-    testIdTokens.add('gpt54');
+    testIdTokens.add("gpt-5-4");
+    testIdTokens.add("gpt5-4");
+    testIdTokens.add("gpt54");
   }
   // Numeric variations (5.1 ↔ 51 ↔ gpt-5-1)
-  if (base.includes('5.1') || base.includes('5-1') || base.includes('51')) {
-    push('5.1', labelTokens);
-    push('gpt-5.1', labelTokens);
-    push('gpt5.1', labelTokens);
-    push('gpt-5-1', labelTokens);
-    push('gpt5-1', labelTokens);
-    push('gpt51', labelTokens);
-    push('chatgpt 5.1', labelTokens);
-    testIdTokens.add('gpt-5-1');
-    testIdTokens.add('gpt5-1');
-    testIdTokens.add('gpt51');
+  if (base.includes("5.1") || base.includes("5-1") || base.includes("51")) {
+    push("5.1", labelTokens);
+    push("gpt-5.1", labelTokens);
+    push("gpt5.1", labelTokens);
+    push("gpt-5-1", labelTokens);
+    push("gpt5-1", labelTokens);
+    push("gpt51", labelTokens);
+    push("chatgpt 5.1", labelTokens);
+    testIdTokens.add("gpt-5-1");
+    testIdTokens.add("gpt5-1");
+    testIdTokens.add("gpt51");
   }
   // Numeric variations (5.0 ↔ 50 ↔ gpt-5-0)
-  if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
-    push('5.0', labelTokens);
-    push('gpt-5.0', labelTokens);
-    push('gpt5.0', labelTokens);
-    push('gpt-5-0', labelTokens);
-    push('gpt5-0', labelTokens);
-    push('gpt50', labelTokens);
-    push('chatgpt 5.0', labelTokens);
-    testIdTokens.add('gpt-5-0');
-    testIdTokens.add('gpt5-0');
-    testIdTokens.add('gpt50');
+  if (base.includes("5.0") || base.includes("5-0") || base.includes("50")) {
+    push("5.0", labelTokens);
+    push("gpt-5.0", labelTokens);
+    push("gpt5.0", labelTokens);
+    push("gpt-5-0", labelTokens);
+    push("gpt5-0", labelTokens);
+    push("gpt50", labelTokens);
+    push("chatgpt 5.0", labelTokens);
+    testIdTokens.add("gpt-5-0");
+    testIdTokens.add("gpt5-0");
+    testIdTokens.add("gpt50");
   }
   // Numeric variations (5.2 ↔ 52 ↔ gpt-5-2)
-  if (base.includes('5.2') || base.includes('5-2') || base.includes('52')) {
-    push('5.2', labelTokens);
-    push('gpt-5.2', labelTokens);
-    push('gpt5.2', labelTokens);
-    push('gpt-5-2', labelTokens);
-    push('gpt5-2', labelTokens);
-    push('gpt52', labelTokens);
-    push('chatgpt 5.2', labelTokens);
+  if (base.includes("5.2") || base.includes("5-2") || base.includes("52")) {
+    push("5.2", labelTokens);
+    push("gpt-5.2", labelTokens);
+    push("gpt5.2", labelTokens);
+    push("gpt-5-2", labelTokens);
+    push("gpt5-2", labelTokens);
+    push("gpt52", labelTokens);
+    push("chatgpt 5.2", labelTokens);
     // Thinking variant: explicit testid for "Thinking" picker option
-    if (base.includes('thinking')) {
-      push('thinking', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-2-thinking');
-      testIdTokens.add('gpt-5-2-thinking');
-      testIdTokens.add('gpt-5.2-thinking');
+    if (base.includes("thinking")) {
+      push("thinking", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-2-thinking");
+      testIdTokens.add("gpt-5-2-thinking");
+      testIdTokens.add("gpt-5.2-thinking");
     }
     // Instant variant: explicit testid for "Instant" picker option
-    if (base.includes('instant')) {
-      push('instant', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-2-instant');
-      testIdTokens.add('gpt-5-2-instant');
-      testIdTokens.add('gpt-5.2-instant');
+    if (base.includes("instant")) {
+      push("instant", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-2-instant");
+      testIdTokens.add("gpt-5-2-instant");
+      testIdTokens.add("gpt-5.2-instant");
     }
     // Base 5.2 testids (for "Auto" mode when no suffix specified)
-    if (!base.includes('thinking') && !base.includes('instant') && !base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-2');
+    if (!base.includes("thinking") && !base.includes("instant") && !base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-2");
     }
-    testIdTokens.add('gpt-5-2');
-    testIdTokens.add('gpt5-2');
-    testIdTokens.add('gpt52');
+    testIdTokens.add("gpt-5-2");
+    testIdTokens.add("gpt5-2");
+    testIdTokens.add("gpt52");
   }
   // Pro / research variants
-  if (base.includes('pro')) {
-    push('proresearch', labelTokens);
-    push('research grade', labelTokens);
-    push('advanced reasoning', labelTokens);
-    if (base.includes('5.4') || base.includes('5-4') || base.includes('54')) {
-      testIdTokens.add('gpt-5.4-pro');
-      testIdTokens.add('gpt-5-4-pro');
-      testIdTokens.add('gpt54pro');
+  if (base.includes("pro")) {
+    push("proresearch", labelTokens);
+    push("research grade", labelTokens);
+    push("advanced reasoning", labelTokens);
+    if (base.includes("5.4") || base.includes("5-4") || base.includes("54")) {
+      testIdTokens.add("gpt-5.4-pro");
+      testIdTokens.add("gpt-5-4-pro");
+      testIdTokens.add("gpt54pro");
     }
-    if (base.includes('5.1') || base.includes('5-1') || base.includes('51')) {
-      testIdTokens.add('gpt-5.1-pro');
-      testIdTokens.add('gpt-5-1-pro');
-      testIdTokens.add('gpt51pro');
+    if (base.includes("5.1") || base.includes("5-1") || base.includes("51")) {
+      testIdTokens.add("gpt-5.1-pro");
+      testIdTokens.add("gpt-5-1-pro");
+      testIdTokens.add("gpt51pro");
     }
-    if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
-      testIdTokens.add('gpt-5.0-pro');
-      testIdTokens.add('gpt-5-0-pro');
-      testIdTokens.add('gpt50pro');
+    if (base.includes("5.0") || base.includes("5-0") || base.includes("50")) {
+      testIdTokens.add("gpt-5.0-pro");
+      testIdTokens.add("gpt-5-0-pro");
+      testIdTokens.add("gpt50pro");
     }
-    if (base.includes('5.2') || base.includes('5-2') || base.includes('52')) {
-      testIdTokens.add('gpt-5.2-pro');
-      testIdTokens.add('gpt-5-2-pro');
-      testIdTokens.add('gpt52pro');
+    if (base.includes("5.2") || base.includes("5-2") || base.includes("52")) {
+      testIdTokens.add("gpt-5.2-pro");
+      testIdTokens.add("gpt-5-2-pro");
+      testIdTokens.add("gpt52pro");
     }
-    testIdTokens.add('pro');
-    testIdTokens.add('proresearch');
+    testIdTokens.add("pro");
+    testIdTokens.add("proresearch");
   }
   base
     .split(/\s+/)
@@ -539,7 +550,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
       push(token, labelTokens);
     });
 
-  const hyphenated = base.replace(/\s+/g, '-');
+  const hyphenated = base.replace(/\s+/g, "-");
   push(hyphenated, testIdTokens);
   push(collapsed, testIdTokens);
   push(dotless, testIdTokens);
@@ -552,7 +563,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
     labelTokens.add(base);
   }
   if (!testIdTokens.size) {
-    testIdTokens.add(base.replace(/\s+/g, '-'));
+    testIdTokens.add(base.replace(/\s+/g, "-"));
   }
 
   return {
@@ -562,5 +573,5 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
 }
 
 export function buildModelSelectionExpressionForTest(targetModel: string): string {
-  return buildModelSelectionExpression(targetModel, 'select');
+  return buildModelSelectionExpression(targetModel, "select");
 }

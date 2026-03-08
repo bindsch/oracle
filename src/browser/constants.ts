@@ -1,18 +1,22 @@
-import type { BrowserModelStrategy } from './types.js';
+import type { BrowserModelStrategy } from "./types.js";
 
-export const CHATGPT_URL = 'https://chatgpt.com/';
-export const DEFAULT_MODEL_TARGET = 'GPT-5.4 Pro';
-export const DEFAULT_MODEL_STRATEGY: BrowserModelStrategy = 'select';
-export const COOKIE_URLS = ['https://chatgpt.com', 'https://chat.openai.com', 'https://atlas.openai.com'];
+export const CHATGPT_URL = "https://chatgpt.com/";
+export const DEFAULT_MODEL_TARGET = "GPT-5.4 Pro";
+export const DEFAULT_MODEL_STRATEGY: BrowserModelStrategy = "select";
+export const COOKIE_URLS = [
+  "https://chatgpt.com",
+  "https://chat.openai.com",
+  "https://atlas.openai.com",
+];
 
 export const INPUT_SELECTORS = [
   'textarea[data-id="prompt-textarea"]',
   'textarea[placeholder*="Send a message"]',
   'textarea[aria-label="Message ChatGPT"]',
-  'textarea:not([disabled])',
+  "textarea:not([disabled])",
   'textarea[name="prompt-textarea"]',
-  '#prompt-textarea',
-  '.ProseMirror',
+  "#prompt-textarea",
+  ".ProseMirror",
   '[contenteditable="true"][data-virtualkeyboard="true"]',
 ];
 
@@ -30,12 +34,13 @@ export const ANSWER_SELECTORS = [
 
 export const CONVERSATION_TURN_SELECTOR =
   'article[data-testid^="conversation-turn"], div[data-testid^="conversation-turn"], section[data-testid^="conversation-turn"], ' +
-  'article[data-message-author-role], div[data-message-author-role], section[data-message-author-role], ' +
-  'article[data-turn], div[data-turn], section[data-turn]';
-export const ASSISTANT_ROLE_SELECTOR = '[data-message-author-role="assistant"], [data-turn="assistant"]';
+  "article[data-message-author-role], div[data-message-author-role], section[data-message-author-role], " +
+  "article[data-turn], div[data-turn], section[data-turn]";
+export const ASSISTANT_ROLE_SELECTOR =
+  '[data-message-author-role="assistant"], [data-turn="assistant"]';
 export const CLOUDFLARE_SCRIPT_SELECTOR = 'script[src*="/challenge-platform/"]';
-export const CLOUDFLARE_TITLE = 'just a moment';
-export const PROMPT_PRIMARY_SELECTOR = '#prompt-textarea';
+export const CLOUDFLARE_TITLE = "just a moment";
+export const PROMPT_PRIMARY_SELECTOR = "#prompt-textarea";
 export const PROMPT_FALLBACK_SELECTOR = 'textarea[name="prompt-textarea"]';
 export const FILE_INPUT_SELECTORS = [
   'form input[type="file"]:not([accept])',
@@ -51,7 +56,8 @@ export const FILE_INPUT_SELECTORS = [
 export const FILE_INPUT_SELECTOR = FILE_INPUT_SELECTORS[0];
 export const GENERIC_FILE_INPUT_SELECTOR = FILE_INPUT_SELECTORS[3];
 export const MENU_CONTAINER_SELECTOR = '[role="menu"], [data-radix-collection-root]';
-export const MENU_ITEM_SELECTOR = 'button, [role="menuitem"], [role="menuitemradio"], [data-testid*="model-switcher-"]';
+export const MENU_ITEM_SELECTOR =
+  'button, [role="menuitem"], [role="menuitemradio"], [data-testid*="model-switcher-"]';
 export const UPLOAD_STATUS_SELECTORS = [
   '[data-testid*="upload"]',
   '[data-testid*="attachment"]',

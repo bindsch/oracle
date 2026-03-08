@@ -1,29 +1,33 @@
-import { rm } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
-import os from 'node:os';
-import net from 'node:net';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import CDP from 'chrome-remote-interface';
-import { launch, Launcher, type LaunchedChrome } from 'chrome-launcher';
-import type { BrowserLogger, ResolvedBrowserConfig, ChromeClient } from './types.js';
-import { cleanupStaleProfileState } from './profileState.js';
-import { delay } from './utils.js';
+import { rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import os from "node:os";
+import net from "node:net";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import CDP from "chrome-remote-interface";
+import { launch, Launcher, type LaunchedChrome } from "chrome-launcher";
+import type { BrowserLogger, ResolvedBrowserConfig, ChromeClient } from "./types.js";
+import { cleanupStaleProfileState } from "./profileState.js";
+import { delay } from "./utils.js";
 
 const execFileAsync = promisify(execFile);
 
-export async function launchChrome(config: ResolvedBrowserConfig, userDataDir: string, logger: BrowserLogger) {
+export async function launchChrome(
+  config: ResolvedBrowserConfig,
+  userDataDir: string,
+  logger: BrowserLogger,
+) {
   const connectHost = resolveRemoteDebugHost();
-  const debugBindAddress = connectHost && connectHost !== '127.0.0.1' ? '0.0.0.0' : connectHost;
+  const debugBindAddress = connectHost && connectHost !== "127.0.0.1" ? "0.0.0.0" : connectHost;
   const debugPort = config.debugPort ?? parseDebugPortEnv();
   const chromeFlags = buildChromeFlags(config.headless ?? false, debugBindAddress);
-  const usePatchedLauncher = Boolean(connectHost && connectHost !== '127.0.0.1');
+  const usePatchedLauncher = Boolean(connectHost && connectHost !== "127.0.0.1");
   const launcher = usePatchedLauncher
     ? await launchWithCustomHost({
         chromeFlags,
         chromePath: config.chromePath ?? undefined,
         userDataDir,
-        host: connectHost ?? '127.0.0.1',
+        host: connectHost ?? "127.0.0.1",
         requestedPort: debugPort ?? undefined,
       })
     : await launch({
@@ -33,10 +37,12 @@ export async function launchChrome(config: ResolvedBrowserConfig, userDataDir: s
         handleSIGINT: false,
         port: debugPort ?? undefined,
       });
-  const pidLabel = typeof launcher.pid === 'number' ? ` (pid ${launcher.pid})` : '';
-  const hostLabel = connectHost ? ` on ${connectHost}` : '';
+  const pidLabel = typeof launcher.pid === "number" ? ` (pid ${launcher.pid})` : "";
+  const hostLabel = connectHost ? ` on ${connectHost}` : "";
   logger(`Launched Chrome${pidLabel} on port ${launcher.port}${hostLabel}`);
-  return Object.assign(launcher, { host: connectHost ?? '127.0.0.1' }) as LaunchedChrome & { host?: string };
+  return Object.assign(launcher, { host: connectHost ?? "127.0.0.1" }) as LaunchedChrome & {
+    host?: string;
+  };
 }
 
 export function registerTerminationHooks(
@@ -53,7 +59,7 @@ export function registerTerminationHooks(
     preserveUserDataDir?: boolean;
   },
 ): () => void {
-  const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
+  const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGQUIT"];
   let handling: boolean | undefined;
 
   const handleSignal = (signal: NodeJS.Signals) => {
@@ -64,7 +70,9 @@ export function registerTerminationHooks(
     const inFlight = opts?.isInFlight?.() ?? false;
     const leaveRunning = keepBrowser || inFlight;
     if (leaveRunning) {
-      logger(`Received ${signal}; leaving Chrome running${inFlight ? ' (assistant response pending)' : ''}`);
+      logger(
+        `Received ${signal}; leaving Chrome running${inFlight ? " (assistant response pending)" : ""}`,
+      );
     } else {
       logger(`Received ${signal}; terminating Chrome process`);
     }
@@ -84,17 +92,19 @@ export function registerTerminationHooks(
         if (opts?.preserveUserDataDir) {
           // Preserve the profile directory (manual login), but clear reattach hints so we don't
           // try to reuse a dead DevTools port on the next run.
-          await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'never' }).catch(() => undefined);
+          await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "never" }).catch(
+            () => undefined,
+          );
         } else {
           await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
         }
       }
     })().finally(() => {
-      const exitCode = signal === 'SIGINT' ? 130 : 1;
+      const exitCode = signal === "SIGINT" ? 130 : 1;
       // Vitest treats any `process.exit()` call as an unhandled failure, even if mocked.
       // Keep production behavior (hard-exit on signals) while letting tests observe state changes.
       process.exitCode = exitCode;
-      const isTestRun = process.env.VITEST === '1' || process.env.NODE_ENV === 'test';
+      const isTestRun = process.env.VITEST === "1" || process.env.NODE_ENV === "test";
       if (!isTestRun) {
         process.exit(exitCode);
       }
@@ -112,13 +122,16 @@ export function registerTerminationHooks(
   };
 }
 
-export async function hideChromeWindow(chrome: LaunchedChrome, logger: BrowserLogger): Promise<void> {
-  if (process.platform !== 'darwin') {
-    logger('Window hiding is only supported on macOS');
+export async function hideChromeWindow(
+  chrome: LaunchedChrome,
+  logger: BrowserLogger,
+): Promise<void> {
+  if (process.platform !== "darwin") {
+    logger("Window hiding is only supported on macOS");
     return;
   }
   if (!chrome.pid) {
-    logger('Unable to hide window: missing Chrome PID');
+    logger("Unable to hide window: missing Chrome PID");
     return;
   }
   const script = `tell application "System Events"
@@ -127,17 +140,21 @@ export async function hideChromeWindow(chrome: LaunchedChrome, logger: BrowserLo
     end try
   end tell`;
   try {
-    await execFileAsync('osascript', ['-e', script]);
-    logger('Chrome window hidden (Cmd-H)');
+    await execFileAsync("osascript", ["-e", script]);
+    logger("Chrome window hidden (Cmd-H)");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger(`Failed to hide Chrome window: ${message}`);
   }
 }
 
-export async function connectToChrome(port: number, logger: BrowserLogger, host?: string): Promise<ChromeClient> {
+export async function connectToChrome(
+  port: number,
+  logger: BrowserLogger,
+  host?: string,
+): Promise<ChromeClient> {
   const client = await CDP({ port, host });
-  logger('Connected to Chrome DevTools protocol');
+  logger("Connected to Chrome DevTools protocol");
   return client;
 }
 
@@ -150,10 +167,12 @@ export async function connectToRemoteChrome(
   if (targetUrl) {
     const targetConnection = await connectToNewTarget(host, port, targetUrl, logger, {
       opened: () => `Opened dedicated remote Chrome tab targeting ${targetUrl}`,
-      openFailed: (message) => `Failed to open dedicated remote Chrome tab (${message}); falling back to first target.`,
+      openFailed: (message) =>
+        `Failed to open dedicated remote Chrome tab (${message}); falling back to first target.`,
       attachFailed: (targetId, message) =>
         `Failed to attach to dedicated remote Chrome tab ${targetId} (${message}); falling back to first target.`,
-      closeFailed: (targetId, message) => `Failed to close unused remote Chrome tab ${targetId}: ${message}`,
+      closeFailed: (targetId, message) =>
+        `Failed to close unused remote Chrome tab ${targetId}: ${message}`,
     });
     if (targetConnection) {
       return { client: targetConnection.client, targetId: targetConnection.targetId };
@@ -240,12 +259,14 @@ export async function connectWithNewTab(
   host?: string,
   options?: { fallbackToDefault?: boolean; retries?: number; retryDelayMs?: number },
 ): Promise<IsolatedTabConnection> {
-  const effectiveHost = host ?? '127.0.0.1';
-  const url = initialUrl ?? 'about:blank';
+  const effectiveHost = host ?? "127.0.0.1";
+  const url = initialUrl ?? "about:blank";
   const fallbackToDefault = options?.fallbackToDefault ?? true;
   const retries = Math.max(0, options?.retries ?? 0);
   const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 250);
-  const fallbackLabel = fallbackToDefault ? 'falling back to default target.' : 'strict mode: not falling back.';
+  const fallbackLabel = fallbackToDefault
+    ? "falling back to default target."
+    : "strict mode: not falling back.";
 
   let attempt = 0;
   while (attempt <= retries) {
@@ -254,7 +275,8 @@ export async function connectWithNewTab(
       openFailed: (message) => `Failed to open isolated browser tab (${message}); ${fallbackLabel}`,
       attachFailed: (targetId, message) =>
         `Failed to attach to isolated browser tab ${targetId} (${message}); ${fallbackLabel}`,
-      closeFailed: (targetId, message) => `Failed to close unused browser tab ${targetId}: ${message}`,
+      closeFailed: (targetId, message) =>
+        `Failed to close unused browser tab ${targetId}: ${message}`,
     });
     if (targetConnection) {
       return targetConnection;
@@ -267,7 +289,7 @@ export async function connectWithNewTab(
   }
 
   if (!fallbackToDefault) {
-    throw new Error('Failed to open isolated browser tab; refusing to attach to default target.');
+    throw new Error("Failed to open isolated browser tab; refusing to attach to default target.");
   }
   const client = await connectToChrome(port, logger, effectiveHost);
   return { client };
@@ -279,7 +301,7 @@ export async function closeTab(
   logger: BrowserLogger,
   host?: string,
 ): Promise<void> {
-  const effectiveHost = host ?? '127.0.0.1';
+  const effectiveHost = host ?? "127.0.0.1";
   try {
     await CDP.Close({ host: effectiveHost, port, id: targetId });
     logger(`Closed isolated browser tab (target=${targetId})`);
@@ -291,28 +313,28 @@ export async function closeTab(
 
 function buildChromeFlags(headless: boolean, debugBindAddress?: string | null): string[] {
   const flags = [
-    '--disable-background-networking',
-    '--disable-background-timer-throttling',
-    '--disable-breakpad',
-    '--disable-client-side-phishing-detection',
-    '--disable-default-apps',
-    '--disable-hang-monitor',
-    '--disable-popup-blocking',
-    '--disable-prompt-on-repost',
-    '--disable-sync',
-    '--disable-translate',
-    '--metrics-recording-only',
-    '--no-first-run',
-    '--safebrowsing-disable-auto-update',
-    '--disable-features=TranslateUI,AutomationControlled',
-    '--mute-audio',
-    '--window-size=1280,720',
-    '--lang=en-US',
-    '--accept-lang=en-US,en',
+    "--disable-background-networking",
+    "--disable-background-timer-throttling",
+    "--disable-breakpad",
+    "--disable-client-side-phishing-detection",
+    "--disable-default-apps",
+    "--disable-hang-monitor",
+    "--disable-popup-blocking",
+    "--disable-prompt-on-repost",
+    "--disable-sync",
+    "--disable-translate",
+    "--metrics-recording-only",
+    "--no-first-run",
+    "--safebrowsing-disable-auto-update",
+    "--disable-features=TranslateUI,AutomationControlled",
+    "--mute-audio",
+    "--window-size=1280,720",
+    "--lang=en-US",
+    "--accept-lang=en-US,en",
   ];
 
-  if (process.platform !== 'win32' && !isWsl()) {
-    flags.push('--password-store=basic', '--use-mock-keychain');
+  if (process.platform !== "win32" && !isWsl()) {
+    flags.push("--password-store=basic", "--use-mock-keychain");
   }
 
   if (debugBindAddress) {
@@ -320,7 +342,7 @@ function buildChromeFlags(headless: boolean, debugBindAddress?: string | null): 
   }
 
   if (headless) {
-    flags.push('--headless=new');
+    flags.push("--headless=new");
   }
 
   return flags;
@@ -337,7 +359,8 @@ function parseDebugPortEnv(): number | null {
 }
 
 function resolveRemoteDebugHost(): string | null {
-  const override = process.env.ORACLE_BROWSER_REMOTE_DEBUG_HOST?.trim() || process.env.WSL_HOST_IP?.trim();
+  const override =
+    process.env.ORACLE_BROWSER_REMOTE_DEBUG_HOST?.trim() || process.env.WSL_HOST_IP?.trim();
   if (override) {
     return override;
   }
@@ -345,8 +368,8 @@ function resolveRemoteDebugHost(): string | null {
     return null;
   }
   try {
-    const resolv = readFileSync('/etc/resolv.conf', 'utf8');
-    for (const line of resolv.split('\n')) {
+    const resolv = readFileSync("/etc/resolv.conf", "utf8");
+    for (const line of resolv.split("\n")) {
       const match = line.match(/^nameserver\s+([0-9.]+)/);
       if (match?.[1]) {
         return match[1];
@@ -359,14 +382,14 @@ function resolveRemoteDebugHost(): string | null {
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') {
+  if (process.platform !== "linux") {
     return false;
   }
   if (process.env.WSL_DISTRO_NAME) {
     return true;
   }
   const release = os.release();
-  return release.toLowerCase().includes('microsoft');
+  return release.toLowerCase().includes("microsoft");
 }
 
 async function launchWithCustomHost({
@@ -392,10 +415,12 @@ async function launchWithCustomHost({
 
   if (host) {
     const patched = launcher as unknown as { isDebuggerReady?: () => Promise<void>; port?: number };
-    patched.isDebuggerReady = function patchedIsDebuggerReady(this: Launcher & { port?: number }): Promise<void> {
+    patched.isDebuggerReady = function patchedIsDebuggerReady(
+      this: Launcher & { port?: number },
+    ): Promise<void> {
       const debugPort = this.port ?? 0;
       if (!debugPort) {
-        return Promise.reject(new Error('Missing Chrome debug port'));
+        return Promise.reject(new Error("Missing Chrome debug port"));
       }
       return new Promise((resolve, reject) => {
         const client = net.createConnection({ port: debugPort, host });
@@ -405,11 +430,11 @@ async function launchWithCustomHost({
           client.destroy();
           client.unref();
         };
-        client.once('error', (err) => {
+        client.once("error", (err) => {
           cleanup();
           reject(err);
         });
-        client.once('connect', () => {
+        client.once("connect", () => {
           cleanup();
           resolve();
         });
@@ -423,7 +448,7 @@ async function launchWithCustomHost({
   return {
     pid: launcher.pid ?? undefined,
     port: launcher.port ?? 0,
-    process: launcher.chromeProcess as unknown as NonNullable<LaunchedChrome['process']>,
+    process: launcher.chromeProcess as unknown as NonNullable<LaunchedChrome["process"]>,
     kill,
     host: host ?? undefined,
     remoteDebuggingPipes: launcher.remoteDebuggingPipes,

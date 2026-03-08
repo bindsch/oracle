@@ -10,7 +10,7 @@ export function parseDuration(input: string, fallback: number): number {
   if (/^[0-9]+$/.test(lowercase)) {
     return Number(lowercase);
   }
-  const normalized = lowercase.replace(/\s+/g, '');
+  const normalized = lowercase.replace(/\s+/g, "");
   const singleMatch = /^([0-9]+)(ms|s|m|h)$/i.exec(normalized);
   if (singleMatch && singleMatch[0].length === normalized.length) {
     const value = Number(singleMatch[1]);
@@ -34,13 +34,13 @@ export function parseDuration(input: string, fallback: number): number {
 function convertUnit(value: number, unitRaw: string | undefined): number {
   const unit = unitRaw?.toLowerCase();
   switch (unit) {
-    case 'ms':
+    case "ms":
       return value;
-    case 's':
+    case "s":
       return value * 1000;
-    case 'm':
+    case "m":
       return value * 60_000;
-    case 'h':
+    case "h":
       return value * 3_600_000;
     default:
       return value;
@@ -66,7 +66,10 @@ export interface RetryOptions {
   onRetry?: (attempt: number, error: unknown) => void;
 }
 
-export async function withRetries<T>(task: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+export async function withRetries<T>(
+  task: () => Promise<T>,
+  options: RetryOptions = {},
+): Promise<T> {
   const { retries = 2, delayMs = 250, onRetry } = options;
   let attempt = 0;
   while (attempt <= retries) {
@@ -81,12 +84,12 @@ export async function withRetries<T>(task: () => Promise<T>, options: RetryOptio
       await delay(delayMs * attempt);
     }
   }
-  throw new Error('withRetries exhausted without result');
+  throw new Error("withRetries exhausted without result");
 }
 
 export function formatBytes(size: number): string {
   if (!Number.isFinite(size) || size < 0) {
-    return 'n/a';
+    return "n/a";
   }
   if (size < 1024) {
     return `${size} B`;
@@ -124,8 +127,8 @@ export function normalizeChatgptUrl(raw: string | null | undefined, fallback: st
 export function isTemporaryChatUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    const value = (parsed.searchParams.get('temporary-chat') ?? '').trim().toLowerCase();
-    return value === 'true' || value === '1' || value === 'yes';
+    const value = (parsed.searchParams.get("temporary-chat") ?? "").trim().toLowerCase();
+    return value === "true" || value === "1" || value === "yes";
   } catch {
     return false;
   }

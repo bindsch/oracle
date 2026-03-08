@@ -1,21 +1,31 @@
-import chalk from 'chalk';
-import inquirer, { type DistinctQuestion } from 'inquirer';
-import kleur from 'kleur';
-import path from 'node:path';
-import os from 'node:os';
-import fs from 'node:fs/promises';
-import { DEFAULT_MODEL, MODEL_CONFIGS, type ModelName, type RunOracleOptions } from '../../oracle.js';
-import { renderMarkdownAnsi } from '../markdownRenderer.js';
-import type { SessionMetadata, SessionMode, BrowserSessionConfig, SessionModelRun } from '../../sessionStore.js';
-import { sessionStore, pruneOldSessions } from '../../sessionStore.js';
-import { performSessionRun } from '../sessionRunner.js';
-import { MAX_RENDER_BYTES, trimBeforeFirstAnswer } from '../sessionDisplay.js';
-import { formatSessionTableHeader, formatSessionTableRow } from '../sessionTable.js';
-import { buildBrowserConfig, resolveBrowserModelLabel } from '../browserConfig.js';
-import { resolveNotificationSettings } from '../notifier.js';
-import { loadUserConfig, type UserConfig } from '../../config.js';
-import { resolveConfiguredMaxFileSizeBytes } from '../fileSize.js';
-import { formatTokenCount } from '../../oracle/runUtils.js';
+import chalk from "chalk";
+import inquirer, { type DistinctQuestion } from "inquirer";
+import kleur from "kleur";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs/promises";
+import {
+  DEFAULT_MODEL,
+  MODEL_CONFIGS,
+  type ModelName,
+  type RunOracleOptions,
+} from "../../oracle.js";
+import { renderMarkdownAnsi } from "../markdownRenderer.js";
+import type {
+  SessionMetadata,
+  SessionMode,
+  BrowserSessionConfig,
+  SessionModelRun,
+} from "../../sessionStore.js";
+import { sessionStore, pruneOldSessions } from "../../sessionStore.js";
+import { performSessionRun } from "../sessionRunner.js";
+import { MAX_RENDER_BYTES, trimBeforeFirstAnswer } from "../sessionDisplay.js";
+import { formatSessionTableHeader, formatSessionTableRow } from "../sessionTable.js";
+import { buildBrowserConfig, resolveBrowserModelLabel } from "../browserConfig.js";
+import { resolveNotificationSettings } from "../notifier.js";
+import { loadUserConfig, type UserConfig } from "../../config.js";
+import { resolveConfiguredMaxFileSizeBytes } from "../fileSize.js";
+import { formatTokenCount } from "../../oracle/runUtils.js";
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY && chalk.level > 0);
 const dim = (text: string): string => (isTty() ? kleur.dim(text) : text);
@@ -39,12 +49,16 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
   let exitMessageShown = false;
   if (printIntro) {
     if (rich) {
-      console.log(chalk.bold('🧿 oracle'), `${version}`, dim('— Whispering your tokens to the silicon sage'));
+      console.log(
+        chalk.bold("🧿 oracle"),
+        `${version}`,
+        dim("— Whispering your tokens to the silicon sage"),
+      );
     } else {
       console.log(`🧿 oracle ${version} — Whispering your tokens to the silicon sage`);
     }
   }
-  console.log('');
+  console.log("");
   let showingOlder = false;
   for (;;) {
     const { recent, older, olderTotal } = await fetchSessionBuckets();
@@ -53,7 +67,7 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
     const headerLabel = formatSessionTableHeader(isTty());
 
     // Start with a selectable row so focus never lands on a separator
-    choices.push({ name: chalk.bold.green('ask oracle'), value: '__ask__' });
+    choices.push({ name: chalk.bold.green("ask oracle"), value: "__ask__" });
 
     if (!showingOlder) {
       if (recent.length > 0) {
@@ -69,24 +83,24 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
       choices.push(...older.map(toSessionChoice));
     }
 
-    choices.push(new inquirer.Separator(' '));
-    choices.push(new inquirer.Separator('Actions'));
-    choices.push({ name: chalk.bold.green('ask oracle'), value: '__ask__' });
+    choices.push(new inquirer.Separator(" "));
+    choices.push(new inquirer.Separator("Actions"));
+    choices.push({ name: chalk.bold.green("ask oracle"), value: "__ask__" });
 
     if (!showingOlder && olderTotal > 0) {
-      choices.push({ name: 'Older page', value: '__older__' });
+      choices.push({ name: "Older page", value: "__older__" });
     } else {
-      choices.push({ name: 'Newer (recent)', value: '__reset__' });
+      choices.push({ name: "Newer (recent)", value: "__reset__" });
     }
 
-    choices.push({ name: 'Exit', value: '__exit__' });
+    choices.push({ name: "Exit", value: "__exit__" });
 
     const selection = await new Promise<string>((resolve) => {
       const prompt = inquirer.prompt<{ selection: string }>([
         {
-          name: 'selection',
-          type: 'select',
-          message: 'Select a session or action',
+          name: "selection",
+          type: "select",
+          message: "Select a session or action",
           choices,
           pageSize: 16,
           loop: false,
@@ -98,48 +112,45 @@ export async function launchTui({ version, printIntro = true }: LaunchTuiOptions
         .catch((error) => {
           pagingFailures += 1;
           const message = error instanceof Error ? error.message : String(error);
-          if (message.includes('SIGINT') || message.includes('force closed the prompt')) {
-            console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
+          if (message.includes("SIGINT") || message.includes("force closed the prompt")) {
+            console.log(chalk.green("🧿 Closing the book. See you next prompt."));
             exitMessageShown = true;
-            resolve('__exit__');
+            resolve("__exit__");
             return;
           }
-          console.error(
-            chalk.red('Paging failed; returning to recent list.'),
-            message,
-          );
-          if (message.includes('setRawMode') || message.includes('EIO') || pagingFailures >= 3) {
+          console.error(chalk.red("Paging failed; returning to recent list."), message);
+          if (message.includes("setRawMode") || message.includes("EIO") || pagingFailures >= 3) {
             console.error(
-              chalk.red('Terminal input unavailable; exiting TUI.'),
-              dim('Try `stty sane` then rerun oracle, or use `oracle recent`.'),
+              chalk.red("Terminal input unavailable; exiting TUI."),
+              dim("Try `stty sane` then rerun oracle, or use `oracle recent`."),
             );
-            resolve('__exit__');
+            resolve("__exit__");
             return;
           }
-          resolve('__reset__');
+          resolve("__reset__");
         });
     });
 
-    if (process.env.ORACLE_DEBUG_TUI === '1') {
+    if (process.env.ORACLE_DEBUG_TUI === "1") {
       console.error(`[tui] selection=${JSON.stringify(selection)}`);
     }
     pagingFailures = 0;
 
-    if (selection === '__exit__') {
+    if (selection === "__exit__") {
       if (!exitMessageShown) {
-        console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
+        console.log(chalk.green("🧿 Closing the book. See you next prompt."));
       }
       return;
     }
-    if (selection === '__ask__') {
+    if (selection === "__ask__") {
       await askOracleFlow(version, userConfig);
       continue;
     }
-    if (selection === '__older__') {
+    if (selection === "__older__") {
       showingOlder = true;
       continue;
     }
-    if (selection === '__reset__') {
+    if (selection === "__reset__") {
       showingOlder = false;
       continue;
     }
@@ -156,14 +167,21 @@ async function fetchSessionBuckets(): Promise<{
 }> {
   const all = await sessionStore.listSessions();
   const cutoff = Date.now() - RECENT_WINDOW_HOURS * 60 * 60 * 1000;
-  const recent = all.filter((meta) => new Date(meta.createdAt).getTime() >= cutoff).slice(0, PAGE_SIZE);
+  const recent = all
+    .filter((meta) => new Date(meta.createdAt).getTime() >= cutoff)
+    .slice(0, PAGE_SIZE);
   const olderAll = all.filter((meta) => new Date(meta.createdAt).getTime() < cutoff);
   const older = olderAll.slice(0, PAGE_SIZE);
   const hasMoreOlder = olderAll.length > PAGE_SIZE;
 
   if (recent.length === 0 && older.length === 0 && olderAll.length > 0) {
     // No recent entries; fall back to top 10 overall.
-    return { recent: olderAll.slice(0, PAGE_SIZE), older: [], hasMoreOlder: olderAll.length > PAGE_SIZE, olderTotal: olderAll.length };
+    return {
+      recent: olderAll.slice(0, PAGE_SIZE),
+      older: [],
+      hasMoreOlder: olderAll.length > PAGE_SIZE,
+      olderTotal: olderAll.length,
+    };
   }
   return { recent, older, hasMoreOlder, olderTotal: olderAll.length };
 }
@@ -189,69 +207,71 @@ async function showSessionDetail(sessionId: string): Promise<void> {
     }
     const prompt = await readStoredPrompt(sessionId);
     if (prompt) {
-      console.log(chalk.bold('Prompt:'));
+      console.log(chalk.bold("Prompt:"));
       console.log(renderMarkdownAnsi(prompt));
-      console.log(dim('---'));
+      console.log(dim("---"));
     }
     const logPath = await getSessionLogPath(sessionId);
     if (logPath) {
       console.log(dim(`Log file: ${logPath}`));
     }
-    console.log('');
+    console.log("");
 
     await renderSessionLog(sessionId);
 
-    const isRunning = meta.status === 'running';
+    const isRunning = meta.status === "running";
     const modelActions =
       meta.models?.map((run) => ({
         name: `View ${run.model} log (${run.status})`,
         value: `log:${run.model}`,
       })) ?? [];
     const actions: Array<{ name: string; value: string }> = [
-      { name: 'View combined log', value: 'log:__all__' },
+      { name: "View combined log", value: "log:__all__" },
       ...modelActions,
-      ...(isRunning ? [{ name: 'Refresh', value: 'refresh' }] : []),
-      { name: 'Back', value: 'back' },
+      ...(isRunning ? [{ name: "Refresh", value: "refresh" }] : []),
+      { name: "Back", value: "back" },
     ];
 
     let next: string;
     try {
       ({ next } = await inquirer.prompt<{ next: string }>([
         {
-          name: 'next',
-          type: 'select',
-          message: 'Actions',
+          name: "next",
+          type: "select",
+          message: "Actions",
           choices: actions,
         },
       ]));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('SIGINT') || message.includes('force closed the prompt')) {
-        console.log(chalk.green('🧿 Closing the book. See you next prompt.'));
+      if (message.includes("SIGINT") || message.includes("force closed the prompt")) {
+        console.log(chalk.green("🧿 Closing the book. See you next prompt."));
         return;
       }
-      console.error(chalk.red('Paging failed; returning to session list.'), message);
+      console.error(chalk.red("Paging failed; returning to session list."), message);
       return;
     }
-    if (next === 'back') {
+    if (next === "back") {
       return;
     }
-    if (next === 'refresh') {
+    if (next === "refresh") {
       continue;
     }
-    if (next.startsWith('log:')) {
-      const [, target] = next.split(':');
-      await renderSessionLog(sessionId, target === '__all__' ? undefined : target);
+    if (next.startsWith("log:")) {
+      const [, target] = next.split(":");
+      await renderSessionLog(sessionId, target === "__all__" ? undefined : target);
     }
   }
 }
 
 async function renderSessionLog(sessionId: string, model?: string): Promise<void> {
-  const raw = model ? await sessionStore.readModelLog(sessionId, model) : await sessionStore.readLog(sessionId);
-  const headerLabel = model ? `Log (${model})` : 'Log';
+  const raw = model
+    ? await sessionStore.readModelLog(sessionId, model)
+    : await sessionStore.readLog(sessionId);
+  const headerLabel = model ? `Log (${model})` : "Log";
   console.log(chalk.bold(headerLabel));
   const text = trimBeforeFirstAnswer(raw);
-  const size = Buffer.byteLength(text, 'utf8');
+  const size = Buffer.byteLength(text, "utf8");
   if (size > MAX_RENDER_BYTES) {
     console.log(
       chalk.yellow(
@@ -259,16 +279,16 @@ async function renderSessionLog(sessionId: string, model?: string): Promise<void
       ),
     );
     process.stdout.write(text);
-    console.log('');
+    console.log("");
     return;
   }
   if (!text.trim()) {
-    console.log(dim('(log is empty)'));
-    console.log('');
+    console.log(dim("(log is empty)"));
+    console.log("");
     return;
   }
   process.stdout.write(renderMarkdownAnsi(text));
-  console.log('');
+  console.log("");
 }
 
 async function getSessionLogPath(sessionId: string): Promise<string | null> {
@@ -282,14 +302,14 @@ async function getSessionLogPath(sessionId: string): Promise<string | null> {
 
 function printSessionHeader(meta: SessionMetadata): void {
   console.log(chalk.bold(`Session ${chalk.cyan(meta.id)}`));
-  console.log(`${chalk.white('Status:')} ${meta.status}`);
-  console.log(`${chalk.white('Created:')} ${meta.createdAt}`);
+  console.log(`${chalk.white("Status:")} ${meta.status}`);
+  console.log(`${chalk.white("Created:")} ${meta.createdAt}`);
   if (meta.model) {
-    console.log(`${chalk.white('Model:')} ${meta.model}`);
+    console.log(`${chalk.white("Model:")} ${meta.model}`);
   }
   const mode = meta.mode ?? meta.options?.mode;
   if (mode) {
-    console.log(`${chalk.white('Mode:')} ${mode}`);
+    console.log(`${chalk.white("Mode:")} ${mode}`);
   }
   if (meta.errorMessage) {
     console.log(chalk.red(`Error: ${meta.errorMessage}`));
@@ -300,14 +320,14 @@ function printModelSummaries(models: SessionModelRun[]): void {
   if (models.length === 0) {
     return;
   }
-  console.log(chalk.bold('Models:'));
+  console.log(chalk.bold("Models:"));
   for (const run of models) {
     const usage = run.usage
       ? ` tok=${formatTokenCount(run.usage.outputTokens ?? 0)}/${formatTokenCount(run.usage.totalTokens ?? 0)}`
-      : '';
+      : "";
     console.log(` - ${chalk.cyan(run.model)} — ${run.status}${usage}`);
   }
-  console.log('');
+  console.log("");
 }
 
 interface WizardAnswers {
@@ -326,55 +346,55 @@ interface WizardAnswers {
 async function askOracleFlow(version: string, userConfig: UserConfig): Promise<void> {
   const modelChoices = Object.keys(MODEL_CONFIGS) as ModelName[];
   const hasApiKey = Boolean(process.env.OPENAI_API_KEY);
-  const initialMode: SessionMode = hasApiKey ? 'api' : 'browser';
+  const initialMode: SessionMode = hasApiKey ? "api" : "browser";
   const preferredMode: SessionMode = (userConfig.engine as SessionMode | undefined) ?? initialMode;
 
   const wizardQuestions = [
     {
-      name: 'promptInput',
-      type: 'input',
-      message: 'Paste your prompt text or a path to a file (leave blank to cancel):',
+      name: "promptInput",
+      type: "input",
+      message: "Paste your prompt text or a path to a file (leave blank to cancel):",
     },
     ...(hasApiKey
       ? [
           {
-            name: 'mode',
-            type: 'select',
-            message: 'Engine',
+            name: "mode",
+            type: "select",
+            message: "Engine",
             default: preferredMode,
             choices: [
-              { name: 'API', value: 'api' },
-              { name: 'Browser', value: 'browser' },
+              { name: "API", value: "api" },
+              { name: "Browser", value: "browser" },
             ],
           } as DistinctQuestion<WizardAnswers & { mode: SessionMode }>,
         ]
       : [
           {
-            name: 'mode',
-            type: 'select',
-            message: 'Engine',
+            name: "mode",
+            type: "select",
+            message: "Engine",
             default: preferredMode,
-            choices: [{ name: 'Browser', value: 'browser' }],
+            choices: [{ name: "Browser", value: "browser" }],
           } as DistinctQuestion<WizardAnswers & { mode: SessionMode }>,
         ]),
     {
-      name: 'slug',
-      type: 'input',
-      message: 'Optional slug (3–5 words, leave blank for auto):',
+      name: "slug",
+      type: "input",
+      message: "Optional slug (3–5 words, leave blank for auto):",
     },
     {
-      name: 'model',
-      type: 'select',
-      message: 'Model',
+      name: "model",
+      type: "select",
+      message: "Model",
       default: DEFAULT_MODEL,
       choices: modelChoices,
     },
     {
-      name: 'models',
-      type: 'checkbox',
-      message: 'Additional API models to fan out to (optional)',
+      name: "models",
+      type: "checkbox",
+      message: "Additional API models to fan out to (optional)",
       choices: modelChoices,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'api',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === "api",
       filter: (values: string[]) =>
         Array.isArray(values)
           ? values
@@ -383,57 +403,61 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
           : [],
     },
     {
-      name: 'files',
-      type: 'input',
-      message: 'Files or globs to attach (comma-separated, optional):',
+      name: "files",
+      type: "input",
+      message: "Files or globs to attach (comma-separated, optional):",
       filter: (value: string) =>
         value
-          .split(',')
+          .split(",")
           .map((entry) => entry.trim())
           .filter(Boolean),
     },
     {
-      name: 'chromeProfile',
-      type: 'input',
-      message: 'Chrome profile to reuse cookies from:',
-      default: 'Default',
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
+      name: "chromeProfile",
+      type: "input",
+      message: "Chrome profile to reuse cookies from:",
+      default: "Default",
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === "browser",
     },
     {
-      name: 'chromeCookiePath',
-      type: 'input',
-      message: 'Cookie DB path (Chromium/Edge, optional):',
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
+      name: "chromeCookiePath",
+      type: "input",
+      message: "Cookie DB path (Chromium/Edge, optional):",
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === "browser",
     },
     {
-      name: 'hideWindow',
-      type: 'confirm',
-      message: 'Hide Chrome window (macOS headful only)?',
+      name: "hideWindow",
+      type: "confirm",
+      message: "Hide Chrome window (macOS headful only)?",
       default: false,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === "browser",
     },
     {
-      name: 'keepBrowser',
-      type: 'confirm',
-      message: 'Keep browser open after completion?',
+      name: "keepBrowser",
+      type: "confirm",
+      message: "Keep browser open after completion?",
       default: false,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
+      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === "browser",
     },
   ] as const;
 
   const answers = await inquirer.prompt<WizardAnswers & { mode: SessionMode; promptInput: string }>(
-    wizardQuestions as unknown as Parameters<(typeof inquirer)['prompt']>[0],
+    wizardQuestions as unknown as Parameters<(typeof inquirer)["prompt"]>[0],
   );
 
   const mode = (answers.mode ?? initialMode) as SessionMode;
   const prompt = await resolvePromptInput(answers.promptInput);
   if (!prompt.trim()) {
-    console.log(chalk.yellow('Cancelled.'));
+    console.log(chalk.yellow("Cancelled."));
     return;
   }
-  const promptWithSuffix = userConfig.promptSuffix ? `${prompt.trim()}\n${userConfig.promptSuffix}` : prompt;
+  const promptWithSuffix = userConfig.promptSuffix
+    ? `${prompt.trim()}\n${userConfig.promptSuffix}`
+    : prompt;
   await sessionStore.ensureStorage();
-  await pruneOldSessions(userConfig.sessionRetentionHours, (message) => console.log(chalk.dim(message)));
+  await pruneOldSessions(userConfig.sessionRetentionHours, (message) =>
+    console.log(chalk.dim(message)),
+  );
   const normalizedMultiModels =
     Array.isArray(answers.models) && answers.models.length > 0
       ? Array.from(
@@ -463,14 +487,14 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
     sessionId: undefined,
     verbose: false,
     heartbeatIntervalMs: undefined,
-    browserAttachments: 'auto',
+    browserAttachments: "auto",
     browserInlineFiles: false,
     browserBundleFiles: false,
     background: undefined,
   };
 
   const browserConfig: BrowserSessionConfig | undefined =
-    mode === 'browser'
+    mode === "browser"
       ? await buildBrowserConfig({
           browserChromeProfile: answers.chromeProfile,
           browserCookiePath: answers.chromeCookiePath,
@@ -513,7 +537,11 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
   };
 
   console.log(chalk.bold(`Session ${sessionMeta.id} starting...`));
-  console.log(dim(`Log path: ${path.join(os.homedir(), '.oracle', 'sessions', sessionMeta.id, 'output.log')}`));
+  console.log(
+    dim(
+      `Log path: ${path.join(os.homedir(), ".oracle", "sessions", sessionMeta.id, "output.log")}`,
+    ),
+  );
 
   try {
     await performSessionRun({
@@ -548,7 +576,7 @@ async function resolvePromptInput(rawInput: string): Promise<string> {
   try {
     const stats = await fs.stat(asPath);
     if (stats.isFile()) {
-      const contents = await fs.readFile(asPath, 'utf8');
+      const contents = await fs.readFile(asPath, "utf8");
       return contents;
     }
   } catch {
@@ -571,4 +599,4 @@ async function readStoredPrompt(sessionId: string): Promise<string | null> {
 
 // Exported for testing
 export { askOracleFlow, showSessionDetail };
-export { resolveSessionCost as resolveCost } from '../sessionTable.js';
+export { resolveSessionCost as resolveCost } from "../sessionTable.js";

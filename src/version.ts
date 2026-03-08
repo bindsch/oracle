@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 let cachedVersion: string | null = null;
 
@@ -19,18 +19,19 @@ function readVersionFromPackage(): string {
 
   // biome-ignore lint/nursery/noUnnecessaryConditions: deliberate sentinel loop to walk up directories
   while (true) {
-    const candidate = path.join(currentDir, 'package.json');
+    const candidate = path.join(currentDir, "package.json");
     try {
-      const raw = readFileSync(candidate, 'utf8');
+      const raw = readFileSync(candidate, "utf8");
       const parsed = JSON.parse(raw) as { version?: unknown };
       const version =
-        typeof parsed.version === 'string' && parsed.version.trim().length > 0
+        typeof parsed.version === "string" && parsed.version.trim().length > 0
           ? parsed.version.trim()
-          : '0.0.0';
+          : "0.0.0";
       return version;
     } catch (error) {
-      const code = error instanceof Error && 'code' in error ? (error as { code?: string }).code : undefined;
-      if (code && code !== 'ENOENT') {
+      const code =
+        error instanceof Error && "code" in error ? (error as { code?: string }).code : undefined;
+      if (code && code !== "ENOENT") {
         break;
       }
     }
@@ -39,5 +40,5 @@ function readVersionFromPackage(): string {
     }
     currentDir = path.dirname(currentDir);
   }
-  return '0.0.0';
+  return "0.0.0";
 }

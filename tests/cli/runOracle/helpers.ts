@@ -1,6 +1,6 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import { mkdtemp, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import type {
   ClientLike,
@@ -9,8 +9,8 @@ import type {
   OracleResponse,
   ResponseStreamEvent,
   ResponseStreamLike,
-} from '@src/oracle.ts';
-import { OracleTransportError } from '@src/oracle.ts';
+} from "@src/oracle.ts";
+import { OracleTransportError } from "@src/oracle.ts";
 
 export type TempFile = { dir: string; filePath: string };
 
@@ -24,8 +24,8 @@ export interface MockResponse extends OracleResponse {
     total_tokens: number;
   };
   output: Array<{
-    type: 'message';
-    content: Array<{ type: 'text'; text: string }>;
+    type: "message";
+    content: Array<{ type: "text"; text: string }>;
   }>;
   // biome-ignore lint/style/useNamingConvention: OpenAI uses _request_id in responses
   _request_id?: string | null;
@@ -77,10 +77,10 @@ export class MockClient implements ClientLike {
         return this.stream;
       },
       create: async () => {
-        throw new Error('Background mode not supported in MockClient');
+        throw new Error("Background mode not supported in MockClient");
       },
       retrieve: async () => {
-        throw new Error('Background mode not supported in MockClient');
+        throw new Error("Background mode not supported in MockClient");
       },
     };
   }
@@ -102,12 +102,12 @@ export class MockBackgroundClient implements ClientLike {
       return this.entries[0];
     },
     stream: async () => {
-      throw new Error('Streaming not supported for background client');
+      throw new Error("Streaming not supported for background client");
     },
     retrieve: async () => {
       if (this.failNext) {
         this.failNext = false;
-        throw new OracleTransportError('connection-lost', 'mock disconnect');
+        throw new OracleTransportError("connection-lost", "mock disconnect");
       }
       this.index = Math.min(this.index + 1, this.entries.length - 1);
       return this.entries[this.index];
@@ -120,9 +120,9 @@ export class MockBackgroundClient implements ClientLike {
 }
 
 export async function createTempFile(contents: string): Promise<TempFile> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-test-'));
-  const filePath = path.join(dir, 'sample.txt');
-  await writeFile(filePath, contents, 'utf8');
+  const dir = await mkdtemp(path.join(os.tmpdir(), "oracle-test-"));
+  const filePath = path.join(dir, "sample.txt");
+  await writeFile(filePath, contents, "utf8");
   return { dir, filePath };
 }
 
@@ -161,19 +161,19 @@ export function createMockFs(fileEntries: Record<string, string>): MinimalFsModu
           },
         };
       }
-      throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: 'ENOENT' });
+      throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: "ENOENT" });
     },
     async readFile(targetPath: string) {
       const normalizedPath = path.resolve(targetPath);
       if (!(normalizedPath in normalizedEntries)) {
-        throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: 'ENOENT' });
+        throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: "ENOENT" });
       }
       return normalizedEntries[normalizedPath];
     },
     async readdir(targetPath: string) {
       const normalizedPath = path.resolve(targetPath);
       if (!hasDirectory(normalizedPath)) {
-        throw Object.assign(new Error(`Not a directory: ${normalizedPath}`), { code: 'ENOTDIR' });
+        throw Object.assign(new Error(`Not a directory: ${normalizedPath}`), { code: "ENOTDIR" });
       }
       const children = new Set<string>();
       const prefix = `${normalizedPath}${path.sep}`;
@@ -194,8 +194,8 @@ export function createMockFs(fileEntries: Record<string, string>): MinimalFsModu
 
 export function buildResponse(overrides: Partial<MockResponse> = {}): MockResponse {
   return {
-    id: 'resp_test_123',
-    status: 'completed',
+    id: "resp_test_123",
+    status: "completed",
     usage: {
       input_tokens: 10,
       output_tokens: 5,
@@ -203,12 +203,12 @@ export function buildResponse(overrides: Partial<MockResponse> = {}): MockRespon
       total_tokens: 16,
     },
     // biome-ignore lint/style/useNamingConvention: mirrors API field
-    _request_id: 'req_test_456',
+    _request_id: "req_test_456",
     incomplete_details: undefined,
     output: [
       {
-        type: 'message',
-        content: [{ type: 'text', text: 'Hello world' }],
+        type: "message",
+        content: [{ type: "text", text: "Hello world" }],
       },
     ],
     ...overrides,

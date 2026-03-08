@@ -1,5 +1,5 @@
-import type { Command } from 'commander';
-import kleur from 'kleur';
+import type { Command } from "commander";
+import kleur from "kleur";
 
 type Stylizer = (text: string) => string;
 
@@ -16,8 +16,11 @@ interface HelpColors {
   accent: Stylizer;
 }
 
-const createColorWrapper = (isTty: boolean) => (styler: Stylizer): Stylizer => (text) =>
-  isTty ? styler(text) : text;
+const createColorWrapper =
+  (isTty: boolean) =>
+  (styler: Stylizer): Stylizer =>
+  (text) =>
+    isTty ? styler(text) : text;
 
 export function applyHelpStyling(program: Command, version: string, isTty: boolean): void {
   const wrap = createColorWrapper(isTty);
@@ -55,32 +58,33 @@ export function applyHelpStyling(program: Command, version: string, isTty: boole
     },
   });
 
-  program.addHelpText('beforeAll', () => renderHelpBanner(version, colors));
-  program.addHelpText('after', () => renderHelpFooter(program, colors));
+  program.addHelpText("beforeAll", () => renderHelpBanner(version, colors));
+  program.addHelpText("after", () => renderHelpFooter(program, colors));
 }
 
 function renderHelpBanner(version: string, colors: HelpColors): string {
-  const subtitle = 'Prompt + files required — GPT-5.4 Pro/GPT-5.4 for tough questions with code/file context.';
+  const subtitle =
+    "Prompt + files required — GPT-5.4 Pro/GPT-5.4 for tough questions with code/file context.";
   return `${colors.banner(`Oracle CLI v${version}`)} ${colors.subtitle(`— ${subtitle}`)}\n`;
 }
 
 function renderHelpFooter(program: Command, colors: HelpColors): string {
   const tips = [
-    `${colors.bullet('•')} Required: always pass a prompt AND ${colors.accent('--file …')} (directories/globs are fine); Oracle cannot see your project otherwise.`,
-    `${colors.bullet('•')} Attach lots of source (whole directories beat single files) and keep total input under ~196k tokens.`,
-    `${colors.bullet('•')} Oracle starts empty—open with a short project briefing (stack, services, build steps), spell out the question and prior attempts, and why it matters; the more explanation and context you provide, the better the response will be.`,
-    `${colors.bullet('•')} Spell out the project + platform + version requirements (repo name, target OS/toolchain versions, API dependencies) so Oracle doesn’t guess defaults.`,
-    `${colors.bullet('•')} When comparing multiple repos/files, spell out each repo + path + role (e.g., “Project A SettingsView → apps/project-a/Sources/SettingsView.swift; Project B SettingsView → ../project-b/mac/...”) so the model knows exactly which file is which.`,
-    `${colors.bullet('•')} Best results: 6–30 sentences plus key source files; very short prompts often yield generic answers.`,
-    `${colors.bullet('•')} Oracle is one-shot by default. For OpenAI/Azure API runs, you can chain follow-ups by passing ${colors.accent('--followup <sessionId|responseId>')} (continues via Responses API previous_response_id).`,
-    `${colors.bullet('•')} Run ${colors.accent('--files-report')} to inspect token spend before hitting the API.`,
-    `${colors.bullet('•')} Non-preview runs spawn detached sessions (especially gpt-5.4-pro API). If the CLI times out, do not re-run — reattach with ${colors.accent('oracle session <slug>')} to resume/inspect the existing run.`,
-    `${colors.bullet('•')} Set a memorable 3–5 word slug via ${colors.accent('--slug "<words>"')} to keep session IDs tidy.`,
-    `${colors.bullet('•')} Finished sessions auto-hide preamble logs when reattached; raw timestamps remain in the saved log file.`,
-    `${colors.bullet('•')} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
-    `${colors.bullet('•')} If any Oracle session is already running, do not start new API runs. Attach to the existing browser session instead; only trigger API calls when you explicitly mean to.`,
-    `${colors.bullet('•')} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent('--force')}—prefer reattaching instead of spawning duplicates.`,
-  ].join('\n');
+    `${colors.bullet("•")} Required: always pass a prompt AND ${colors.accent("--file …")} (directories/globs are fine); Oracle cannot see your project otherwise.`,
+    `${colors.bullet("•")} Attach lots of source (whole directories beat single files) and keep total input under ~196k tokens.`,
+    `${colors.bullet("•")} Oracle starts empty—open with a short project briefing (stack, services, build steps), spell out the question and prior attempts, and why it matters; the more explanation and context you provide, the better the response will be.`,
+    `${colors.bullet("•")} Spell out the project + platform + version requirements (repo name, target OS/toolchain versions, API dependencies) so Oracle doesn’t guess defaults.`,
+    `${colors.bullet("•")} When comparing multiple repos/files, spell out each repo + path + role (e.g., “Project A SettingsView → apps/project-a/Sources/SettingsView.swift; Project B SettingsView → ../project-b/mac/...”) so the model knows exactly which file is which.`,
+    `${colors.bullet("•")} Best results: 6–30 sentences plus key source files; very short prompts often yield generic answers.`,
+    `${colors.bullet("•")} Oracle is one-shot by default. For OpenAI/Azure API runs, you can chain follow-ups by passing ${colors.accent("--followup <sessionId|responseId>")} (continues via Responses API previous_response_id).`,
+    `${colors.bullet("•")} Run ${colors.accent("--files-report")} to inspect token spend before hitting the API.`,
+    `${colors.bullet("•")} Non-preview runs spawn detached sessions (especially gpt-5.4-pro API). If the CLI times out, do not re-run — reattach with ${colors.accent("oracle session <slug>")} to resume/inspect the existing run.`,
+    `${colors.bullet("•")} Set a memorable 3–5 word slug via ${colors.accent('--slug "<words>"')} to keep session IDs tidy.`,
+    `${colors.bullet("•")} Finished sessions auto-hide preamble logs when reattached; raw timestamps remain in the saved log file.`,
+    `${colors.bullet("•")} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
+    `${colors.bullet("•")} If any Oracle session is already running, do not start new API runs. Attach to the existing browser session instead; only trigger API calls when you explicitly mean to.`,
+    `${colors.bullet("•")} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent("--force")}—prefer reattaching instead of spawning duplicates.`,
+  ].join("\n");
 
   const formatExample = (command: string, description: string): string =>
     `${colors.command(`  ${command}`)}\n${colors.muted(`    ${description}`)}`;
@@ -88,35 +92,35 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
   const examples = [
     formatExample(
       `${program.name()} --render --copy --prompt "Review the TS data layer for schema drift" --file "src/**/*.ts,*/*.test.ts"`,
-      'Build the bundle, print it, and copy it for manual paste into ChatGPT.',
+      "Build the bundle, print it, and copy it for manual paste into ChatGPT.",
     ),
     formatExample(
       `${program.name()} --prompt "Cross-check the data layer assumptions" --models gpt-5.2-pro,gemini-3-pro --file "src/**/*.ts"`,
-      'Run multiple API models in one go and aggregate cost/usage.',
+      "Run multiple API models in one go and aggregate cost/usage.",
     ),
     formatExample(
       `${program.name()} status --hours 72 --limit 50`,
-      'Show sessions from the last 72h (capped at 50 entries).',
+      "Show sessions from the last 72h (capped at 50 entries).",
     ),
     formatExample(
       `${program.name()} session <sessionId>`,
-      'Attach to a running/completed session and stream the saved transcript.',
+      "Attach to a running/completed session and stream the saved transcript.",
     ),
     formatExample(
       `${program.name()} --prompt "Ship review" --slug "release-readiness-audit"`,
-      'Encourage the model to hand you a 3–5 word slug and pass it along with --slug.',
+      "Encourage the model to hand you a 3–5 word slug and pass it along with --slug.",
     ),
     formatExample(
       `${program.name()} --prompt "Tabs frozen: compare Project A SettingsView (apps/project-a/Sources/SettingsView.swift) vs Project B SettingsView (../project-b/mac/App/Presentation/Views/SettingsView.swift)" --file apps/project-a/Sources/SettingsView.swift --file ../project-b/mac/App/Presentation/Views/SettingsView.swift`,
-      'Spell out what each attached file is (repo + path + role) before asking for comparisons so the model knows exactly what it is reading.',
+      "Spell out what each attached file is (repo + path + role) before asking for comparisons so the model knows exactly what it is reading.",
     ),
-  ].join('\n\n');
+  ].join("\n\n");
 
   return `
-${colors.section('Tips')}
+${colors.section("Tips")}
 ${tips}
 
-${colors.section('Examples')}
+${colors.section("Examples")}
 ${examples}
 `;
 }

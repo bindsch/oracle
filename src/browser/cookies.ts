@@ -1,12 +1,12 @@
-import { COOKIE_URLS } from './constants.js';
-import type { BrowserLogger, ChromeClient, CookieParam } from './types.js';
-import { delay } from './utils.js';
-import { getCookies, type Cookie } from '@steipete/sweet-cookie';
+import { COOKIE_URLS } from "./constants.js";
+import type { BrowserLogger, ChromeClient, CookieParam } from "./types.js";
+import { delay } from "./utils.js";
+import { getCookies, type Cookie } from "@steipete/sweet-cookie";
 
 export class ChromeCookieSyncError extends Error {}
 
 export async function syncCookies(
-  Network: ChromeClient['Network'],
+  Network: ChromeClient["Network"],
   url: string,
   profile: string | null | undefined,
   logger: BrowserLogger,
@@ -40,7 +40,7 @@ export async function syncCookies(
       try {
         // Learned: CDP will silently drop cookies without a url; always attach one.
         const result = await Network.setCookie(
-          cookieWithUrl as Parameters<NonNullable<ChromeClient['Network']>['setCookie']>[0],
+          cookieWithUrl as Parameters<NonNullable<ChromeClient["Network"]>["setCookie"]>[0],
         );
         if (result?.success) {
           applied += 1;
@@ -85,7 +85,7 @@ async function readChromeCookiesWithWait(
   }
 
   const waitLabel = waitMs >= 1000 ? `${Math.round(waitMs / 1000)}s` : `${waitMs}ms`;
-  const message = firstError instanceof Error ? firstError.message : String(firstError ?? '');
+  const message = firstError instanceof Error ? firstError.message : String(firstError ?? "");
   if (firstError) {
     logger(`[cookies] Cookie read failed (${message}); waiting ${waitLabel} then retrying once.`);
   } else {
@@ -103,29 +103,29 @@ async function readChromeCookies(
 ): Promise<CookieParam[]> {
   const origins = Array.from(new Set([stripQuery(url), ...COOKIE_URLS]));
   const chromeProfile = cookiePath ?? profile ?? undefined;
-  const timeoutMs = readDuration('ORACLE_COOKIE_LOAD_TIMEOUT_MS', 5_000);
+  const timeoutMs = readDuration("ORACLE_COOKIE_LOAD_TIMEOUT_MS", 5_000);
 
   // Learned: read from multiple origins to capture auth cookies that land on chat.openai.com + atlas.
   const { cookies, warnings } = await getCookies({
     url,
     origins,
     names: filterNames?.length ? filterNames : undefined,
-    browsers: ['chrome'],
-    mode: 'merge',
+    browsers: ["chrome"],
+    mode: "merge",
     chromeProfile,
     timeoutMs,
   });
 
-  if (process.env.ORACLE_DEBUG_COOKIES === '1' && warnings.length) {
+  if (process.env.ORACLE_DEBUG_COOKIES === "1" && warnings.length) {
     // eslint-disable-next-line no-console
-    console.log(`[cookies] sweet-cookie warnings:\n- ${warnings.join('\n- ')}`);
+    console.log(`[cookies] sweet-cookie warnings:\n- ${warnings.join("\n- ")}`);
   }
 
   const merged = new Map<string, CookieParam>();
   for (const cookie of cookies) {
     const normalized = toCdpCookie(cookie);
     if (!normalized) continue;
-    const key = `${normalized.domain ?? ''}:${normalized.name}`;
+    const key = `${normalized.domain ?? ""}:${normalized.name}`;
     if (!merged.has(key)) merged.set(key, normalized);
   }
 
@@ -139,10 +139,10 @@ function normalizeInlineCookies(rawCookies: CookieParam[], fallbackHost: string)
     // Learned: inline cookies may omit url/domain; default to current host with a safe path.
     const normalized: CookieParam = {
       name: cookie.name,
-      value: cookie.value ?? '',
+      value: cookie.value ?? "",
       url: cookie.url,
       domain: cookie.domain ?? fallbackHost,
-      path: cookie.path ?? '/',
+      path: cookie.path ?? "/",
       expires: normalizeExpiration(cookie.expires),
       secure: cookie.secure ?? true,
       httpOnly: cookie.httpOnly ?? false,
@@ -162,12 +162,12 @@ function toCdpCookie(cookie: Cookie): CookieParam | null {
     name: cookie.name,
     value: cookie.value,
     domain: cookie.domain,
-    path: cookie.path ?? '/',
+    path: cookie.path ?? "/",
     secure: cookie.secure ?? true,
     httpOnly: cookie.httpOnly ?? false,
   };
-  if (typeof cookie.expires === 'number') out.expires = cookie.expires;
-  if (cookie.sameSite === 'Lax' || cookie.sameSite === 'Strict' || cookie.sameSite === 'None') {
+  if (typeof cookie.expires === "number") out.expires = cookie.expires;
+  if (cookie.sameSite === "Lax" || cookie.sameSite === "Strict" || cookie.sameSite === "None") {
     out.sameSite = cookie.sameSite;
   }
   return out;
@@ -176,9 +176,9 @@ function toCdpCookie(cookie: Cookie): CookieParam | null {
 function attachUrl(cookie: CookieParam, fallbackUrl: string): CookieParam {
   const cookieWithUrl: CookieParam = { ...cookie };
   if (!cookieWithUrl.url) {
-    if (!cookieWithUrl.domain || cookieWithUrl.domain === 'localhost') {
+    if (!cookieWithUrl.domain || cookieWithUrl.domain === "localhost") {
       cookieWithUrl.url = fallbackUrl;
-    } else if (!cookieWithUrl.domain.startsWith('.')) {
+    } else if (!cookieWithUrl.domain.startsWith(".")) {
       cookieWithUrl.url = `https://${cookieWithUrl.domain}`;
     }
   }
@@ -193,8 +193,8 @@ function attachUrl(cookie: CookieParam, fallbackUrl: string): CookieParam {
 function stripQuery(url: string): string {
   try {
     const parsed = new URL(url);
-    parsed.hash = '';
-    parsed.search = '';
+    parsed.hash = "";
+    parsed.search = "";
     return parsed.toString();
   } catch {
     return url;

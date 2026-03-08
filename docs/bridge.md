@@ -59,7 +59,7 @@ oracle --engine browser -p "hello" --file README.md
 
 If you’re physically on a Linux desktop and just want Oracle to reuse a local signed-in Chrome profile (no Windows bridge):
 
-1) Run a browser session once and sign in when Chrome opens:
+1. Run a browser session once and sign in when Chrome opens:
 
 ```bash
 ORACLE_HOME_DIR=~/.oracle-local \
@@ -67,7 +67,7 @@ ORACLE_BROWSER_PROFILE_DIR=~/.oracle-local/browser-profile \
 oracle --engine browser --browser-manual-login --browser-keep-browser -p "hello"
 ```
 
-2) After you’re signed in, reuse the same env vars for future runs (no more login prompts).
+2. After you’re signed in, reuse the same env vars for future runs (no more login prompts).
 
 Optional: use the helper wrapper `scripts/oracle-local-browser.sh` to avoid repeating flags/env vars:
 

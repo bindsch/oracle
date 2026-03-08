@@ -1,12 +1,12 @@
-import { cp, mkdir, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cp, mkdir, stat } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 async function main() {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const source = path.join(root, 'vendor', 'oracle-notifier');
-  const targetDir = path.join(root, 'dist', 'vendor');
-  const target = path.join(targetDir, 'oracle-notifier');
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const source = path.join(root, "vendor", "oracle-notifier");
+  const targetDir = path.join(root, "dist", "vendor");
+  const target = path.join(targetDir, "oracle-notifier");
 
   try {
     await stat(source);

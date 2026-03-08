@@ -12,6 +12,7 @@ Oracle bundles your prompt + selected files into one “one-shot” request so a
 Default workflow here: `--engine browser` with GPT‑5.4 Pro in ChatGPT. This is the “human in the loop” path: it can take ~10 minutes to ~1 hour; expect a stored session you can reattach to.
 
 Recommended defaults:
+
 - Engine: browser (`--engine browser`)
 - Model: GPT‑5.4 Pro (either `--model gpt-5.4-pro` or a ChatGPT picker label like `--model "5.4 Pro"`)
 - Attachments: directories/globs + excludes; avoid secrets.
@@ -90,6 +91,7 @@ Recommended defaults:
 ## Prompt template (high signal)
 
 Oracle starts with **zero** project knowledge. Assume the model cannot infer your stack, build tooling, conventions, or “obvious” paths. Include:
+
 - Project briefing (stack + build/test commands + platform constraints).
 - “Where things live” (key directories, entrypoints, config files, dependency boundaries).
 - Exact question + what you tried + the error text (verbatim).
@@ -99,9 +101,10 @@ Oracle starts with **zero** project knowledge. Assume the model cannot infer you
 ### “Exhaustive prompt” pattern (for later restoration)
 
 When you know this will be a long investigation, write a prompt that can stand alone later:
+
 - Top: 6–30 sentence project briefing + current goal.
 - Middle: concrete repro steps + exact errors + what you already tried.
-- Bottom: attach *all* context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
+- Bottom: attach _all_ context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
 
 If you need to reproduce the same context later, re-run with the same prompt + `--file …` set (Oracle runs are one-shot; the model doesn’t remember prior runs).
 

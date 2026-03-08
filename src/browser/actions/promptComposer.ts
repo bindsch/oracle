@@ -1,4 +1,4 @@
-import type { ChromeClient, BrowserLogger } from '../types.js';
+import type { ChromeClient, BrowserLogger } from "../types.js";
 import {
   INPUT_SELECTORS,
   PROMPT_PRIMARY_SELECTOR,
@@ -7,31 +7,31 @@ import {
   CONVERSATION_TURN_SELECTOR,
   STOP_BUTTON_SELECTOR,
   ASSISTANT_ROLE_SELECTOR,
-} from '../constants.js';
-import { delay } from '../utils.js';
-import { logDomFailure } from '../domDebug.js';
-import { buildClickDispatcher } from './domEvents.js';
-import { BrowserAutomationError } from '../../oracle/errors.js';
+} from "../constants.js";
+import { delay } from "../utils.js";
+import { logDomFailure } from "../domDebug.js";
+import { buildClickDispatcher } from "./domEvents.js";
+import { BrowserAutomationError } from "../../oracle/errors.js";
 
 const ENTER_KEY_EVENT = {
-  key: 'Enter',
-  code: 'Enter',
+  key: "Enter",
+  code: "Enter",
   windowsVirtualKeyCode: 13,
   nativeVirtualKeyCode: 13,
 } as const;
-const ENTER_KEY_TEXT = '\r';
+const ENTER_KEY_TEXT = "\r";
 
 export async function submitPrompt(
   deps: {
-    runtime: ChromeClient['Runtime'];
-    input: ChromeClient['Input'];
+    runtime: ChromeClient["Runtime"];
+    input: ChromeClient["Input"];
     attachmentNames?: string[];
     baselineTurns?: number | null;
     inputTimeoutMs?: number | null;
   },
   prompt: string,
   logger: BrowserLogger,
-) : Promise<number | null> {
+): Promise<number | null> {
   const { runtime, input } = deps;
 
   await waitForDomReady(runtime, logger, deps.inputTimeoutMs ?? undefined);
@@ -85,8 +85,8 @@ export async function submitPrompt(
     awaitPromise: true,
   });
   if (!focusResult.result?.value?.focused) {
-    await logDomFailure(runtime, logger, 'focus-textarea');
-    throw new Error('Failed to focus prompt textarea');
+    await logDomFailure(runtime, logger, "focus-textarea");
+    throw new Error("Failed to focus prompt textarea");
   }
 
   await input.insertText({ text: prompt });
@@ -125,12 +125,12 @@ export async function submitPrompt(
     returnByValue: true,
   });
 
-  const editorTextRaw = verification.result?.value?.editorText ?? '';
-  const fallbackValueRaw = verification.result?.value?.fallbackValue ?? '';
-  const activeValueRaw = verification.result?.value?.activeValue ?? '';
-  const editorTextTrimmed = editorTextRaw?.trim?.() ?? '';
-  const fallbackValueTrimmed = fallbackValueRaw?.trim?.() ?? '';
-  const activeValueTrimmed = activeValueRaw?.trim?.() ?? '';
+  const editorTextRaw = verification.result?.value?.editorText ?? "";
+  const fallbackValueRaw = verification.result?.value?.fallbackValue ?? "";
+  const activeValueRaw = verification.result?.value?.activeValue ?? "";
+  const editorTextTrimmed = editorTextRaw?.trim?.() ?? "";
+  const fallbackValueTrimmed = fallbackValueRaw?.trim?.() ?? "";
+  const activeValueTrimmed = activeValueRaw?.trim?.() ?? "";
   if (!editorTextTrimmed && !fallbackValueTrimmed && !activeValueTrimmed) {
     // Learned: occasionally Input.insertText doesn't land in the editor; force textContent/value + input events.
     await runtime.evaluate({
@@ -179,44 +179,57 @@ export async function submitPrompt(
     })()`,
     returnByValue: true,
   });
-  const observedEditor = postVerification.result?.value?.editorText ?? '';
-  const observedFallback = postVerification.result?.value?.fallbackValue ?? '';
-  const observedActive = postVerification.result?.value?.activeValue ?? '';
-  const observedLength = Math.max(observedEditor.length, observedFallback.length, observedActive.length);
+  const observedEditor = postVerification.result?.value?.editorText ?? "";
+  const observedFallback = postVerification.result?.value?.fallbackValue ?? "";
+  const observedActive = postVerification.result?.value?.activeValue ?? "";
+  const observedLength = Math.max(
+    observedEditor.length,
+    observedFallback.length,
+    observedActive.length,
+  );
   if (promptLength >= 50_000 && observedLength > 0 && observedLength < promptLength - 2_000) {
     // Learned: very large prompts can truncate silently; fail fast so we can fall back to file uploads.
-    await logDomFailure(runtime, logger, 'prompt-too-large');
-    throw new BrowserAutomationError('Prompt appears truncated in the composer (likely too large).', {
-      stage: 'submit-prompt',
-      code: 'prompt-too-large',
-      promptLength,
-      observedLength,
-    });
+    await logDomFailure(runtime, logger, "prompt-too-large");
+    throw new BrowserAutomationError(
+      "Prompt appears truncated in the composer (likely too large).",
+      {
+        stage: "submit-prompt",
+        code: "prompt-too-large",
+        promptLength,
+        observedLength,
+      },
+    );
   }
 
   const clicked = await attemptSendButton(runtime, logger, deps?.attachmentNames);
   if (!clicked) {
     await input.dispatchKeyEvent({
-      type: 'keyDown',
+      type: "keyDown",
       ...ENTER_KEY_EVENT,
       text: ENTER_KEY_TEXT,
       unmodifiedText: ENTER_KEY_TEXT,
     });
     await input.dispatchKeyEvent({
-      type: 'keyUp',
+      type: "keyUp",
       ...ENTER_KEY_EVENT,
     });
-    logger('Submitted prompt via Enter key');
+    logger("Submitted prompt via Enter key");
   } else {
-    logger('Clicked send button');
+    logger("Clicked send button");
   }
 
   const commitTimeoutMs = Math.max(60_000, deps.inputTimeoutMs ?? 0);
   // Learned: the send button can succeed but the turn doesn't appear immediately; verify commit via turns/stop button.
-  return await verifyPromptCommitted(runtime, prompt, commitTimeoutMs, logger, deps.baselineTurns ?? undefined);
+  return await verifyPromptCommitted(
+    runtime,
+    prompt,
+    commitTimeoutMs,
+    logger,
+    deps.baselineTurns ?? undefined,
+  );
 }
 
-export async function clearPromptComposer(Runtime: ChromeClient['Runtime'], logger: BrowserLogger) {
+export async function clearPromptComposer(Runtime: ChromeClient["Runtime"], logger: BrowserLogger) {
   const primarySelectorLiteral = JSON.stringify(PROMPT_PRIMARY_SELECTOR);
   const fallbackSelectorLiteral = JSON.stringify(PROMPT_FALLBACK_SELECTOR);
   const inputSelectorsLiteral = JSON.stringify(INPUT_SELECTORS);
@@ -260,13 +273,17 @@ export async function clearPromptComposer(Runtime: ChromeClient['Runtime'], logg
     returnByValue: true,
   });
   if (!result.result?.value?.cleared) {
-    await logDomFailure(Runtime, logger, 'clear-composer');
-    throw new Error('Failed to clear prompt composer');
+    await logDomFailure(Runtime, logger, "clear-composer");
+    throw new Error("Failed to clear prompt composer");
   }
   await delay(250);
 }
 
-async function waitForDomReady(Runtime: ChromeClient['Runtime'], logger?: BrowserLogger, timeoutMs = 10_000) {
+async function waitForDomReady(
+  Runtime: ChromeClient["Runtime"],
+  logger?: BrowserLogger,
+  timeoutMs = 10_000,
+) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const { result } = await Runtime.evaluate({
@@ -278,7 +295,9 @@ async function waitForDomReady(Runtime: ChromeClient['Runtime'], logger?: Browse
       })()`,
       returnByValue: true,
     });
-    const value = result?.value as { ready?: boolean; composer?: boolean; fileInput?: boolean } | undefined;
+    const value = result?.value as
+      | { ready?: boolean; composer?: boolean; fileInput?: boolean }
+      | undefined;
     if (value?.ready && value.composer) {
       return;
     }
@@ -327,7 +346,7 @@ export function buildAttachmentReadyExpressionForTest(attachmentNames: string[])
 }
 
 async function attemptSendButton(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   _logger?: BrowserLogger,
   attachmentNames?: string[],
 ): Promise<boolean> {
@@ -370,10 +389,10 @@ async function attemptSendButton(
       }
     }
     const { result } = await Runtime.evaluate({ expression: script, returnByValue: true });
-    if (result.value === 'clicked') {
+    if (result.value === "clicked") {
       return true;
     }
-    if (result.value === 'missing') {
+    if (result.value === "missing") {
       break;
     }
     await delay(100);
@@ -382,7 +401,7 @@ async function attemptSendButton(
 }
 
 async function verifyPromptCommitted(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   prompt: string,
   timeoutMs: number,
   logger?: BrowserLogger,
@@ -397,7 +416,7 @@ async function verifyPromptCommitted(
   const assistantSelectorLiteral = JSON.stringify(ASSISTANT_ROLE_SELECTOR);
   const turnSelectorLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
   let baseline: number | null =
-    typeof baselineTurns === 'number' && Number.isFinite(baselineTurns) && baselineTurns >= 0
+    typeof baselineTurns === "number" && Number.isFinite(baselineTurns) && baselineTurns >= 0
       ? Math.floor(baselineTurns)
       : null;
   if (baseline === null) {
@@ -406,7 +425,7 @@ async function verifyPromptCommitted(
         expression: `document.querySelectorAll(${turnSelectorLiteral}).length`,
         returnByValue: true,
       });
-      const raw = typeof result?.value === 'number' ? result.value : Number(result?.value);
+      const raw = typeof result?.value === "number" ? result.value : Number(result?.value);
       if (Number.isFinite(raw)) {
         baseline = Math.max(0, Math.floor(raw));
       }
@@ -507,16 +526,17 @@ async function verifyPromptCommitted(
     };
     const turnsCount = (result.value as { turnsCount?: number } | undefined)?.turnsCount;
     const matchesPrompt = Boolean(info?.lastMatched || info?.userMatched || info?.prefixMatched);
-    const baselineUnknown = typeof info?.baseline === 'number' ? info.baseline < 0 : baselineLiteral < 0;
+    const baselineUnknown =
+      typeof info?.baseline === "number" ? info.baseline < 0 : baselineLiteral < 0;
     if (matchesPrompt && (baselineUnknown || info?.hasNewTurn)) {
-      return typeof turnsCount === 'number' && Number.isFinite(turnsCount) ? turnsCount : null;
+      return typeof turnsCount === "number" && Number.isFinite(turnsCount) ? turnsCount : null;
     }
     const fallbackCommit =
       info?.composerCleared &&
       Boolean(info?.hasNewTurn) &&
       ((info?.stopVisible ?? false) || info?.assistantVisible || info?.inConversation);
     if (fallbackCommit) {
-      return typeof turnsCount === 'number' && Number.isFinite(turnsCount) ? turnsCount : null;
+      return typeof turnsCount === "number" && Number.isFinite(turnsCount) ? turnsCount : null;
     }
     await delay(100);
   }
@@ -525,19 +545,24 @@ async function verifyPromptCommitted(
       `Prompt commit check failed; latest state: ${await Runtime.evaluate({
         expression: script,
         returnByValue: true,
-      }).then((res) => JSON.stringify(res?.result?.value)).catch(() => 'unavailable')}`,
+      })
+        .then((res) => JSON.stringify(res?.result?.value))
+        .catch(() => "unavailable")}`,
     );
-    await logDomFailure(Runtime, logger, 'prompt-commit');
+    await logDomFailure(Runtime, logger, "prompt-commit");
   }
   if (prompt.trim().length >= 50_000) {
-    throw new BrowserAutomationError('Prompt did not appear in conversation before timeout (likely too large).', {
-      stage: 'submit-prompt',
-      code: 'prompt-too-large',
-      promptLength: prompt.trim().length,
-      timeoutMs,
-    });
+    throw new BrowserAutomationError(
+      "Prompt did not appear in conversation before timeout (likely too large).",
+      {
+        stage: "submit-prompt",
+        code: "prompt-too-large",
+        promptLength: prompt.trim().length,
+        timeoutMs,
+      },
+    );
   }
-  throw new Error('Prompt did not appear in conversation before timeout (send may have failed)');
+  throw new Error("Prompt did not appear in conversation before timeout (send may have failed)");
 }
 
 // biome-ignore lint/style/useNamingConvention: test-only export used in vitest suite

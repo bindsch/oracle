@@ -1,6 +1,7 @@
 # Remote Chrome Service Debug Log
 
 ## Context
+
 - Date: 2025-11-20 (US timezone)
 - Goal: Run Oracle browser mode from local laptop against VM-hosted Chrome via new `oracle serve` remote service.
 - VM IP: 192.168.64.2
@@ -9,7 +10,9 @@
 ## Attempts
 
 ### 1) Local run via remote host
+
 Command:
+
 ```
 oracle --engine browser \
   --remote-host 192.168.64.2:49810 \
@@ -17,7 +20,9 @@ oracle --engine browser \
   --prompt "Remote service sanity check" \
   --wait
 ```
+
 Outcome:
+
 - Initially routed to local Chrome (before wiring fix).
 - After wiring fix, logs showed “Routing browser automation to remote host …” but requests failed with:
   - `ECONNREFUSED 192.168.64.2:49810` when no service listening.
@@ -26,7 +31,9 @@ Outcome:
 - After disabling cookie shipping and requiring host login, remote runs now fail earlier: service logs “Loading ChatGPT cookies from host Chrome profile…” then reports `Unhandled promise rejection ... Unknown error` when `loadChromeCookies` runs on the VM. Remote client sees `socket hang up` because the server doesn’t deliver a result.
 
 ### 2) Remote service on VM
+
 Actions taken on VM (tmux `vmssh`):
+
 - Installed bun (`~/.bun/bin/bun`), added to PATH in `~/.zshrc`.
 - `./runner` requires bun; starting service with:
   ```
@@ -42,6 +49,7 @@ Actions taken on VM (tmux `vmssh`):
 - One run failed with EADDRINUSE when a stale node listener stayed on 49810; resolved by killing `node ...49810`.
 
 ### Observed blockers
+
 - Environment PATH: bun not on PATH for non-interactive shells caused `./runner` to fail; need to `export PATH="$HOME/.bun/bin:$PATH"` before starting service.
 - Port collisions: prior listeners on 49810 caused ECONNREFUSED/busy.
 - Remote model switch failed: remote Chrome likely not signed into ChatGPT; model picker couldn’t find “GPT-5.2 Pro”.
@@ -49,6 +57,7 @@ Actions taken on VM (tmux `vmssh`):
 - New behavior (post-fix): `oracle serve` exits early if it cannot load host ChatGPT cookies after opening chatgpt.com for login; sign in on the host and restart the service.
 
 ## Next steps
+
 - On VM: start service in a clean shell with bun on PATH:
   ```
   cd ~/Projects/oracle
@@ -63,5 +72,6 @@ Actions taken on VM (tmux `vmssh`):
 - Code change (2025-11-20): `loadChromeCookies` now probes the macOS Keychain with a timeout and fails fast instead of hanging when Keychain access is denied. Remote runs should now emit a clear error instead of a socket hang up if the service can’t read Chrome cookies; re-test the SSH/nohup scenario.
 
 ## Notes
+
 - Remote mode forces `--wait`, disables detach, and logs when routing to remote executor.
 - Client uses NDJSON streaming; remote server serializes attachments per run and cleans temp dirs.

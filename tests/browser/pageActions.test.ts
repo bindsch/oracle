@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   ensureModelSelection,
   waitForAssistantResponse,
@@ -9,11 +9,11 @@ import {
   ensurePromptReady,
   ensureNotBlocked,
   ensureLoggedIn,
-} from '../../src/browser/pageActions.js';
-import * as attachments from '../../src/browser/actions/attachments.js';
-import * as attachmentDataTransfer from '../../src/browser/actions/attachmentDataTransfer.js';
-import type { ChromeClient } from '../../src/browser/types.js';
-import { BrowserAutomationError } from '../../src/oracle/errors.js';
+} from "../../src/browser/pageActions.js";
+import * as attachments from "../../src/browser/actions/attachments.js";
+import * as attachmentDataTransfer from "../../src/browser/actions/attachmentDataTransfer.js";
+import type { ChromeClient } from "../../src/browser/types.js";
+import { BrowserAutomationError } from "../../src/oracle/errors.js";
 
 const logger = vi.fn();
 
@@ -21,86 +21,90 @@ beforeEach(() => {
   logger.mockClear();
 });
 
-describe('ensureModelSelection', () => {
-  test('logs when model already selected', async () => {
+describe("ensureModelSelection", () => {
+  test("logs when model already selected", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: 'already-selected', label: 'GPT-5.2 Pro' } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureModelSelection(runtime, 'GPT-5.2 Pro', logger)).resolves.toBeUndefined();
-    expect(logger).toHaveBeenCalledWith('Model picker: GPT-5.2 Pro');
+      evaluate: vi.fn().mockResolvedValue({
+        result: { value: { status: "already-selected", label: "GPT-5.2 Pro" } },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureModelSelection(runtime, "GPT-5.2 Pro", logger)).resolves.toBeUndefined();
+    expect(logger).toHaveBeenCalledWith("Model picker: GPT-5.2 Pro");
   });
 
-  test('throws when option missing', async () => {
+  test("throws when option missing", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: 'option-not-found' } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureModelSelection(runtime, 'GPT-5 Pro', logger)).rejects.toThrow(
+      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: "option-not-found" } } }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureModelSelection(runtime, "GPT-5 Pro", logger)).rejects.toThrow(
       /Unable to find model option matching/,
     );
   });
 
-  test('includes temporary chat hint when Pro is unavailable', async () => {
+  test("includes temporary chat hint when Pro is unavailable", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({
         result: {
           value: {
-            status: 'option-not-found',
-            hint: { temporaryChat: true, availableOptions: ['Auto', 'Thinking'] },
+            status: "option-not-found",
+            hint: { temporaryChat: true, availableOptions: ["Auto", "Thinking"] },
           },
         },
       }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureModelSelection(runtime, 'GPT-5.2 Pro', logger)).rejects.toThrow(/Temporary Chat/i);
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureModelSelection(runtime, "GPT-5.2 Pro", logger)).rejects.toThrow(
+      /Temporary Chat/i,
+    );
   });
 
-  test('throws when button missing', async () => {
+  test("throws when button missing", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: 'button-missing' } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureModelSelection(runtime, 'Instant', logger)).rejects.toThrow(
+      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: "button-missing" } } }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureModelSelection(runtime, "Instant", logger)).rejects.toThrow(
       /Unable to locate the ChatGPT model selector button/,
     );
   });
 });
 
-describe('navigateToChatGPT', () => {
-  test('navigates and waits for ready state', async () => {
+describe("navigateToChatGPT", () => {
+  test("navigates and waits for ready state", async () => {
     const navigate = vi.fn().mockResolvedValue(undefined);
     const runtime = {
       evaluate: vi
         .fn()
-        .mockResolvedValueOnce({ result: { value: 'loading' } })
-        .mockResolvedValueOnce({ result: { value: 'complete' } }),
-    } as unknown as ChromeClient['Runtime'];
+        .mockResolvedValueOnce({ result: { value: "loading" } })
+        .mockResolvedValueOnce({ result: { value: "complete" } }),
+    } as unknown as ChromeClient["Runtime"];
     await navigateToChatGPT(
-      { navigate } as unknown as ChromeClient['Page'],
+      { navigate } as unknown as ChromeClient["Page"],
       runtime,
-      'https://chat.openai.com',
+      "https://chat.openai.com",
       logger,
     );
-    expect(navigate).toHaveBeenCalledWith({ url: 'https://chat.openai.com' });
+    expect(navigate).toHaveBeenCalledWith({ url: "https://chat.openai.com" });
     expect(runtime.evaluate).toHaveBeenCalledTimes(2);
   });
 });
 
-describe('navigateToPromptReadyWithFallback', () => {
-  test('falls back to base URL when prompt is missing', async () => {
+describe("navigateToPromptReadyWithFallback", () => {
+  test("falls back to base URL when prompt is missing", async () => {
     const navigate = vi.fn().mockResolvedValue(undefined);
     const ensureNotBlockedMock = vi.fn().mockResolvedValue(undefined);
     const ensurePromptReadyMock = vi
       .fn()
-      .mockRejectedValueOnce(new Error('Prompt textarea did not appear before timeout'))
+      .mockRejectedValueOnce(new Error("Prompt textarea did not appear before timeout"))
       .mockResolvedValueOnce(undefined);
-    const runtime = {} as unknown as ChromeClient['Runtime'];
-    const page = {} as unknown as ChromeClient['Page'];
+    const runtime = {} as unknown as ChromeClient["Runtime"];
+    const page = {} as unknown as ChromeClient["Page"];
 
     await expect(
       navigateToPromptReadyWithFallback(
         page,
         runtime,
         {
-          url: 'https://chatgpt.com/g/missing/project',
-          fallbackUrl: 'https://chatgpt.com/',
+          url: "https://chatgpt.com/g/missing/project",
+          fallbackUrl: "https://chatgpt.com/",
           timeoutMs: 5_000,
           headless: false,
           logger,
@@ -113,134 +117,158 @@ describe('navigateToPromptReadyWithFallback', () => {
       ),
     ).resolves.toEqual({ usedFallback: true });
 
-    expect(navigate).toHaveBeenNthCalledWith(1, page, runtime, 'https://chatgpt.com/g/missing/project', logger);
-    expect(navigate).toHaveBeenNthCalledWith(2, page, runtime, 'https://chatgpt.com/', logger);
+    expect(navigate).toHaveBeenNthCalledWith(
+      1,
+      page,
+      runtime,
+      "https://chatgpt.com/g/missing/project",
+      logger,
+    );
+    expect(navigate).toHaveBeenNthCalledWith(2, page, runtime, "https://chatgpt.com/", logger);
     expect(ensureNotBlockedMock).toHaveBeenCalledTimes(2);
     expect(ensurePromptReadyMock).toHaveBeenNthCalledWith(1, runtime, 5_000, logger);
     expect(ensurePromptReadyMock).toHaveBeenNthCalledWith(2, runtime, 120_000, logger);
   });
 });
 
-describe('ensurePromptReady', () => {
-  test('resolves when input selector enabled', async () => {
+describe("ensurePromptReady", () => {
+  test("resolves when input selector enabled", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({ result: { value: true } }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(ensurePromptReady(runtime, 1000, logger)).resolves.toBeUndefined();
     expect(logger).not.toHaveBeenCalled();
   });
 
-  test('throws when timeout reached', async () => {
+  test("throws when timeout reached", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({ result: { value: false } }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(ensurePromptReady(runtime, 0, logger)).rejects.toThrow(/textarea did not appear/i);
   });
 });
 
-describe('ensureNotBlocked', () => {
-  test('throws descriptive error when cloudflare detected', async () => {
+describe("ensureNotBlocked", () => {
+  test("throws descriptive error when cloudflare detected", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: 'Just a moment...' } }),
-    } as unknown as ChromeClient['Runtime'];
+      evaluate: vi.fn().mockResolvedValue({ result: { value: "Just a moment..." } }),
+    } as unknown as ChromeClient["Runtime"];
     await expect(ensureNotBlocked(runtime, true, logger)).rejects.toThrow(/headless mode/i);
-    expect(logger).toHaveBeenCalledWith('Cloudflare anti-bot page detected');
+    expect(logger).toHaveBeenCalledWith("Cloudflare anti-bot page detected");
   });
 
-  test('passes through when title clean', async () => {
+  test("passes through when title clean", async () => {
     const runtime = {
       evaluate: vi
         .fn()
-        .mockResolvedValueOnce({ result: { value: 'ChatGPT' } })
+        .mockResolvedValueOnce({ result: { value: "ChatGPT" } })
         .mockResolvedValueOnce({ result: { value: false } }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(ensureNotBlocked(runtime, false, logger)).resolves.toBeUndefined();
   });
 
-  test('throws structured browser error when headful cloudflare is detected', async () => {
+  test("throws structured browser error when headful cloudflare is detected", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: 'Just a moment...' } }),
-    } as unknown as ChromeClient['Runtime'];
+      evaluate: vi.fn().mockResolvedValue({ result: { value: "Just a moment..." } }),
+    } as unknown as ChromeClient["Runtime"];
     try {
       await ensureNotBlocked(runtime, false, logger);
-      throw new Error('expected ensureNotBlocked to throw');
+      throw new Error("expected ensureNotBlocked to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(BrowserAutomationError);
       expect((error as BrowserAutomationError).details).toMatchObject({
-        stage: 'cloudflare-challenge',
+        stage: "cloudflare-challenge",
         headless: false,
       });
     }
   });
 });
 
-describe('ensureLoggedIn', () => {
-  test('logs success when session is present', async () => {
-    const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { ok: true, status: 200, url: '/backend-api/me' } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureLoggedIn(runtime, logger, { appliedCookies: 2 })).resolves.toBeUndefined();
-    expect(logger).toHaveBeenCalledWith(expect.stringContaining('Login check passed'));
-  });
-
-  test('throws with cookie guidance when cookies missing', async () => {
+describe("ensureLoggedIn", () => {
+  test("logs success when session is present", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({
-        result: { value: { ok: false, status: 401, url: '/backend-api/me', domLoginCta: true, onAuthPage: true } },
+        result: { value: { ok: true, status: 200, url: "/backend-api/me" } },
       }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureLoggedIn(runtime, logger, { appliedCookies: 0 })).rejects.toThrow(/inline cookies/i);
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureLoggedIn(runtime, logger, { appliedCookies: 2 })).resolves.toBeUndefined();
+    expect(logger).toHaveBeenCalledWith(expect.stringContaining("Login check passed"));
   });
 
-  test('uses remote hint for remote sessions', async () => {
-    const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { ok: false, status: 401, url: '/backend-api/me' } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(ensureLoggedIn(runtime, logger, { remoteSession: true })).rejects.toThrow(/remote Chrome session/i);
-  });
-});
-
-describe('waitForAssistantResponse', () => {
-  test('returns captured assistant payload', async () => {
+  test("throws with cookie guidance when cookies missing", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({
         result: {
-          type: 'object',
-          value: { text: 'Answer', html: '<p>Answer</p>', messageId: 'mid', turnId: 'tid' },
+          value: {
+            ok: false,
+            status: 401,
+            url: "/backend-api/me",
+            domLoginCta: true,
+            onAuthPage: true,
+          },
         },
       }),
-    } as unknown as ChromeClient['Runtime'];
-    const result = await waitForAssistantResponse(runtime, 1000, logger);
-    expect(result.text).toBe('Answer');
-    expect(result.meta).toEqual({ messageId: 'mid', turnId: 'tid' });
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureLoggedIn(runtime, logger, { appliedCookies: 0 })).rejects.toThrow(
+      /inline cookies/i,
+    );
   });
 
-  test('aborts poller when evaluation wins (no background polling)', async () => {
+  test("uses remote hint for remote sessions", async () => {
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: { value: { ok: false, status: 401, url: "/backend-api/me" } },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(ensureLoggedIn(runtime, logger, { remoteSession: true })).rejects.toThrow(
+      /remote Chrome session/i,
+    );
+  });
+});
+
+describe("waitForAssistantResponse", () => {
+  test("returns captured assistant payload", async () => {
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: {
+          type: "object",
+          value: { text: "Answer", html: "<p>Answer</p>", messageId: "mid", turnId: "tid" },
+        },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+    const result = await waitForAssistantResponse(runtime, 1000, logger);
+    expect(result.text).toBe("Answer");
+    expect(result.meta).toEqual({ messageId: "mid", turnId: "tid" });
+  });
+
+  test("aborts poller when evaluation wins (no background polling)", async () => {
     vi.useFakeTimers();
     try {
       let snapshotCalls = 0;
-      const payload = { text: 'Answer', html: '<p>Answer</p>', messageId: 'mid', turnId: 'tid' };
-      const evaluate = vi.fn().mockImplementation(async (params: { expression?: string; awaitPromise?: boolean }) => {
-        if (params?.awaitPromise) {
-          return { result: { type: 'object', value: payload } };
-        }
-        const expression = String(params?.expression ?? '');
-        if (expression.includes('extractAssistantTurn')) {
-          snapshotCalls += 1;
-          // First snapshot call is the watchdog poller; keep it slow so the evaluation wins the race.
-          if (snapshotCalls === 1) {
-            await new Promise((resolve) => setTimeout(resolve, 50));
+      const payload = { text: "Answer", html: "<p>Answer</p>", messageId: "mid", turnId: "tid" };
+      const evaluate = vi
+        .fn()
+        .mockImplementation(async (params: { expression?: string; awaitPromise?: boolean }) => {
+          if (params?.awaitPromise) {
+            return { result: { type: "object", value: payload } };
           }
-          return { result: { value: payload } };
-        }
-        return { result: { value: false } };
-      });
+          const expression = String(params?.expression ?? "");
+          if (expression.includes("extractAssistantTurn")) {
+            snapshotCalls += 1;
+            // First snapshot call is the watchdog poller; keep it slow so the evaluation wins the race.
+            if (snapshotCalls === 1) {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return { result: { value: payload } };
+          }
+          return { result: { value: false } };
+        });
 
-      const runtime = { evaluate } as unknown as ChromeClient['Runtime'];
+      const runtime = { evaluate } as unknown as ChromeClient["Runtime"];
       const promise = waitForAssistantResponse(runtime, 30_000, logger);
       await vi.advanceTimersByTimeAsync(2_000);
       const result = await promise;
-      expect(result.text).toBe('Answer');
+      expect(result.text).toBe("Answer");
 
       const callsAtReturn = evaluate.mock.calls.length;
       await vi.advanceTimersByTimeAsync(5_000);
@@ -250,126 +278,136 @@ describe('waitForAssistantResponse', () => {
     }
   });
 
-  test('response observer watches character data mutations', async () => {
-    let capturedExpression = '';
+  test("response observer watches character data mutations", async () => {
+    let capturedExpression = "";
     const runtime = {
       evaluate: vi.fn().mockImplementation((params) => {
         if (params?.awaitPromise) {
-          capturedExpression = String(params?.expression ?? '');
-          throw new Error('stop');
+          capturedExpression = String(params?.expression ?? "");
+          throw new Error("stop");
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(waitForAssistantResponse(runtime, 100, logger)).rejects.toThrow('stop');
-    expect(capturedExpression).toContain('characterData: true');
-    expect(capturedExpression).toContain('copy-turn-action-button');
-    expect(capturedExpression).toContain('isLastAssistantTurnFinished');
-    expect(capturedExpression).toContain('lastAssistantTurn.querySelector(FINISHED_SELECTOR)');
-    expect(capturedExpression).not.toContain('document.querySelector(FINISHED_SELECTOR)');
+    } as unknown as ChromeClient["Runtime"];
+    await expect(waitForAssistantResponse(runtime, 100, logger)).rejects.toThrow("stop");
+    expect(capturedExpression).toContain("characterData: true");
+    expect(capturedExpression).toContain("copy-turn-action-button");
+    expect(capturedExpression).toContain("isLastAssistantTurnFinished");
+    expect(capturedExpression).toContain("lastAssistantTurn.querySelector(FINISHED_SELECTOR)");
+    expect(capturedExpression).not.toContain("document.querySelector(FINISHED_SELECTOR)");
     expect(capturedExpression).toContain("lastAssistantTurn.querySelectorAll('.markdown')");
     expect(capturedExpression).not.toContain("document.querySelectorAll('.markdown')");
-    expect(capturedExpression).toContain('data-message-author-role');
+    expect(capturedExpression).toContain("data-message-author-role");
     expect(capturedExpression).toContain("role === 'assistant'");
   });
 
-  test('falls back to snapshot when observer fails', async () => {
-    const evaluate = vi.fn().mockImplementation(async (params: { expression?: string; awaitPromise?: boolean }) => {
-      if (params?.awaitPromise) {
-        throw new Error('observer failed');
-      }
-      if (typeof params?.expression === 'string' && params.expression.includes('extractAssistantTurn')) {
-        return {
-          result: { value: { text: 'Recovered', html: '<p>Recovered</p>', messageId: 'mid', turnId: 'tid' } },
-        };
-      }
-      return { result: { value: null } };
-    });
-    const runtime = { evaluate } as unknown as ChromeClient['Runtime'];
+  test("falls back to snapshot when observer fails", async () => {
+    const evaluate = vi
+      .fn()
+      .mockImplementation(async (params: { expression?: string; awaitPromise?: boolean }) => {
+        if (params?.awaitPromise) {
+          throw new Error("observer failed");
+        }
+        if (
+          typeof params?.expression === "string" &&
+          params.expression.includes("extractAssistantTurn")
+        ) {
+          return {
+            result: {
+              value: {
+                text: "Recovered",
+                html: "<p>Recovered</p>",
+                messageId: "mid",
+                turnId: "tid",
+              },
+            },
+          };
+        }
+        return { result: { value: null } };
+      });
+    const runtime = { evaluate } as unknown as ChromeClient["Runtime"];
     const result = await waitForAssistantResponse(runtime, 200, logger);
-    expect(result.text).toBe('Recovered');
+    expect(result.text).toBe("Recovered");
     expect(evaluate).toHaveBeenCalled();
   });
 });
 
-describe('uploadAttachmentFile', () => {
+describe("uploadAttachmentFile", () => {
   let transferSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     transferSpy = vi
-      .spyOn(attachmentDataTransfer, 'transferAttachmentViaDataTransfer')
-      .mockResolvedValue({ fileName: 'oracle-browser-smoke.txt', size: 1 });
+      .spyOn(attachmentDataTransfer, "transferAttachmentViaDataTransfer")
+      .mockResolvedValue({ fileName: "oracle-browser-smoke.txt", size: 1 });
   });
 
   afterEach(() => {
     transferSpy.mockRestore();
   });
 
-  test.skip('selects DOM input and uploads file', async () => {
+  test.skip("selects DOM input and uploads file", async () => {
     logger.mockClear();
-    vi.spyOn(attachments, 'waitForAttachmentVisible').mockResolvedValue(undefined);
+    vi.spyOn(attachments, "waitForAttachmentVisible").mockResolvedValue(undefined);
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({ result: { value: { matched: true, found: true } } }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/foo.md', displayPath: 'foo.md' },
+        { path: "/tmp/foo.md", displayPath: "foo.md" },
         logger,
       ),
     ).resolves.toBe(true);
     expect(dom.querySelector).toHaveBeenCalled();
-    expect(dom.setFileInputFiles).toHaveBeenCalledWith({ nodeId: 2, files: ['/tmp/foo.md'] });
-    expect(logger).toHaveBeenCalledWith(expect.stringContaining('Attachment queued'));
+    expect(dom.setFileInputFiles).toHaveBeenCalledWith({ nodeId: 2, files: ["/tmp/foo.md"] });
+    expect(logger).toHaveBeenCalledWith(expect.stringContaining("Attachment queued"));
   }, 15_000);
 
-  test('throws when file input missing', async () => {
+  test("throws when file input missing", async () => {
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 0 }),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn(),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/foo.md', displayPath: 'foo.md' },
+        { path: "/tmp/foo.md", displayPath: "foo.md" },
         logger,
       ),
-    ).rejects.toThrow(
-      /unable to locate.*attachment input/i,
-    );
+    ).rejects.toThrow(/unable to locate.*attachment input/i);
   });
 
-  test('skips upload when attachment already present (ellipsis-aware detection)', async () => {
+  test("skips upload when attachment already present (ellipsis-aware detection)", async () => {
     logger.mockClear();
-    let capturedPresenceExpression = '';
+    let capturedPresenceExpression = "";
     const dom = {
       getDocument: vi.fn(),
       querySelector: vi.fn(),
       setFileInputFiles: vi.fn(),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes("text.includes('…')")) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("text.includes('…')")) {
           capturedPresenceExpression = expr;
           return { result: { value: { ui: true, input: false } } };
         }
         return { result: { value: { ui: false, input: false } } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/SettingsStore.swift', displayPath: 'SettingsStore.swift' },
+        { path: "/tmp/SettingsStore.swift", displayPath: "SettingsStore.swift" },
         logger,
       ),
     ).resolves.toBe(true);
@@ -381,40 +419,46 @@ describe('uploadAttachmentFile', () => {
     expect(logger).toHaveBeenCalledWith(expect.stringMatching(/Attachment already present/i));
   });
 
-  test('skips reupload when file already queued in input', async () => {
+  test("skips reupload when file already queued in input", async () => {
     logger.mockClear();
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn(),
       setFileInputFiles: vi.fn(),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           return { result: { value: { ui: false, input: true } } };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
-              value: { ok: true, baselineChipCount: 0, baselineChips: [], baselineUploading: false, order: [0] },
+              value: {
+                ok: true,
+                baselineChipCount: 0,
+                baselineChips: [],
+                baselineUploading: false,
+                order: [0],
+              },
             },
           };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: true } } };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('attachment-cards')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("attachment-cards")) {
           return { result: { value: { found: true } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+        { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
         logger,
       ),
     ).resolves.toBe(true);
@@ -423,17 +467,17 @@ describe('uploadAttachmentFile', () => {
     expect(logger).toHaveBeenCalledWith(expect.stringMatching(/already queued/i));
   });
 
-  test('skips upload when file count already satisfies expected count', async () => {
+  test("skips upload when file count already satisfies expected count", async () => {
     logger.mockClear();
     const dom = {
       getDocument: vi.fn(),
       querySelector: vi.fn(),
       setFileInputFiles: vi.fn(),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           return {
             result: {
               value: {
@@ -442,7 +486,7 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 0,
                 inputCount: 0,
                 uploading: false,
-                chipSignature: '',
+                chipSignature: "",
                 fileCount: 1,
               },
             },
@@ -450,12 +494,12 @@ describe('uploadAttachmentFile', () => {
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+        { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
         logger,
         { expectedCount: 1 },
       ),
@@ -466,17 +510,17 @@ describe('uploadAttachmentFile', () => {
     expect(logger).toHaveBeenCalledWith(expect.stringMatching(/composer shows 1 file/i));
   });
 
-  test('skips upload when input count already satisfies expected count', async () => {
+  test("skips upload when input count already satisfies expected count", async () => {
     logger.mockClear();
     const dom = {
       getDocument: vi.fn(),
       querySelector: vi.fn(),
       setFileInputFiles: vi.fn(),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           return {
             result: {
               value: {
@@ -485,7 +529,7 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 0,
                 inputCount: 1,
                 uploading: false,
-                chipSignature: '',
+                chipSignature: "",
                 fileCount: 0,
               },
             },
@@ -493,12 +537,12 @@ describe('uploadAttachmentFile', () => {
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+        { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
         logger,
         { expectedCount: 1 },
       ),
@@ -509,18 +553,18 @@ describe('uploadAttachmentFile', () => {
     expect(logger).toHaveBeenCalledWith(expect.stringMatching(/composer shows 1 file/i));
   });
 
-  test('avoids retrying other inputs once upload shows progress', async () => {
+  test("avoids retrying other inputs once upload shows progress", async () => {
     logger.mockClear();
     let readSignalCalls = 0;
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           readSignalCalls += 1;
           return {
             result: {
@@ -530,12 +574,12 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 0,
                 inputCount: 0,
                 uploading: readSignalCalls >= 3,
-                chipSignature: '',
+                chipSignature: "",
               },
             },
           };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
               value: {
@@ -549,33 +593,37 @@ describe('uploadAttachmentFile', () => {
             },
           };
         }
-        if (expr.includes('chipCount') && expr.includes('composerText') && expr.includes('uploading')) {
+        if (
+          expr.includes("chipCount") &&
+          expr.includes("composerText") &&
+          expr.includes("uploading")
+        ) {
           return {
             result: {
               value: {
                 chipCount: 1,
                 chips: [],
-                inputNames: ['oracle-browser-smoke.txt'],
-                composerText: '',
+                inputNames: ["oracle-browser-smoke.txt"],
+                composerText: "",
                 uploading: true,
               },
             },
           };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('found')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("found")) {
           return { result: { value: { found: true } } };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: true } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+        { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
         logger,
       ),
     ).resolves.toBe(true);
@@ -584,18 +632,18 @@ describe('uploadAttachmentFile', () => {
     expect(dom.setFileInputFiles).toHaveBeenCalledTimes(1);
   });
 
-  test('checks for late attachment signals before trying alternate inputs', async () => {
+  test("checks for late attachment signals before trying alternate inputs", async () => {
     logger.mockClear();
     let readSignalCalls = 0;
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           readSignalCalls += 1;
           if (readSignalCalls < 3) {
             return {
@@ -606,7 +654,7 @@ describe('uploadAttachmentFile', () => {
                   chipCount: 0,
                   inputCount: 0,
                   uploading: false,
-                  chipSignature: '',
+                  chipSignature: "",
                 },
               },
             };
@@ -619,12 +667,12 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 1,
                 inputCount: 0,
                 uploading: false,
-                chipSignature: 'late-chip',
+                chipSignature: "late-chip",
               },
             },
           };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
               value: {
@@ -638,27 +686,37 @@ describe('uploadAttachmentFile', () => {
             },
           };
         }
-        if (expr.includes('chipCount') && expr.includes('composerText') && expr.includes('uploading')) {
+        if (
+          expr.includes("chipCount") &&
+          expr.includes("composerText") &&
+          expr.includes("uploading")
+        ) {
           return {
             result: {
-              value: { chipCount: 0, chips: [], inputNames: [], composerText: '', uploading: false },
+              value: {
+                chipCount: 0,
+                chips: [],
+                inputNames: [],
+                composerText: "",
+                uploading: false,
+              },
             },
           };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: false } } };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('attachment-cards')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("attachment-cards")) {
           return { result: { value: { found: true } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     vi.useFakeTimers();
     const uploadPromise = uploadAttachmentFile(
       { runtime, dom },
-      { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+      { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
       logger,
     );
     await Promise.resolve();
@@ -670,19 +728,19 @@ describe('uploadAttachmentFile', () => {
     expect(dom.setFileInputFiles).toHaveBeenCalledTimes(1);
   });
 
-  test('defers data transfer fallback when attachment signals appear after setFileInputFiles', async () => {
+  test("defers data transfer fallback when attachment signals appear after setFileInputFiles", async () => {
     logger.mockClear();
-    vi.spyOn(attachments, 'waitForAttachmentVisible').mockResolvedValue(undefined);
+    vi.spyOn(attachments, "waitForAttachmentVisible").mockResolvedValue(undefined);
     let readSignalCalls = 0;
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           readSignalCalls += 1;
           if (readSignalCalls === 1) {
             return {
@@ -693,7 +751,7 @@ describe('uploadAttachmentFile', () => {
                   chipCount: 0,
                   inputCount: 0,
                   uploading: false,
-                  chipSignature: '',
+                  chipSignature: "",
                   fileCount: 0,
                 },
               },
@@ -707,13 +765,13 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 1,
                 inputCount: 1,
                 uploading: false,
-                chipSignature: 'chip',
+                chipSignature: "chip",
                 fileCount: 1,
               },
             },
           };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
               value: {
@@ -728,33 +786,37 @@ describe('uploadAttachmentFile', () => {
             },
           };
         }
-        if (expr.includes('chipCount') && expr.includes('composerText') && expr.includes('uploading')) {
+        if (
+          expr.includes("chipCount") &&
+          expr.includes("composerText") &&
+          expr.includes("uploading")
+        ) {
           return {
             result: {
               value: {
                 chipCount: 1,
                 chips: [],
-                inputNames: ['oracle-browser-smoke.txt'],
-                composerText: '',
+                inputNames: ["oracle-browser-smoke.txt"],
+                composerText: "",
                 uploading: false,
               },
             },
           };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('attachment-cards')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("attachment-cards")) {
           return { result: { value: { found: true } } };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: true } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     await expect(
       uploadAttachmentFile(
         { runtime, dom },
-        { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+        { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
         logger,
       ),
     ).resolves.toBe(true);
@@ -762,17 +824,17 @@ describe('uploadAttachmentFile', () => {
     expect(transferSpy).not.toHaveBeenCalled();
   });
 
-  test('clears stale file inputs before trying alternate candidates', async () => {
+  test("clears stale file inputs before trying alternate candidates", async () => {
     logger.mockClear();
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           return {
             result: {
               value: {
@@ -781,13 +843,13 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 0,
                 inputCount: 0,
                 uploading: false,
-                chipSignature: '',
+                chipSignature: "",
                 fileCount: 0,
               },
             },
           };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
               value: {
@@ -802,30 +864,40 @@ describe('uploadAttachmentFile', () => {
             },
           };
         }
-        if (expr.includes('input[type="file"][data-oracle-upload-idx') && expr.includes('names')) {
-          return { result: { value: { names: [], value: '', count: 0 } } };
+        if (expr.includes('input[type="file"][data-oracle-upload-idx') && expr.includes("names")) {
+          return { result: { value: { names: [], value: "", count: 0 } } };
         }
-        if (expr.includes('chipCount') && expr.includes('composerText') && expr.includes('uploading')) {
+        if (
+          expr.includes("chipCount") &&
+          expr.includes("composerText") &&
+          expr.includes("uploading")
+        ) {
           return {
             result: {
-              value: { chipCount: 0, chips: [], inputNames: [], composerText: '', uploading: false },
+              value: {
+                chipCount: 0,
+                chips: [],
+                inputNames: [],
+                composerText: "",
+                uploading: false,
+              },
             },
           };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('attachment-cards')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("attachment-cards")) {
           return { result: { value: { found: false } } };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: false } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     vi.useFakeTimers();
     const uploadPromise = uploadAttachmentFile(
       { runtime, dom },
-      { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+      { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
       logger,
     );
     const handledPromise = uploadPromise.catch((error) => error as Error);
@@ -839,19 +911,19 @@ describe('uploadAttachmentFile', () => {
     expect(dom.setFileInputFiles).toHaveBeenCalledWith({ nodeId: 2, files: [] });
   });
 
-  test('uses file-count signal to avoid retrying alternate inputs', async () => {
+  test("uses file-count signal to avoid retrying alternate inputs", async () => {
     logger.mockClear();
-    vi.spyOn(attachments, 'waitForAttachmentVisible').mockResolvedValue(undefined);
+    vi.spyOn(attachments, "waitForAttachmentVisible").mockResolvedValue(undefined);
     let readSignalCalls = 0;
     const dom = {
       getDocument: vi.fn().mockResolvedValue({ root: { nodeId: 1 } }),
       querySelector: vi.fn().mockResolvedValue({ nodeId: 2 }),
       setFileInputFiles: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ChromeClient['DOM'];
+    } as unknown as ChromeClient["DOM"];
     const runtime = {
       evaluate: vi.fn().mockImplementation(async (params: { expression?: string }) => {
-        const expr = String(params?.expression ?? '');
-        if (expr.includes('const normalizedExpected') && expr.includes('matchesExpected')) {
+        const expr = String(params?.expression ?? "");
+        if (expr.includes("const normalizedExpected") && expr.includes("matchesExpected")) {
           readSignalCalls += 1;
           return {
             result: {
@@ -861,13 +933,13 @@ describe('uploadAttachmentFile', () => {
                 chipCount: 0,
                 inputCount: 0,
                 uploading: false,
-                chipSignature: '',
+                chipSignature: "",
                 fileCount: readSignalCalls >= 3 ? 1 : 0,
               },
             },
           };
         }
-        if (expr.includes('baselineChipCount') && expr.includes('baselineChips')) {
+        if (expr.includes("baselineChipCount") && expr.includes("baselineChips")) {
           return {
             result: {
               value: {
@@ -882,27 +954,37 @@ describe('uploadAttachmentFile', () => {
             },
           };
         }
-        if (expr.includes('chipCount') && expr.includes('composerText') && expr.includes('uploading')) {
+        if (
+          expr.includes("chipCount") &&
+          expr.includes("composerText") &&
+          expr.includes("uploading")
+        ) {
           return {
             result: {
-              value: { chipCount: 0, chips: [], inputNames: [], composerText: '', uploading: false },
+              value: {
+                chipCount: 0,
+                chips: [],
+                inputNames: [],
+                composerText: "",
+                uploading: false,
+              },
             },
           };
         }
-        if (expr.includes('attachmentSelectors') && expr.includes('attachment-cards')) {
+        if (expr.includes("attachmentSelectors") && expr.includes("attachment-cards")) {
           return { result: { value: { found: true } } };
         }
-        if (expr.includes('normalizedNoExt') && expr.includes('selectors')) {
+        if (expr.includes("normalizedNoExt") && expr.includes("selectors")) {
           return { result: { value: { found: true } } };
         }
         return { result: { value: null } };
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
 
     vi.useFakeTimers();
     const uploadPromise = uploadAttachmentFile(
       { runtime, dom },
-      { path: '/tmp/oracle-browser-smoke.txt', displayPath: 'oracle-browser-smoke.txt' },
+      { path: "/tmp/oracle-browser-smoke.txt", displayPath: "oracle-browser-smoke.txt" },
       logger,
     );
     await Promise.resolve();
@@ -915,36 +997,40 @@ describe('uploadAttachmentFile', () => {
   });
 });
 
-describe('waitForAttachmentVisible', () => {
-  test('treats file input name match as a valid visibility signal', async () => {
+describe("waitForAttachmentVisible", () => {
+  test("treats file input name match as a valid visibility signal", async () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
-    const evaluate = vi.fn().mockResolvedValue({ result: { value: { found: true, source: 'file-input' } } });
-    const runtime = { evaluate } as unknown as ChromeClient['Runtime'];
+    const evaluate = vi
+      .fn()
+      .mockResolvedValue({ result: { value: { found: true, source: "file-input" } } });
+    const runtime = { evaluate } as unknown as ChromeClient["Runtime"];
 
-    await expect(attachments.waitForAttachmentVisible(runtime, 'oracle-browser-smoke.txt', 100, logger)).resolves.toBeUndefined();
+    await expect(
+      attachments.waitForAttachmentVisible(runtime, "oracle-browser-smoke.txt", 100, logger),
+    ).resolves.toBeUndefined();
 
     const call = (evaluate as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0] as
       | { expression?: string }
       | undefined;
-    const capturedExpression = String(call?.expression ?? '');
+    const capturedExpression = String(call?.expression ?? "");
     expect(capturedExpression).toContain("source: 'file-input'");
     expect(capturedExpression).toContain('input[type="file"]');
-    expect(capturedExpression).toContain('attachments?');
+    expect(capturedExpression).toContain("attachments?");
   });
 });
 
-describe('waitForAttachmentCompletion', () => {
-  test('resolves when composer ready', async () => {
+describe("waitForAttachmentCompletion", () => {
+  test("resolves when composer ready", async () => {
     const evaluate = vi.fn();
     evaluate.mockImplementation(async () => {
       const call = evaluate.mock.calls.length;
       if (call <= 1) {
-        return { result: { value: { state: 'disabled', uploading: true, filesAttached: true } } };
+        return { result: { value: { state: "disabled", uploading: true, filesAttached: true } } };
       }
-      return { result: { value: { state: 'ready', uploading: false, filesAttached: true } } };
+      return { result: { value: { state: "ready", uploading: false, filesAttached: true } } };
     });
-    const runtime = { evaluate } as unknown as ChromeClient['Runtime'];
+    const runtime = { evaluate } as unknown as ChromeClient["Runtime"];
     vi.useFakeTimers();
     const promise = waitForAttachmentCompletion(runtime, 5_000);
     await vi.advanceTimersByTimeAsync(3_000);
@@ -953,19 +1039,23 @@ describe('waitForAttachmentCompletion', () => {
     expect(runtime.evaluate).toHaveBeenCalled();
   });
 
-  test('resolves when send button missing but files present', async () => {
+  test("resolves when send button missing but files present", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValueOnce({
-        result: { value: { state: 'missing', uploading: false, filesAttached: true } },
+        result: { value: { state: "missing", uploading: false, filesAttached: true } },
       }),
-    } as unknown as ChromeClient['Runtime'];
+    } as unknown as ChromeClient["Runtime"];
     await expect(waitForAttachmentCompletion(runtime, 200)).resolves.toBeUndefined();
   });
 
-  test('rejects when timeout reached', async () => {
+  test("rejects when timeout reached", async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { state: 'disabled', uploading: true, filesAttached: false } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(waitForAttachmentCompletion(runtime, 200)).rejects.toThrow(/Attachments did not finish/);
+      evaluate: vi.fn().mockResolvedValue({
+        result: { value: { state: "disabled", uploading: true, filesAttached: false } },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(waitForAttachmentCompletion(runtime, 200)).rejects.toThrow(
+      /Attachments did not finish/,
+    );
   });
 });

@@ -1,4 +1,4 @@
-declare module 'toasted-notifier' {
+declare module "toasted-notifier" {
   export interface ToastOptions {
     title?: string;
     subtitle?: string;

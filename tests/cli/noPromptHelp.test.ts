@@ -1,16 +1,20 @@
-import { describe, expect, test } from 'vitest';
-import { shouldRequirePrompt } from '../../src/cli/promptRequirement.js';
-import { resolvePreviewMode } from '../../src/cli/options.js';
+import { describe, expect, test } from "vitest";
+import { shouldRequirePrompt } from "../../src/cli/promptRequirement.js";
+import { resolvePreviewMode } from "../../src/cli/options.js";
 
-describe('no prompt help', () => {
-  test('requires prompt for root command when nothing else provided', () => {
+describe("no prompt help", () => {
+  test("requires prompt for root command when nothing else provided", () => {
     const requires = shouldRequirePrompt([], {});
     expect(requires).toBe(true);
   });
 
-  test('message alias satisfies prompt requirement', () => {
-    const rawArgs = ['--preview'];
-    const opts = { preview: resolvePreviewMode(true), prompt: undefined, message: 'via message' } as {
+  test("message alias satisfies prompt requirement", () => {
+    const rawArgs = ["--preview"];
+    const opts = {
+      preview: resolvePreviewMode(true),
+      prompt: undefined,
+      message: "via message",
+    } as {
       preview: string;
       prompt?: string;
       message?: string;
@@ -23,12 +27,12 @@ describe('no prompt help', () => {
     expect(requires).toBe(false);
   });
 
-  test('positional prompt prevents help trigger', () => {
-    const requires = shouldRequirePrompt(['Hello world'], { prompt: 'Hello world' });
+  test("positional prompt prevents help trigger", () => {
+    const requires = shouldRequirePrompt(["Hello world"], { prompt: "Hello world" });
     expect(requires).toBe(false);
   });
 
-  test('preview still requires prompt when absent', () => {
+  test("preview still requires prompt when absent", () => {
     const opts = { preview: resolvePreviewMode(true) } as { preview: string; prompt?: string };
     const requires = shouldRequirePrompt([], opts);
     expect(requires).toBe(true);

@@ -1,5 +1,5 @@
-import type { ProviderDomAdapter, ProviderDomFlowContext } from '../providerDomFlow.js';
-import { joinSelectors } from '../providerDomFlow.js';
+import type { ProviderDomAdapter, ProviderDomFlowContext } from "../providerDomFlow.js";
+import { joinSelectors } from "../providerDomFlow.js";
 
 const UI_TIMEOUT_MS = 60_000;
 const RESPONSE_TIMEOUT_MS = 10 * 60_000;
@@ -10,47 +10,57 @@ interface GeminiDomProviderState {
 }
 
 export const GEMINI_DEEP_THINK_SELECTORS = {
-  input: ['rich-textarea .ql-editor', '[role="textbox"][aria-label*="prompt" i]', 'div[contenteditable="true"]'],
-  sendButton: ['button.send-button', 'button[aria-label="Send message"]'],
-  toolsButton: ['button.toolbox-drawer-button', 'button[aria-label="Tools"]'],
-  toolsMenuItem: ['[role="menuitemcheckbox"]', '.toolbox-drawer-item-list-button'],
-  deepThinkActive: ['.toolbox-drawer-item-deselect-button', 'button[aria-label*="Deselect Deep Think"]'],
-  uploadButton: ['button[aria-label="Open upload file menu"]', '.upload-card-button'],
+  input: [
+    "rich-textarea .ql-editor",
+    '[role="textbox"][aria-label*="prompt" i]',
+    'div[contenteditable="true"]',
+  ],
+  sendButton: ["button.send-button", 'button[aria-label="Send message"]'],
+  toolsButton: ["button.toolbox-drawer-button", 'button[aria-label="Tools"]'],
+  toolsMenuItem: ['[role="menuitemcheckbox"]', ".toolbox-drawer-item-list-button"],
+  deepThinkActive: [
+    ".toolbox-drawer-item-deselect-button",
+    'button[aria-label*="Deselect Deep Think"]',
+  ],
+  uploadButton: ['button[aria-label="Open upload file menu"]', ".upload-card-button"],
   uploadMenuItem: ['[role="menuitem"]'],
-  uploadTrigger: ['.hidden-local-file-upload-button', '.hidden-local-upload-button'],
-  uploaderContainer: ['.uploader-button-container', '.file-uploader'],
-  uploaderElement: ['uploader.upload-button'],
-  userTurnAttachment: ['.file-preview-container'],
-  responseTurn: ['model-response'],
-  responseText: ['message-content', '.model-response-text message-content'],
-  responseComplete: ['.response-footer.complete'],
-  userQuery: ['user-query'],
-  userQueryText: ['user-query-content', '.query-text'],
+  uploadTrigger: [".hidden-local-file-upload-button", ".hidden-local-upload-button"],
+  uploaderContainer: [".uploader-button-container", ".file-uploader"],
+  uploaderElement: ["uploader.upload-button"],
+  userTurnAttachment: [".file-preview-container"],
+  responseTurn: ["model-response"],
+  responseText: ["message-content", ".model-response-text message-content"],
+  responseComplete: [".response-footer.complete"],
+  userQuery: ["user-query"],
+  userQueryText: ["user-query-content", ".query-text"],
   spinner: ['[role="progressbar"]'],
-  thoughtsToggle: ['.thoughts-header-button', '[data-test-id="thoughts-header-button"]'],
-  thoughtsContent: ['model-thoughts', '[data-test-id="model-thoughts"]'],
-  hasThoughts: ['.has-thoughts'],
+  thoughtsToggle: [".thoughts-header-button", '[data-test-id="thoughts-header-button"]'],
+  thoughtsContent: ["model-thoughts", '[data-test-id="model-thoughts"]'],
+  hasThoughts: [".has-thoughts"],
 } as const;
 
 function asSelectorLiteral(selectors: readonly string[]): string {
   return JSON.stringify(joinSelectors(selectors));
 }
 
-function readTimeouts(ctx: ProviderDomFlowContext): { uiTimeoutMs: number; responseTimeoutMs: number } {
+function readTimeouts(ctx: ProviderDomFlowContext): {
+  uiTimeoutMs: number;
+  responseTimeoutMs: number;
+} {
   const state = ctx.state as GeminiDomProviderState | undefined;
   const uiTimeoutMs =
-    typeof state?.inputTimeoutMs === 'number' && Number.isFinite(state.inputTimeoutMs)
+    typeof state?.inputTimeoutMs === "number" && Number.isFinite(state.inputTimeoutMs)
       ? Math.max(1_000, state.inputTimeoutMs)
       : UI_TIMEOUT_MS;
   const responseTimeoutMs =
-    typeof state?.timeoutMs === 'number' && Number.isFinite(state.timeoutMs)
+    typeof state?.timeoutMs === "number" && Number.isFinite(state.timeoutMs)
       ? Math.max(1_000, state.timeoutMs)
       : RESPONSE_TIMEOUT_MS;
   return { uiTimeoutMs, responseTimeoutMs };
 }
 
 async function waitForUi(ctx: ProviderDomFlowContext): Promise<void> {
-  ctx.log?.('[gemini-web] Waiting for Gemini UI to load...');
+  ctx.log?.("[gemini-web] Waiting for Gemini UI to load...");
   const inputSelector = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.input);
   const { uiTimeoutMs } = readTimeouts(ctx);
   const uiDeadline = Date.now() + uiTimeoutMs;
@@ -81,9 +91,9 @@ async function waitForUi(ctx: ProviderDomFlowContext): Promise<void> {
 
   if (!uiReady) {
     if (sawLoginRedirect) {
-      throw new Error('Gemini is showing a sign-in flow. Please sign in in Chrome and retry.');
+      throw new Error("Gemini is showing a sign-in flow. Please sign in in Chrome and retry.");
     }
-    throw new Error('Timed out waiting for Gemini UI prompt input to become ready.');
+    throw new Error("Timed out waiting for Gemini UI prompt input to become ready.");
   }
 }
 
@@ -99,8 +109,8 @@ async function selectMode(ctx: ProviderDomFlowContext): Promise<void> {
       return 'not-found';
     })()`,
   );
-  if (toolsClickResult !== 'clicked') {
-    throw new Error('Unable to open Gemini tools menu; Deep Think toggle is not accessible.');
+  if (toolsClickResult !== "clicked") {
+    throw new Error("Unable to open Gemini tools menu; Deep Think toggle is not accessible.");
   }
   await ctx.delay(1_000);
 
@@ -117,7 +127,7 @@ async function selectMode(ctx: ProviderDomFlowContext): Promise<void> {
       return 'not-found';
     })()`,
   );
-  if (deepThinkClickResult !== 'clicked') {
+  if (deepThinkClickResult !== "clicked") {
     throw new Error('Unable to select "Deep Think" from Gemini tools menu.');
   }
   await ctx.delay(1_500);
@@ -133,12 +143,12 @@ async function selectMode(ctx: ProviderDomFlowContext): Promise<void> {
     })()`,
   );
   if (!deepThinkActive) {
-    throw new Error('Deep Think did not appear selected after clicking the tools menu item.');
+    throw new Error("Deep Think did not appear selected after clicking the tools menu item.");
   }
 }
 
 async function typePrompt(ctx: ProviderDomFlowContext): Promise<void> {
-  ctx.log?.('[gemini-web] Typing prompt...');
+  ctx.log?.("[gemini-web] Typing prompt...");
   const inputSelector = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.input);
   const typeResult = await ctx.evaluate<string>(
     `(() => {
@@ -156,14 +166,14 @@ async function typePrompt(ctx: ProviderDomFlowContext): Promise<void> {
       return typed ? 'typed' : 'empty';
     })()`,
   );
-  if (typeResult !== 'typed') {
-    throw new Error(`Failed to type Gemini prompt (status=${typeResult ?? 'unknown'}).`);
+  if (typeResult !== "typed") {
+    throw new Error(`Failed to type Gemini prompt (status=${typeResult ?? "unknown"}).`);
   }
   await ctx.delay(500);
 }
 
 async function submitPrompt(ctx: ProviderDomFlowContext): Promise<void> {
-  ctx.log?.('[gemini-web] Sending prompt...');
+  ctx.log?.("[gemini-web] Sending prompt...");
   const inputSelector = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.input);
   const sendButtonSelectors = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.sendButton);
   const sendResult = await ctx.evaluate<string>(
@@ -182,13 +192,13 @@ async function submitPrompt(ctx: ProviderDomFlowContext): Promise<void> {
       return 'not-found';
     })()`,
   );
-  if (sendResult !== 'clicked' && sendResult !== 'enter') {
-    throw new Error('Failed to submit prompt in Gemini Deep Think mode (send control not found).');
+  if (sendResult !== "clicked" && sendResult !== "enter") {
+    throw new Error("Failed to submit prompt in Gemini Deep Think mode (send control not found).");
   }
 }
 
 async function waitForResponse(ctx: ProviderDomFlowContext): Promise<{ text: string }> {
-  ctx.log?.('[gemini-web] Waiting for Deep Think response (this may take a while)...');
+  ctx.log?.("[gemini-web] Waiting for Deep Think response (this may take a while)...");
   const responseTurnSel = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.responseTurn);
   const responseTextSel = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.responseText);
   const responseCompleteSel = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.responseComplete);
@@ -196,7 +206,7 @@ async function waitForResponse(ctx: ProviderDomFlowContext): Promise<{ text: str
   const { responseTimeoutMs } = readTimeouts(ctx);
   const responseDeadline = Date.now() + responseTimeoutMs;
   let lastLog = 0;
-  let responseText = '';
+  let responseText = "";
 
   while (Date.now() < responseDeadline) {
     const payload = await ctx.evaluate<string>(
@@ -224,14 +234,14 @@ async function waitForResponse(ctx: ProviderDomFlowContext): Promise<{ text: str
     );
 
     try {
-      const parsed = JSON.parse(payload ?? '{}') as { status?: string; text?: string };
-      if (parsed.status === 'done' && typeof parsed.text === 'string' && parsed.text.length > 0) {
+      const parsed = JSON.parse(payload ?? "{}") as { status?: string; text?: string };
+      if (parsed.status === "done" && typeof parsed.text === "string" && parsed.text.length > 0) {
         responseText = parsed.text;
         break;
       }
       const now = Date.now();
       if (now - lastLog > 10_000) {
-        ctx.log?.(`[gemini-web] Deep Think still generating... (${parsed.status ?? 'unknown'})`);
+        ctx.log?.(`[gemini-web] Deep Think still generating... (${parsed.status ?? "unknown"})`);
         lastLog = now;
       }
     } catch {
@@ -241,7 +251,9 @@ async function waitForResponse(ctx: ProviderDomFlowContext): Promise<{ text: str
   }
 
   if (!responseText) {
-    throw new Error(`Deep Think timed out waiting for response (${Math.ceil(responseTimeoutMs / 1000)} seconds).`);
+    throw new Error(
+      `Deep Think timed out waiting for response (${Math.ceil(responseTimeoutMs / 1000)} seconds).`,
+    );
   }
   return { text: responseText };
 }
@@ -258,7 +270,7 @@ async function extractThoughts(ctx: ProviderDomFlowContext): Promise<string | nu
       return 'clicked';
     })()`,
   );
-  if (thinkResult !== 'clicked') {
+  if (thinkResult !== "clicked") {
     return null;
   }
 
@@ -276,11 +288,13 @@ async function extractThoughts(ctx: ProviderDomFlowContext): Promise<string | nu
       return full;
     })()`,
   );
-  return typeof extractedThoughts === 'string' && extractedThoughts.length > 0 ? extractedThoughts : null;
+  return typeof extractedThoughts === "string" && extractedThoughts.length > 0
+    ? extractedThoughts
+    : null;
 }
 
 export const geminiDeepThinkDomProvider: ProviderDomAdapter = {
-  providerName: 'gemini-web',
+  providerName: "gemini-web",
   waitForUi,
   selectMode,
   typePrompt,

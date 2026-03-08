@@ -1,5 +1,5 @@
-import type { ChromeClient, BrowserLogger } from './types.js';
-import { CONVERSATION_TURN_SELECTOR } from './constants.js';
+import type { ChromeClient, BrowserLogger } from "./types.js";
+import { CONVERSATION_TURN_SELECTOR } from "./constants.js";
 
 export function buildConversationDebugExpression(): string {
   return `(() => {
@@ -13,7 +13,10 @@ export function buildConversationDebugExpression(): string {
   })()`;
 }
 
-export async function logConversationSnapshot(Runtime: ChromeClient['Runtime'], logger: BrowserLogger) {
+export async function logConversationSnapshot(
+  Runtime: ChromeClient["Runtime"],
+  logger: BrowserLogger,
+) {
   const expression = buildConversationDebugExpression();
   const { result } = await Runtime.evaluate({ expression, returnByValue: true });
   if (Array.isArray(result.value)) {
@@ -22,7 +25,11 @@ export async function logConversationSnapshot(Runtime: ChromeClient['Runtime'], 
   }
 }
 
-export async function logDomFailure(Runtime: ChromeClient['Runtime'], logger: BrowserLogger, context: string) {
+export async function logDomFailure(
+  Runtime: ChromeClient["Runtime"],
+  logger: BrowserLogger,
+  context: string,
+) {
   if (!logger?.verbose) {
     return;
   }
@@ -37,4 +44,3 @@ export async function logDomFailure(Runtime: ChromeClient['Runtime'], logger: Br
     // ignore snapshot failures
   }
 }
-

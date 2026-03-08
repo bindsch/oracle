@@ -7,13 +7,13 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
 ```json5
 {
   // Default engine when neither CLI flag nor env decide
-  engine: "api",           // or "browser"
-  model: "gpt-5.4-pro",    // older gpt-5.x-pro aliases → gpt-5.4-pro
-  search: "on",            // "on" | "off"
+  engine: "api", // or "browser"
+  model: "gpt-5.4-pro", // older gpt-5.x-pro aliases → gpt-5.4-pro
+  search: "on", // "on" | "off"
 
   notify: {
-    enabled: true,          // default notifications (still auto-mutes in CI/SSH unless forced on)
-    sound: false,           // play a sound on completion
+    enabled: true, // default notifications (still auto-mutes in CI/SSH unless forced on)
+    sound: false, // play a sound on completion
     muteIn: ["CI", "SSH"], // auto-disable when these env vars are set
   },
 
@@ -27,20 +27,20 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
     remoteHost: "127.0.0.1:9473",
     remoteToken: "…", // written by `oracle bridge client` (kept private; not printed by default)
     remoteViaSshReverseTunnel: { ssh: "user@linux-host", remotePort: 9473 }, // optional metadata
-    debugPort: null,          // fixed DevTools port (env: ORACLE_BROWSER_PORT / ORACLE_BROWSER_DEBUG_PORT)
+    debugPort: null, // fixed DevTools port (env: ORACLE_BROWSER_PORT / ORACLE_BROWSER_DEBUG_PORT)
     timeoutMs: 1200000,
     inputTimeoutMs: 30000,
-    cookieSyncWaitMs: 0,      // wait (ms) before retrying cookie sync when Chrome cookies are empty/locked
-    assistantRecheckDelayMs: 0,     // wait this long after timeout, then retry capture (0 = disabled)
+    cookieSyncWaitMs: 0, // wait (ms) before retrying cookie sync when Chrome cookies are empty/locked
+    assistantRecheckDelayMs: 0, // wait this long after timeout, then retry capture (0 = disabled)
     assistantRecheckTimeoutMs: 120000, // time budget for the recheck attempt (default: 2m)
     reuseChromeWaitMs: 10000, // wait for a shared Chrome profile to appear before launching (parallel runs)
     profileLockTimeoutMs: 300000, // wait for the manual-login profile lock before sending (parallel runs)
-    autoReattachDelayMs: 0,     // delay before starting periodic auto-reattach attempts (0 = disabled)
-    autoReattachIntervalMs: 0,  // interval between auto-reattach attempts (0 = disabled)
+    autoReattachDelayMs: 0, // delay before starting periodic auto-reattach attempts (0 = disabled)
+    autoReattachIntervalMs: 0, // interval between auto-reattach attempts (0 = disabled)
     autoReattachTimeoutMs: 120000, // time budget per auto-reattach attempt (default: 2m)
     modelStrategy: "select", // select | current | ignore (ChatGPT only; ignored for Gemini web)
     thinkingTime: "extended", // light | standard | extended | heavy (ChatGPT Thinking/Pro models)
-    manualLogin: false,        // set true to reuse a persistent automation profile and sign in once (Windows defaults to true when unset)
+    manualLogin: false, // set true to reuse a persistent automation profile and sign in once (Windows defaults to true when unset)
     manualLoginProfileDir: null, // override profile dir (or set ORACLE_BROWSER_PROFILE_DIR)
     headless: false,
     hideWindow: false,
@@ -52,16 +52,16 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
   azure: {
     endpoint: "https://your-resource-name.openai.azure.com/",
     deployment: "gpt-5-1-pro",
-    apiVersion: "2025-04-01-preview" // optional legacy knob; Azure v1 Responses runs do not require it
+    apiVersion: "2025-04-01-preview", // optional legacy knob; Azure v1 Responses runs do not require it
   },
 
-  heartbeatSeconds: 30,     // default heartbeat interval
+  heartbeatSeconds: 30, // default heartbeat interval
   maxFileSizeBytes: 2097152, // raise/lower the per-file attachment guard (bytes)
-  filesReport: false,       // default per-file token report
-  background: true,         // default background mode for API runs
+  filesReport: false, // default per-file token report
+  background: true, // default background mode for API runs
   sessionRetentionHours: 72, // prune cached sessions older than 72h before each run (0 disables)
   promptSuffix: "// signed-off by me", // appended to every prompt
-  apiBaseUrl: "https://api.openai.com/v1" // override for LiteLLM / custom gateways
+  apiBaseUrl: "https://api.openai.com/v1", // override for LiteLLM / custom gateways
 }
 ```
 

@@ -1,22 +1,22 @@
-import type { ChromeClient, BrowserLogger } from '../types.js';
-import type { ThinkingTimeLevel } from '../../oracle/types.js';
-import { MENU_CONTAINER_SELECTOR, MENU_ITEM_SELECTOR } from '../constants.js';
-import { logDomFailure } from '../domDebug.js';
-import { buildClickDispatcher } from './domEvents.js';
+import type { ChromeClient, BrowserLogger } from "../types.js";
+import type { ThinkingTimeLevel } from "../../oracle/types.js";
+import { MENU_CONTAINER_SELECTOR, MENU_ITEM_SELECTOR } from "../constants.js";
+import { logDomFailure } from "../domDebug.js";
+import { buildClickDispatcher } from "./domEvents.js";
 
 type ThinkingTimeOutcome =
-  | { status: 'already-selected'; label?: string | null }
-  | { status: 'switched'; label?: string | null }
-  | { status: 'chip-not-found' }
-  | { status: 'menu-not-found' }
-  | { status: 'option-not-found' };
+  | { status: "already-selected"; label?: string | null }
+  | { status: "switched"; label?: string | null }
+  | { status: "chip-not-found" }
+  | { status: "menu-not-found" }
+  | { status: "option-not-found" };
 
 /**
  * Selects a specific thinking time level in ChatGPT's composer pill menu.
  * @param level - The thinking time intensity: 'light', 'standard', 'extended', or 'heavy'
  */
 export async function ensureThinkingTime(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   level: ThinkingTimeLevel,
   logger: BrowserLogger,
 ) {
@@ -24,26 +24,26 @@ export async function ensureThinkingTime(
   const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
 
   switch (result?.status) {
-    case 'already-selected':
+    case "already-selected":
       logger(`Thinking time: ${result.label ?? capitalizedLevel} (already selected)`);
       return;
-    case 'switched':
+    case "switched":
       logger(`Thinking time: ${result.label ?? capitalizedLevel}`);
       return;
-    case 'chip-not-found': {
-      await logDomFailure(Runtime, logger, 'thinking-chip');
-      throw new Error('Unable to find the Thinking chip button in the composer area.');
+    case "chip-not-found": {
+      await logDomFailure(Runtime, logger, "thinking-chip");
+      throw new Error("Unable to find the Thinking chip button in the composer area.");
     }
-    case 'menu-not-found': {
-      await logDomFailure(Runtime, logger, 'thinking-time-menu');
-      throw new Error('Unable to find the Thinking time dropdown menu.');
+    case "menu-not-found": {
+      await logDomFailure(Runtime, logger, "thinking-time-menu");
+      throw new Error("Unable to find the Thinking time dropdown menu.");
     }
-    case 'option-not-found': {
+    case "option-not-found": {
       await logDomFailure(Runtime, logger, `${level}-option`);
       throw new Error(`Unable to find the ${capitalizedLevel} option in the Thinking time menu.`);
     }
     default: {
-      await logDomFailure(Runtime, logger, 'thinking-time-unknown');
+      await logDomFailure(Runtime, logger, "thinking-time-unknown");
       throw new Error(`Unknown error selecting ${capitalizedLevel} thinking time.`);
     }
   }
@@ -55,7 +55,7 @@ export async function ensureThinkingTime(
  * @param level - The thinking time intensity: 'light', 'standard', 'extended', or 'heavy'
  */
 export async function ensureThinkingTimeIfAvailable(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   level: ThinkingTimeLevel,
   logger: BrowserLogger,
 ): Promise<boolean> {
@@ -64,22 +64,22 @@ export async function ensureThinkingTimeIfAvailable(
     const capitalizedLevel = level.charAt(0).toUpperCase() + level.slice(1);
 
     switch (result?.status) {
-      case 'already-selected':
+      case "already-selected":
         logger(`Thinking time: ${result.label ?? capitalizedLevel} (already selected)`);
         return true;
-      case 'switched':
+      case "switched":
         logger(`Thinking time: ${result.label ?? capitalizedLevel}`);
         return true;
-      case 'chip-not-found':
-      case 'menu-not-found':
-      case 'option-not-found':
+      case "chip-not-found":
+      case "menu-not-found":
+      case "option-not-found":
         if (logger.verbose) {
-          logger(`Thinking time: ${result.status.replaceAll('-', ' ')}; continuing with default.`);
+          logger(`Thinking time: ${result.status.replaceAll("-", " ")}; continuing with default.`);
         }
         return false;
       default:
         if (logger.verbose) {
-          logger('Thinking time: unknown outcome; continuing with default.');
+          logger("Thinking time: unknown outcome; continuing with default.");
         }
         return false;
     }
@@ -87,14 +87,14 @@ export async function ensureThinkingTimeIfAvailable(
     const message = error instanceof Error ? error.message : String(error);
     if (logger.verbose) {
       logger(`Thinking time selection failed (${message}); continuing with default.`);
-      await logDomFailure(Runtime, logger, 'thinking-time');
+      await logDomFailure(Runtime, logger, "thinking-time");
     }
     return false;
   }
 }
 
 async function evaluateThinkingTimeSelection(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   level: ThinkingTimeLevel,
 ): Promise<ThinkingTimeOutcome | undefined> {
   const outcome = await Runtime.evaluate({
@@ -229,6 +229,6 @@ function buildThinkingTimeExpression(level: ThinkingTimeLevel): string {
   })()`;
 }
 
-export function buildThinkingTimeExpressionForTest(level: ThinkingTimeLevel = 'extended'): string {
+export function buildThinkingTimeExpressionForTest(level: ThinkingTimeLevel = "extended"): string {
   return buildThinkingTimeExpression(level);
 }

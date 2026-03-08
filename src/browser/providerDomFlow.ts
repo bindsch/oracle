@@ -1,4 +1,4 @@
-import type { BrowserLogger } from './types.js';
+import type { BrowserLogger } from "./types.js";
 
 export type DomEvaluate = <T>(expression: string) => Promise<T | undefined>;
 
@@ -53,5 +53,5 @@ export async function runProviderDomFlow(
 }
 
 export function joinSelectors(selectors: readonly string[]): string {
-  return selectors.join(', ');
+  return selectors.join(", ");
 }

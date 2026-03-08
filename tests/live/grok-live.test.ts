@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'vitest';
-import { runOracle, extractTextOutput } from '../../src/oracle.ts';
+import { describe, expect, test } from "vitest";
+import { runOracle, extractTextOutput } from "../../src/oracle.ts";
 
-const ENABLE_LIVE = process.env.ORACLE_LIVE_TEST === '1';
+const ENABLE_LIVE = process.env.ORACLE_LIVE_TEST === "1";
 const LIVE_API_KEY = process.env.XAI_API_KEY;
 
 if (!ENABLE_LIVE || !LIVE_API_KEY) {
-  describe.skip('Grok live smoke tests', () => {
-    test('Set ORACLE_LIVE_TEST=1 with a real XAI_API_KEY to run these integration tests.', () => {});
+  describe.skip("Grok live smoke tests", () => {
+    test("Set ORACLE_LIVE_TEST=1 with a real XAI_API_KEY to run these integration tests.", () => {});
   });
 } else {
   const sharedDeps = {
@@ -15,15 +15,15 @@ if (!ENABLE_LIVE || !LIVE_API_KEY) {
     write: () => true,
   } as const;
 
-  describe('Grok live smoke tests', () => {
+  describe("Grok live smoke tests", () => {
     test(
-      'grok-4.1 streams a short completion',
+      "grok-4.1 streams a short completion",
       async () => {
         try {
           const result = await runOracle(
             {
               prompt: 'Reply with "live grok 4.1 smoke" on one line.',
-              model: 'grok-4.1',
+              model: "grok-4.1",
               silent: true,
               background: false,
               heartbeatIntervalMs: 0,
@@ -31,12 +31,12 @@ if (!ENABLE_LIVE || !LIVE_API_KEY) {
             },
             sharedDeps,
           );
-          if (result.mode !== 'live') {
-            throw new Error('Expected live result');
+          if (result.mode !== "live") {
+            throw new Error("Expected live result");
           }
           const text = extractTextOutput(result.response).toLowerCase();
-          expect(text).toContain('live grok 4.1 smoke');
-          expect(result.response.status ?? 'completed').toBe('completed');
+          expect(text).toContain("live grok 4.1 smoke");
+          expect(result.response.status ?? "completed").toBe("completed");
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           if (/model .*does not exist|not .*access|no allowed providers|404/i.test(message)) {

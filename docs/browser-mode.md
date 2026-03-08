@@ -2,7 +2,7 @@
 
 Oracle’s `--engine browser` supports two different execution paths:
 
-- **ChatGPT automation** (GPT-* models): drives the ChatGPT web UI with Chrome automation.
+- **ChatGPT automation** (GPT-\* models): drives the ChatGPT web UI with Chrome automation.
 - **Gemini web mode** (Gemini models): talks directly to `gemini.google.com` using your signed-in Chrome cookies (no ChatGPT automation).
 
 If you’re running Gemini, also see `docs/gemini.md`.
@@ -27,7 +27,14 @@ oracle --engine browser \
 
 ```json
 [
-  { "name": "__Secure-next-auth.session-token", "value": "<token>", "domain": "chatgpt.com", "path": "/", "secure": true, "httpOnly": true },
+  {
+    "name": "__Secure-next-auth.session-token",
+    "value": "<token>",
+    "domain": "chatgpt.com",
+    "path": "/",
+    "secure": true,
+    "httpOnly": true
+  },
   { "name": "_account", "value": "personal", "domain": "chatgpt.com", "path": "/", "secure": true }
 ]
 ```
@@ -76,11 +83,27 @@ You can pass the same payload inline (`--browser-inline-cookies '<json or base64
   - `--browser-inline-cookies <jsonOrBase64>` or `ORACLE_BROWSER_COOKIES_JSON`: skip Chrome/keychain and set cookies directly. Payload is a JSON array of DevTools `CookieParam` objects (or the same, base64-encoded). At minimum you need `name`, `value`, and either `url` or `domain`; we infer `path=/`, `secure=true`, `httpOnly=false`.
   - `--browser-inline-cookies-file <path>` or `ORACLE_BROWSER_COOKIES_FILE`: load the same payload from disk (JSON or base64 JSON). If no args/env are provided, Oracle also auto-loads `~/.oracle/cookies.json` or `~/.oracle/cookies.base64` when present.
   - Practical minimal set that keeps ChatGPT logged in and avoids the workspace picker: `__Secure-next-auth.session-token` (include `.0`/`.1` variants) and `_account` (active workspace/account). Cloudflare proofs (`cf_clearance`, `__cf_bm`/`_cfuvid`/`CF_Authorization`/`__cflb`) are only needed when a challenge is active. In practice our allowlist pulls just two cookies (session token + `_account`) and works; add the Cloudflare names if you hit a challenge.
-  - Inline payload shape example (we ignore extra fields like `expirationDate`, `sameSite`, `hostOnly`):  
+  - Inline payload shape example (we ignore extra fields like `expirationDate`, `sameSite`, `hostOnly`):
     ```json
     [
-      { "name": "__Secure-next-auth.session-token", "value": "<token>", "domain": "chatgpt.com", "path": "/", "secure": true, "httpOnly": true, "expires": 1771295753 },
-      { "name": "_account", "value": "personal", "domain": "chatgpt.com", "path": "/", "secure": true, "httpOnly": false, "expires": 1770702447 }
+      {
+        "name": "__Secure-next-auth.session-token",
+        "value": "<token>",
+        "domain": "chatgpt.com",
+        "path": "/",
+        "secure": true,
+        "httpOnly": true,
+        "expires": 1771295753
+      },
+      {
+        "name": "_account",
+        "value": "personal",
+        "domain": "chatgpt.com",
+        "path": "/",
+        "secure": true,
+        "httpOnly": false,
+        "expires": 1770702447
+      }
     ]
     ```
 
@@ -162,18 +185,23 @@ Key behavior:
 Prefer to keep Chrome entirely on the remote Mac (no DevTools tunneling, no manual cookie shuffling)? Use the built-in service:
 
 1. **Start the host**
+
    ```bash
    oracle serve
    ```
+
    Oracle picks a free port, launches Chrome, starts an HTTP/SSE API, and prints:
+
    ```
    Listening at 0.0.0.0:9473
    Access token: c4e5f9...
    ```
+
    Use `--host`, `--port`, or `--token` to override the defaults if needed.
    If the host Chrome profile is not signed into ChatGPT, the service opens chatgpt.com for login and exits—sign in, then restart `oracle serve`.
 
 2. **Run from your laptop**
+
    ```bash
    oracle --engine browser \
      --remote-host 192.168.64.2:9473 \

@@ -11,5 +11,6 @@ Owner: Oracle CLI
 - Pricing (preview): $0.20 / 1M input tokens, $0.50 / 1M output tokens; 2M token context.
 
 Notes:
+
 - If you supply `--base-url`, it overrides the default xAI endpoint.
 - Browser engine is not supported for Grok; Oracle coerces `--engine browser` to `api`.

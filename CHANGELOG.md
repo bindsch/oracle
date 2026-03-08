@@ -5,9 +5,11 @@
 ## 0.9.0 — 2026-03-08
 
 ### Changed
+
 - OpenAI: switch the default Pro target from `gpt-5.2-pro` to `gpt-5.4-pro`, add explicit `gpt-5.4` support, roll `gpt-5.1-pro` and `gpt-5.2-pro` forward to `gpt-5.4-pro`, keep provider-qualified custom ids intact, and map browser default Pro selection to ChatGPT `GPT-5.4 Pro` (#107, thanks @jameskraus).
 
 ### Fixed
+
 - Gemini web: add Deep Think DOM automation for browser/manual-login runs, keep Deep Think browser-only, and honor configured browser timeouts/profile reuse semantics. (#97) — thanks @kanlanc.
 - Browser: leave headful Chrome/profile state running when a Cloudflare anti-bot challenge interrupts browser mode, and record reuse guidance in the saved session metadata. (#111) — thanks @WinnCook.
 - Browser: keep manual-login sessions reattachable when Chrome disconnects with the DevTools "Inspected target navigated or closed" error. (#110) — thanks @WinnCook.
@@ -24,26 +26,31 @@
 ## 0.8.6 — 2026-02-09
 
 ### Added
+
 - Sessions: add `oracle restart <id>` to re-run a stored session as a new session (clones options) (#84, thanks @enki).
 - Browser: optional periodic auto-reattach attempts after assistant timeouts (`--browser-auto-reattach-delay` / `--browser-auto-reattach-interval` / `--browser-auto-reattach-timeout`). Original PR #87 by Felix Huber (@felix-huber) — thank you!
 
 ### Fixed
+
 - Browser: fix memory leaks in browser mode and model resolver cache (#77, thanks @bindscha).
 - Browser: fix markdown fallback extractor TDZ crash in browser mode (#90, thanks @julianknutsen).
 - CLI: honor `--no-wait` for Commander `--no-` flags (fixes restart wait preference) (#91).
 
 ### Changed
+
 - Deps: update dependencies.
 
 ## 0.8.5 — 2026-01-19
 
 ### Added
+
 - Bridge: add the bridge workflow + MCP browser controls for remote ChatGPT sessions. Original PR #42 by Kyle McCleary (@kmccleary3301) — thank you!
 - CLI: add `--background`/`--no-background`, `--http-timeout`, `--zombie-timeout`, and `--zombie-last-activity` to support long-running API sessions.
 - Browser: optional delayed recheck after assistant timeouts (`--browser-recheck-delay` / `--browser-recheck-timeout`).
 - Browser: add `--browser-profile-lock-timeout` to serialize manual-login runs that share a Chrome profile.
 
 ### Fixed
+
 - CLI: restore legacy `--[no-]notify`, `--[no-]notify-sound`, and `--[no-]background` flags as hidden aliases (Commander no longer accepts `[no-]` in `new Option()`).
 - Sessions: zombie detection now respects explicit timeouts and can optionally use last log activity to avoid false “zombie” status on long runs.
 - Browser: fall back to the default DevTools target if an isolated tab fails, and keep the run tab open when `--keep-browser` is set.
@@ -52,24 +59,29 @@
 - Browser: avoid attaching to the default tab when reusing a shared manual-login Chrome (reduces cross-run interference).
 
 ### Changed
+
 - Config: remove legacy `remote.host`/`remote.token` and top-level `remoteHost`/`remoteToken`; use `browser.remoteHost`/`browser.remoteToken` or env vars.
 
 ## 0.8.4 — 2026-01-04
 
 ### Changed
+
 - Deps: update zod to `4.3.5`.
 - Deps: add `qs` as a direct dependency (avoids Dependabot pnpm transitive-update failures).
 
 ### Fixed
+
 - Browser: fix attachment uploads in the current ChatGPT composer (avoid duplicate uploads; avoid image-only inputs for non-image files). Original PR #60 by Alex Naidis (@TheCrazyLex) — thank you!
 
 ## 0.8.3 — 2025-12-31
 
 ### Added
+
 - Config: allow `browser.forceEnglishLocale` to opt into `--lang/--accept-lang` for browser runs.
 - Browser: add `--browser-cookie-wait` / `browser.cookieSyncWaitMs` to wait once and retry cookie sync. Original PR #55 by bheemreddy-samsara — thank you!
 
 ### Fixed
+
 - Browser: avoid stray attachment removal clicks while still detecting stale chips, and allow completed uploads even if send stays disabled. Original PR #56 by Alex Naidis (@TheCrazyLex) — thank you!
 - Browser: dismiss blocking modals when a custom ChatGPT project URL is missing, and harden attachment uploads (force input/change events; retry via DataTransfer; treat “file selected” as insufficient unless the composer shows attachment UI).
 - Browser: prefer a trusted (CDP) click on the composer “+” button so attachment uploads work even when ChatGPT ignores synthetic clicks.
@@ -77,12 +89,15 @@
 ## 0.8.2 — 2025-12-30
 
 ### Changed
+
 - Release: disable npm progress output in Codex runs via `scripts/release.sh`.
 
 ### Docs
+
 - Release checklist now requires GitHub release notes to match the full changelog section.
 
 ### Tests
+
 - Live: tolerate truncated prompt echo in browser model selection checks.
 - Live: skip mixed OpenRouter assertions when a provider returns empty output.
 - Live: wait for browser runtime hint before reattaching in the reattach smoke.
@@ -90,26 +105,31 @@
 ## 0.8.1 — 2025-12-30
 
 ### Added
+
 - Config: allow `browser.thinkingTime`, `browser.manualLogin`, and `browser.manualLoginProfileDir` defaults in `~/.oracle/config.json`.
 
 ### Fixed
+
 - Browser: thinking-time chip selection now recognizes "Pro" labeled composer pills. Original PR #54 by Alex Naidis (@TheCrazyLex) — thank you!
 - Browser: when a custom ChatGPT project URL is missing, retry on the base URL with a longer prompt timeout.
 - Browser: increase attachment wait budget and proceed with sending the prompt if completion times out (skip attachment gating/verification).
 - CLI: disable OSC progress output when running under Codex (`CODEX_MANAGED_BY_NPM=1`) to avoid spinner noise.
 
 ### Tests
+
 - Stabilize OSC progress detection tests when `CODEX_MANAGED_BY_NPM=1` is set.
 - Add fast live browser runs for missing-project fallback + attachment uploads (`test:live:fast`).
 
 ## 0.8.0 — 2025-12-28
 
 ### Highlights
+
 - Browser reliability push: stronger reattach, response capture, and attachment uploads (fewer prompt-echoes, truncations, and duplicate uploads).
 - Cookie stack revamp via Sweet Cookie (no native addons) with better inline-cookie handling; Gemini web now works on Windows and honors `--browser-cookie-path`.
 - New `--browser-model-strategy` flag to control ChatGPT model selection (`select`/`current`/`ignore`) in browser mode. Original PR #49 by @djangonavarro220 — thank you!
 
 ### Improvements
+
 - Browser reattach now preserves `/c/` conversation URLs and project URL prefixes, validates conversation ids, and recovers from mid-run disconnects or capture failures.
 - Response capture is more stable: wider selectors, assistant-only copy-turn capture, prompt-echo avoidance, and stop-button/clipboard stability checks.
 - Attachment uploads are idempotent and count-aware (composer + chips + file inputs), with explicit completion waits and stale-input cleanup.
@@ -117,16 +137,19 @@
 - Cookie handling prefers live Chrome over legacy `~/.oracle/cookies.json`; Gemini web can use inline cookies when sync is disabled.
 
 ### Fixes
+
 - CLI: stream Markdown via Markdansi’s block renderer and guard the live renderer for non‑TTY edge cases.
 - Tests: stabilize browser live tests (serialization + project URL fallback) and add response-observer assertions; browser smoke runs are faster.
 
 ## 0.7.6 — 2025-12-25
 
 ### Changed
+
 - CLI: compact finish line summary across API, browser, and session views.
 - CLI: token counts now render as `↑in ↓out ↻reasoning Δtotal`.
 
 ### Fixed
+
 - CLI/Browser: ignore duplicate `--file` inputs (log once) and improve attachment presence detection so re-runs don’t spam “already attached” upload errors.
 - Browser: harden session reattach (better conversation targeting, longer prompt-commit wait, avoid closing shared DevTools targets).
 - Live tests: add coverage + retries for browser reattach/model selection; tolerate transient OpenRouter free-tier failures.
@@ -134,14 +157,17 @@
 ## 0.7.5 — 2025-12-23
 
 ### Fixed
+
 - Packaging: switch tokentally to npm release so Homebrew installs don't trigger git prepare builds.
 
 ## 0.7.4 — 2025-12-23
 
 ### Changed
+
 - Browser: add `--browser-thinking-time <light|standard|extended|heavy>` to select thinking-time intensity in ChatGPT.
 
 ### Fixed
+
 - Browser: throttle attachment upload pokes and pace multi-file uploads to avoid duplicate “already attached” warnings.
 - Browser: correct GPT-5.2 variant selection (Auto/Thinking/Instant/Pro) with stricter matching and improved testid scoring; thinking-time selection now supports multiple levels. Original PR #45 by Manish Malhotra (@manmal) — thank you!
 - Browser: only reload stalled conversations after an assistant-response failure (and only once), instead of always refreshing after submit.
@@ -149,9 +175,11 @@
 ## 0.7.3 — 2025-12-23
 
 ### Changed
-- API: streaming answers in a rich TTY now use Markdansi’s live renderer (`createLiveRenderer`) so we can stream *and* render Markdown in-place.
+
+- API: streaming answers in a rich TTY now use Markdansi’s live renderer (`createLiveRenderer`) so we can stream _and_ render Markdown in-place.
 
 ### Fixed
+
 - Browser: prevent `chrome-launcher` from auto-killing Chrome on SIGINT so reattach sessions survive Ctrl+C.
 - Sessions: running browser sessions now mark as errored when the Chrome PID/port are no longer reachable.
 - Browser: reattach now recovers even if Chrome was closed by reopening, locating the conversation in the sidebar, and resuming the response.
@@ -159,6 +187,7 @@
 ## 0.7.2 — 2025-12-17
 
 ### Fixed
+
 - Browser: stop auto-clicking the “Answer now” gate; wait for the full Pro-thinking response instead of skipping it.
 - Browser: reject `?temporary-chat=true` URLs when targeting Pro models (Pro picker entries are not available in Temporary Chat); error message now calls this out explicitly.
 - Browser: attachment uploads re-trigger the file-input change event until ChatGPT renders the attachment card (avoids hydration races); verify attachments are present on the sent user message before waiting for the assistant.
@@ -167,12 +196,14 @@
 ## 0.7.1 — 2025-12-17
 
 ### Changed
+
 - API: default model is now `gpt-5.2-pro` (and “Pro” label inference prefers GPT‑5.2 Pro).
 - Tests: updated fixtures/defaults to use `gpt-5.2-pro` instead of `gpt-5.1-pro`.
 - API: clarify `gpt-5.1-pro` as a stable alias that targets `gpt-5.2-pro`.
 - Browser: browser engine GPT selection now supports ChatGPT 5.2 (`gpt-5.2`) and ChatGPT 5.2 Pro (`gpt-5.2-pro`); legacy labels like `gpt-5.1` normalize to 5.2, and “Pro” always resolves to 5.2 Pro (ignores Legacy GPT‑5.1 Pro submenu) with a top-bar label confirmation.
 
 ### Fixed
+
 - Browser: prompt commit verification handles markdown code fences better; prompt-echo recovery is more robust (including remote browser mode); multi-file uploads are less flaky (dynamic timeouts + better filename matching). Original PR #41 by Muly Oved (@mulyoved) — thank you!
 - Browser: adapt to ChatGPT DOM changes (`data-turn=assistant|user`) and “Answer now” gating in Pro thinking so we don’t capture placeholders/truncate answers.
 - Gemini web: add abortable timeouts + retries for cookie-based runs so live tests are less likely to hang on transient Gemini web responses.
@@ -180,6 +211,7 @@
 ## 0.7.0 — 2025-12-14
 
 ### Added
+
 - Browser: Gemini browser mode via direct Gemini web client (uses Chrome cookies; no API key required; runs fully in Node/TypeScript — no Python/venv). Includes `--youtube`, `--generate-image`, `--edit-image`, `--output`, `--aspect`, and `--gemini-show-thoughts`. Original PR #39 by Nico Bailon (@nicobailon) — thank you!
 - Browser: media files passed via `--file` (images/video/audio/PDF) are treated as upload attachments instead of being inlined into the prompt (enables Gemini file analysis).
 - Browser: Gemini image ops follow `gg-dl` redirects while preserving cookies, so `--generate-image`/`--edit-image` actually create output files.
@@ -187,15 +219,18 @@
 - Live tests: add opt-in Gemini web smoke coverage for image generation/editing (cookie-based browser mode).
 
 ### Changed
+
 - Browser guard now allows Gemini models (browser engine supports GPT + Gemini; other models require `--engine api`).
 
 ## 0.6.1 — 2025-12-13
 
 ### Changed
+
 - Browser: default model target now prefers ChatGPT 5.2. Original PR #40 by Muly Oved (@mulyoved) — thank you!
 - Browser: remove the “browser fallback” API retry suggestion to avoid accidental billable reruns. Idea from PR #38 by Nico Bailon (@nicobailon) — thank you!
 
 ### Fixed
+
 - Browser: manual-login runs now reuse an already-running Chrome more reliably (persist DevTools port in the profile; probe with retries; clean up stale port state). Original PR #40 by Muly Oved (@mulyoved) — thank you!
 - Browser: response capture is less likely to truncate by mistaking earlier turns as complete; completion detection is scoped to the last assistant turn and requires brief stability before capture. Original PR #40 by Muly Oved (@mulyoved) — thank you!
 - Browser: stale profile cleanup avoids deleting lock files when an active Chrome process is using the profile.
@@ -203,9 +238,11 @@
 ## 0.6.0 — 2025-12-12
 
 ### Added
+
 - GPT-5.2 model support (`gpt-5.2` Thinking, `gpt-5.2-instant`, `gpt-5.2-pro`) plus browser thinking-time automation. Original PR #37 by Nico Bailon (@nicobailon) — thank you!
 
 ### Changed
+
 - API: `gpt-5.1-pro` now targets `gpt-5.2-pro` instead of older Pro fallbacks.
 - Browser: “Thinking time → Extended” selection now reuses centralized menu selectors, normalizes text matching, and ships a best-effort helper for future “auto” mode. Original PR #36 by Victor Vannara (@voctory) — thank you!
 - Browser: new `--browser-attachments <auto|never|always>` (default `auto`) pastes file contents inline up to ~60k characters, then switches to uploads; if ChatGPT rejects an inline paste as too large, Oracle retries automatically with uploads.
@@ -214,19 +251,23 @@
 ## 0.5.6 — 2025-12-09 (re-release of 0.5.5)
 
 ### Changed
+
 - Browser uploads: after `setFileInputFiles` we now log the chips + file-input contents and only mark success when the real file input contains the uploaded filename; the generic “Files” pill is no longer treated as proof of attachment.
 - Inline prompt commit: verification now matches on a normalized prefix and logs the last user turn + counts when commit fails, reducing false negatives for inline/file-paste runs.
 
 ### Fixed
+
 - Inline fallback (pasting file contents) now reliably submits and captures the user turn; headful smoke confirms the marker text is echoed back.
 
 ## 0.5.4 — 2025-12-08
 
 ### Changed
+
 - Docs: README now explicitly warns against `pnpx @steipete/oracle` (pnpx cache breaks sqlite bindings); use `npx -y @steipete/oracle` instead. Thanks Xuanwo for flagging this.
 - Browser uploads: stick to the single reliable file-input path (no drag/drop fallbacks), wait for the composer to render the new “N files” pill/remove-card UI before sending, and prefer non-image inputs. Thanks Peter for the repros and screenshots that caught the regressions.
 
 ### Fixed
+
 - API fallback: gpt-5.1-pro API runs now automatically downgrade to gpt-5.0-pro with a one-line notice (5.1 Pro is not yet available via API).
 - Browser uploads: detect ChatGPT’s composer attachment chip (not echoed in the last user turn) to avoid false “Attachment did not appear” failures. Thanks Mariano Belinky (@mbelinky) for the fix.
 - Browser interruption: if the user/agent sends SIGINT/SIGTERM/SIGQUIT while the assistant response is still pending, Oracle leaves Chrome running, writes runtime hints, and logs how to reattach with `oracle session <slug>` instead of killing the browser mid-run.
@@ -236,6 +277,7 @@
 ## 0.5.3 — 2025-12-06
 
 ### Changed
+
 - `oracle` with no arguments now prints the help/usage banner; launch the interactive UI explicitly via `oracle tui` (keeps `ORACLE_FORCE_TUI` for automation/tests). README updated to match.
 - TUI exits gracefully when the terminal drops raw mode (e.g., `setRawMode EIO` after pager issues) instead of looping the paging error; prints a hint to run `stty sane`.
 - Ctrl+C in the TUI menu now exits cleanly without printing the paging error loop.
@@ -244,41 +286,49 @@
 ## 0.5.2 — 2025-12-06
 
 ### Changed
+
 - Updated Inquirer to 13.x and aligned TUI prompts with `select` to stay compatible with the latest API.
 - Browser click automation now uses a shared pointer/mouse event sequence for send/model/copy/stop buttons, improving reliability with React/ProseMirror UIs. Original fix by community contributor Mike Demarais in PR #30—thank you!
 
 ### Fixed
+
 - Browser config defaults from `~/.oracle/config.json` now apply when CLI flags are untouched (chromePath/profile/cookiePath), fixing “No Chrome installations found” when a custom browser path is configured.
 - Browser engine now verifies each attachment shows up in the composer before sending (including remote/serve uploads), fixing cases where file selection succeeded but ChatGPT never received the files (e.g., WKWebView blank runs).
 
 ## 0.5.1 — 2025-12-03
 
 ### Added
+
 - Browser runs now auto-click the ChatGPT “Answer now” gate after sending, so workspace prompts continue without manual intervention.
 
 ### Changed
+
 - `oracle status` uses the same session table formatting as the TUI (status/model/mode/timestamp/chars/cost/slug) for consistent layout.
 - Browser mode inserts a 500 ms settle before submitting prompts and after clicking gates to avoid subscription/widget races.
 - OpenRouter paths route through the chat/completions API (Responses API avoided); live smokes use `z-ai/glm-4.6`, and the mixed run covers Grok fast path without skips.
 - Docs/guardrails: AGENTS explains sqlite/keytar rebuilds for Node 25 browser runs; changelog notes the browser cookie-sync guard.
 
 ### Fixed
+
 - Browser mode fails fast when cookie sync copies zero cookies (e.g., keytar not built); the error names the Chrome profile and rebuild command instead of silently hanging.
 
 ## 0.5.0 — 2025-11-25
 
 ### Added
+
 - Browser sessions now persist Chrome reattach hints (port/host/target/url) and log them inline; `oracle session <id>` can reconnect to a live tab, harvest the assistant turn, and mark the run completed even if the original controller died. Includes a reconnection helper and regression tests for runtime hint capture and reattach.
 - OpenRouter support: `OPENROUTER_API_KEY` auto-routes API runs (when provider keys are missing or the base URL points at OpenRouter), accepts arbitrary model ids (`minimax/minimax-m2`, `z-ai/glm-4.6`, etc.), mixes with built-in models in `--models`, passes attribution headers (`OPENROUTER_REFERER`/`OPENROUTER_TITLE`), and stores per-model logs with safe slugs.
 - `pnpm test:browser` runs a Chrome DevTools connectivity check plus headless browser smokes across GPT-5.1 / GPT-5.1-Pro / 5.1 Instant.
 
 ### Changed
+
 - All API errors now surface as transport reason `api-error` with the raw message and are shown in status/render/TUI; verbose mode still prints transport details. Multi-model callback order test stabilized.
 - Default system prompt no longer asks models to announce when the search tool was used.
 - API now surfaces a clear error when `gpt-5.1-pro` isn’t available yet (suggests using `gpt-5-pro`); remove once OpenAI enables the model.
 - Dependency refresh: openai 6.9.1, clipboardy 5, Vitest 4.0.13 (+ coverage), Biome 2.3.7, puppeteer-core 24.31.0, devtools-protocol 0.0.1548823; pinned zod-to-json-schema to 3.24.1 to stay compatible with zod 3.x.
 
 ### Fixed
+
 - CLI/TUI now print the intro banner only once; forced TUI launches (`ORACLE_FORCE_TUI` or no args in a TTY) no longer show duplicate 🧿 header lines.
 - TUI session list cleans up separators, removing the `__disabled__ (Disabled)` placeholder and `(Disabled)` tag on the header row.
 - `oracle session --render` no longer drops answers when the model filter is empty or per-model logs are missing (common for browser runs); stored session output is rendered again.
@@ -290,28 +340,33 @@
 - Token usage formatter again emits two-decimal abbreviations for thousands (e.g., 4.25k) to match CLI output and tests.
 
 ### Added
+
 - `--browser-manual-login` skips cookie copy, reuses a persistent automation profile (`~/.oracle/browser-profile` by default), and waits for manual ChatGPT login—handy on Windows where app-bound cookies can’t be decrypted; works as an opt-in on macOS/Linux too.
 - Manual-login browser sessions can reuse an already-running automation Chrome when remote debugging is enabled; point Oracle at it via `--remote-chrome <host:port>` to avoid relaunching/locks.
 - `--browser-port` (alias `--browser-debug-port`, env `ORACLE_BROWSER_PORT`) pins the DevTools port so WSL/Windows users can open a single firewall rule; includes a lightweight `pnpm test:browser` DevTools reachability check.
 
 ### Changed
+
 - Windows cookie reader now accepts any `v**` AES-GCM prefix (v10/v11/v20) to stay forward compatible.
 - On Windows, cookie sync is disabled by default and manual-login is forced; use inline cookies or `--browser-manual-login` (default) instead of profile-based cookie copy.
 
 ## 0.4.5 — 2025-11-22
 
 ### Fixed
+
 - MCP/API responses now report 404/405 from `/v1/responses` as “unsupported-endpoint” with guidance to fix base URLs/gateways or use browser engine; avoids silent failures when proxies lack the Responses API.
 
 ## 0.4.4 — 2025-11-22
 
 ### Fixed
+
 - MCP/API runs now surface 404/405 Responses API failures as “unsupported-endpoint” with actionable guidance (check OPENAI_BASE_URL/Azure setup or use the browser engine) instead of a generic transport error.
 - Publish metadata now declares Node >=20 (engines/devEngines) and drops the implicit bun runtime so `npx @steipete/oracle` no longer fails with EBADDEVENGINES on newer Node versions.
 
 ## 0.4.3 — 2025-11-22
 
 ### Added
+
 - xAI Grok 4.1 API support (`--model grok-4.1` / alias `grok`): defaults to `https://api.x.ai/v1`, uses `XAI_API_KEY`, maps search to `web_search`, and includes docs + live smoke.
 - Per-model search tool selection so Grok can use `web_search` while OpenAI models keep `web_search_preview`.
 - Multi-model coverage now includes Grok in orchestrator tests.
@@ -319,22 +374,26 @@
 - PTY-driven CLI/TUI harness landed for e2e coverage (browser guard, TUI exit path); PTY suites are opt-in via `ORACLE_ENABLE_PTY_TESTS=1` and stub tokenizers to stay lightweight.
 
 ### Fixed
+
 - MCP (global installs): keep the stdio transport alive until the client closes it so `oracle-mcp` doesn’t exit right after `connect()`; npm -g / host-spawned MCP clients now handshake successfully (tarball regression in 0.4.2).
 
 ## 0.4.2 — 2025-11-21
 
 ### Fixed
+
 - MCP: `npx @steipete/oracle oracle-mcp` now routes directly to the MCP server (even when npx defaults to the CLI binary) and keeps stdout JSON-only for Cursor/other MCP hosts.
 - Added the missing `@anthropic-ai/tokenizer` runtime dependency so `npx @steipete/oracle oracle-mcp` starts cleanly.
 
 ## 0.4.1 — 2025-11-21
 
 ### Fixed
+
 - Removed duplicate MCP release note entry; no code changes (meta cleanup only).
 
 ## 0.4.0 — 2025-11-21
 
 ### Added
+
 - Remote Chrome + remote browser service: `oracle serve` launches Chrome with host/token defaults for cross-machine runs, requires the host profile to be signed in, and supports reusing an existing Chrome via `--remote-chrome <host:port>` (IPv6 with `[host]:port`), including remote attachment uploads and clearer validation errors.
 - Linux browser support: Chrome/Chromium/Edge runs now work on Linux (including snap-installed Chromium) with cookie sync picking up the snap profile paths. See [docs/linux.md](docs/linux.md) for paths and display guidance.
 - Browser engine can target Chromium/Edge by pairing `--browser-chrome-path` with the new `--browser-cookie-path` (also configurable via `browser.chromePath` / `browser.chromeCookiePath`). See [docs/chromium-forks.md](docs/chromium-forks.md) for OS-specific paths and setup steps.
@@ -347,6 +406,7 @@
 - Duplicate prompt guard remains active: Oracle blocks a second run when the exact prompt is already running.
 
 ### Changed
+
 - Cookie sync covers Chrome, Chromium, Edge, Brave, and Vivaldi profiles; targets chatgpt.com, chat.openai.com, and atlas.openai.com. Windows browser automation is still partial—prefer API or clipboard fallback there.
 - Reject prompts shorter than 10 characters with a friendly hint for pro-tier models (`gpt-5.1-pro`) only (prevents accidental costly runs while leaving cheaper models unblocked). Override via ORACLE_MIN_PROMPT_CHARS for automated environments.
 - Browser engine default timeout bumped from 15m (900s) to 20m (1200s) so long GPT-5.x Pro responses don’t get cut off; CLI docs/help text now reflect the new ceiling.
@@ -361,6 +421,7 @@
 - CLI guardrail: if a session with the same prompt is already running, new runs abort with guidance to reattach unless `--force` is provided (prevents unintended duplicate API/browser runs).
 
 ### Fixed
+
 - Browser assistant capture is more resilient: markdown cleanup no longer drops real answers and prompt-echo recovery keeps the assistant text intact.
 - Browser cookie sync on Windows now copies the profile DB into a named temp directory with the expected `Cookies` filename so `chrome-cookies-secure` can read it reliably during browser fallbacks.
 - Streaming runs in `--render-plain` mode now send chunks directly to stdout and keep the log sink newline-aligned, preventing missing or double-printed output in TTY and background runs.
@@ -370,6 +431,7 @@
 ## 0.3.0 — 2025-11-19
 
 ### Added
+
 - Native Azure OpenAI support! Set `AZURE_OPENAI_ENDPOINT` (plus `AZURE_OPENAI_API_KEY` and optionally `AZURE_OPENAI_DEPLOYMENT`/`AZURE_OPENAI_API_VERSION`) or use the new CLI flags (`--azure-endpoint`, `--azure-deployment`, etc.) to switch automatically to the Azure client.
 - **Gemini 3 Pro Support**: Use Google's latest model via `oracle --model gemini`. Requires `GEMINI_API_KEY`.
 - Configurable API timeout: `--timeout <seconds|auto>` (auto = 20m for most models, 60m for pro models such as gpt-5.1-pro as of 0.4.0). Enforced for streaming and background runs.
@@ -381,15 +443,17 @@
 - `--dry-run [summary|json|full]` is now the single preview flag; `--preview` remains as a hidden alias for compatibility.
 
 ### Changed
- - Browser engine is now macOS-only; Windows and Linux runs fail fast with guidance to re-run via `--engine api`. Cross-platform browser support is in progress.
- - Browser fallback tips focus on `--browser-bundle-files`, making it clear users can drag the single bundled file into ChatGPT when automation fails.
- - Sessions TUI separates recent vs older runs, adds an Older/Newer action, keeps headers aligned with rows, and avoids separator crashes while preserving an always-selectable “ask oracle” entry.
+
+- Browser engine is now macOS-only; Windows and Linux runs fail fast with guidance to re-run via `--engine api`. Cross-platform browser support is in progress.
+- Browser fallback tips focus on `--browser-bundle-files`, making it clear users can drag the single bundled file into ChatGPT when automation fails.
+- Sessions TUI separates recent vs older runs, adds an Older/Newer action, keeps headers aligned with rows, and avoids separator crashes while preserving an always-selectable “ask oracle” entry.
 - CLI output is tidier and more resilient: graceful Ctrl+C, shorter headers/footers, clearer verbose token labels, and reduced trailing spacing.
 - File discovery is more reliable on Windows thanks to normalized paths, native-fs glob handling, and `.gitignore` respect across platforms.
 
 ## 0.2.0 — 2025-11-18
 
 ### Added
+
 - `oracle-mcp` stdio server (bin) with `consult` and `sessions` tools plus read-only session resources at `oracle-session://{id}/{metadata|log|request}`.
 - MCP logging notifications for consult streaming (info/debug with byte sizes); browser engine guardrails now check Chrome availability before a browser run starts.
 - Hidden root-level aliases `--message` (prompt) and `--include` (files) to mirror common agent calling conventions.
@@ -400,6 +464,7 @@
 - Session lists now show headers plus a cost column for quick scanning.
 
 ### Changed
+
 - Browser model picker is now more robust: longer menu-open window, richer tokens/testids for GPT-5.1 and GPT-5 Pro, fallback snapshot logging, and best-effort selection to reduce “model not found” errors.
 - MCP consult honors notification settings so the macOS Swift notifier fires for MCP-triggered runs.
 - `sessions` tool now returns a summary row for `id` lookups by default; pass `detail: true` to fetch full metadata/log/request to avoid large accidental payloads.
@@ -414,6 +479,7 @@
 - Help tips/examples now call out project/platform/version requirements and show how to label cross-repo attachments so the model has the right context.
 
 #### MCP configuration (quick reference)
+
 - Local stdio (mcporter): add to `config/mcporter.json`
   ```json
   {
@@ -429,7 +495,11 @@
   ```json
   {
     "mcpServers": {
-      "oracle": { "type": "stdio", "command": "npx", "args": ["-y", "@steipete/oracle", "oracle-mcp"] }
+      "oracle": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "@steipete/oracle", "oracle-mcp"]
+      }
     }
   }
   ```
@@ -438,6 +508,7 @@
 ## 0.1.1 — 2025-11-20
 
 ### Added
+
 - Hidden `--files`, `--path`, and `--paths` aliases for `--file`, so all path inputs (including `--include`) merge cleanly; commas still split within a single flag.
 - CLI path-merging helper now has unit coverage for alias ordering and comma splitting.
 - New `--copy-markdown` flag (alias `--copy`) assembles the markdown bundle and copies it to the clipboard, printing a one-line summary; combine with `--render-markdown` to both print and copy. Clipboard handling now uses `clipboardy` for macOS/Windows/Linux/Wayland/Termux/WSL with graceful failure messaging.
@@ -445,24 +516,31 @@
 ## 0.1.0 — 2025-11-17
 
 Highlights
+
 - Markdown rendering for completed sessions (`oracle session|status <id> --render` / `--render-markdown`) with ANSI formatting in rich TTYs; falls back to raw when logs are huge or stdout isn’t a TTY.
 - New `--path` flag on `oracle session <id>` prints the stored session directory plus metadata/request/log files, erroring if anything is missing. Uses soft color in rich terminals for quick scanning.
 
 Details
+
 ### Added
+
 - `oracle session <id> --path` now prints the on-disk session directory plus metadata/request/log files, exiting with an error when any expected file is missing instead of attaching.
 - When run in a rich TTY, `--path` labels and paths are colorized for easier scanning.
 
 ### Improved
+
 - `oracle session|status <id> --render` (alias `--render-markdown`) pretty-prints completed session markdown to ANSI in rich TTYs, falls back to raw when non-TTY or oversized logs.
+
 ## 0.0.10 — 2025-11-17
 
 ### Added
+
 - Rich terminals that support OSC 9;4 (Ghostty 1.2+, WezTerm, Windows Terminal) now show an inline progress bar while Oracle waits for the OpenAI response; disable with `ORACLE_NO_OSC_PROGRESS=1`, force with `ORACLE_FORCE_OSC_PROGRESS=1`.
 
 ## 0.0.9 — 2025-11-16
 
 ### Added
+
 - `oracle session|status <id> --render` (alias `--render-markdown`) pretty-prints completed session markdown to ANSI in rich TTYs, falls back to raw when non-TTY or oversized logs.
 - Hidden root-level `--session <id>` alias attaches directly to a stored session (for agents/automation).
 - README now recommends preferring API engine for reliability and longer uninterrupted runs when an API key is available.
@@ -473,12 +551,14 @@ Details
 ## 0.0.8 — 2025-11-16
 
 ### Changed
+
 - Help tips call out that Oracle is one-shot and does not remember prior runs, so every query should include full context.
 - `oracle session <id>` now logs a brief notice when extra root-only flags are present (e.g., `--render-markdown`) to make it clear those options are ignored during reattach.
 
 ## 0.0.7 — 2025-11-16
 
 ### Changed
+
 - Browser-mode thinking monitor now emits a text-only progress bar instead of the "Pro thinking" string.
 - `oracle session <id>` trims preamble/log noise and prints from the first `Answer:` line once a session is finished.
 - Help tips now stress sending whole directories and richer project briefings for better answers.
@@ -486,17 +566,20 @@ Details
 ## 0.0.6 — 2025-11-15
 
 ### Changed
+
 - Colorized live run header (model/tokens/files) when a rich TTY is available.
 - Added a blank line before the `Answer:` prefix for readability.
 - Masked API key logging now shows first/last 4 characters (e.g., `OPENAI_API_KEY=sk-p****qfAA`).
 - Suppressed duplicate session header on reattach and removed repeated background response IDs in heartbeats.
 
 ### Browser mode
+
 - When more than 10 files are provided, automatically bundles all files into a single `attachments-bundle.txt` to stay under ChatGPT’s upload cap and logs a verbose warning when bundling occurs.
 
 ## 0.0.5 — 2025-11-15
 
 ### Added
+
 - Logs the masked OpenAI key in use (`Using OPENAI_API_KEY=xxxx****yyyy`) so runs are traceable without leaking secrets.
 - Logs a helpful tip when you run without attachments, reminding you to pass context via `--file`.
 
@@ -505,19 +588,23 @@ Details
 ## 0.0.2 — 2025-11-15
 
 ### Added
+
 - Positional prompt shorthand: `oracle "prompt here"` (and `npx -y @steipete/oracle "..."`) now maps the positional argument to `--prompt` automatically.
 
 ### Fixed
+
 - `oracle status/session` missing-prompt guard now coexists with the positional prompt path and still shows the cleanup tip when no sessions exist.
 
 ## 0.0.1 — 2025-11-15
 
 ### Fixed
+
 - Corrected npm binary mapping so `oracle` is installed as an executable. Published with `--tag beta`.
 
 ## 0.0.0 — 2025-11-15
 
 ### Added
+
 - Dual-engine support (API and browser) with automatic selection: defaults to API when `OPENAI_API_KEY` is set, otherwise falls back to browser mode.
 - Session-friendly prompt guard that allows `status`/`session` commands to run without a prompt while still enforcing prompts for normal runs, previews, and dry runs.
 - Browser mode uploads each `--file` individually and logs Chrome PID/port for detachable runs.
@@ -526,8 +613,10 @@ Details
 - Comprehensive CLI and browser automation test suites, including engine selection and prompt requirement coverage.
 
 ### Changed
+
 - Help text, README, and browser-mode docs now describe the auto engine fallback and the deprecated `--browser` alias.
 - CLI engine resolution is centralized to keep legacy flags, model inference, and environment defaults consistent.
 
 ### Fixed
+
 - `oracle status` and `oracle session` no longer demand `--prompt` when used directly.

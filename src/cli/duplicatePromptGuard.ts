@@ -1,5 +1,5 @@
-import type { SessionStore, SessionMetadata } from '../sessionStore.js';
-import chalk from 'chalk';
+import type { SessionStore, SessionMetadata } from "../sessionStore.js";
+import chalk from "chalk";
 
 interface DuplicatePromptGuardOptions {
   prompt: string | undefined | null;
@@ -18,9 +18,9 @@ export async function shouldBlockDuplicatePrompt({
   const normalized = prompt?.trim();
   if (!normalized) return false;
 
-  const running = (await sessionStore.listSessions()).filter((entry) => entry.status === 'running');
+  const running = (await sessionStore.listSessions()).filter((entry) => entry.status === "running");
   const duplicate = running.find(
-    (entry: SessionMetadata) => (entry.options?.prompt?.trim?.() ?? '') === normalized,
+    (entry: SessionMetadata) => (entry.options?.prompt?.trim?.() ?? "") === normalized,
   );
   if (!duplicate) return false;
 

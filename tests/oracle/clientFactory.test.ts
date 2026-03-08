@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { OracleRequestBody } from '../../src/oracle/types.js';
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import type { OracleRequestBody } from "../../src/oracle/types.js";
 
-describe('createDefaultClientFactory', () => {
+describe("createDefaultClientFactory", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -12,65 +12,65 @@ describe('createDefaultClientFactory', () => {
     vi.restoreAllMocks();
   });
 
-  test('falls back to default factory and warns when custom factory export is invalid', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '/nonexistent/path.js';
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  test("falls back to default factory and warns when custom factory export is invalid", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "/nonexistent/path.js";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    expect(typeof factory).toBe('function');
+    expect(typeof factory).toBe("function");
     expect(warn).toHaveBeenCalledOnce();
   });
 
-  test('uses inline test factory hook when requested', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = 'INLINE_TEST_FACTORY';
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+  test("uses inline test factory hook when requested", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "INLINE_TEST_FACTORY";
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    const client = factory('key');
+    const client = factory("key");
     const request: OracleRequestBody = {
-      model: 'gpt-5.1',
-      instructions: 'test',
-      input: [{ role: 'user', content: [{ type: 'input_text', text: 'hi' }] }],
+      model: "gpt-5.1",
+      instructions: "test",
+      input: [{ role: "user", content: [{ type: "input_text", text: "hi" }] }],
     };
     const response = await client.responses.create(request);
     const streamed = client.responses.stream(request);
-    const retrieved = await client.responses.retrieve('inline-test');
+    const retrieved = await client.responses.retrieve("inline-test");
 
-    expect(response).toMatchObject({ id: 'inline-test', status: 'completed' });
-    expect(retrieved).toMatchObject({ id: 'inline-test' });
+    expect(response).toMatchObject({ id: "inline-test", status: "completed" });
+    expect(retrieved).toMatchObject({ id: "inline-test" });
     // stream exposes an async iterator and a finalResponse promise.
-    expect(typeof (await streamed).finalResponse).toBe('function');
+    expect(typeof (await streamed).finalResponse).toBe("function");
   });
 
-  test('routes gemini models through the Gemini client', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
+  test("routes gemini models through the Gemini client", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
     const createGeminiClient = vi.fn((key, model, resolvedModelId) => ({
-      client: 'gemini',
+      client: "gemini",
       key,
       model,
       resolvedModelId,
     }));
-    vi.doMock('../../src/oracle/gemini.js', () => ({ createGeminiClient }));
+    vi.doMock("../../src/oracle/gemini.js", () => ({ createGeminiClient }));
 
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    const client = factory('abc', { model: 'gemini-3-pro', resolvedModelId: 'gem-3-pro' });
+    const client = factory("abc", { model: "gemini-3-pro", resolvedModelId: "gem-3-pro" });
 
-    expect(createGeminiClient).toHaveBeenCalledWith('abc', 'gemini-3-pro', 'gem-3-pro');
-    expect(client).toMatchObject({ client: 'gemini', model: 'gemini-3-pro' });
+    expect(createGeminiClient).toHaveBeenCalledWith("abc", "gemini-3-pro", "gem-3-pro");
+    expect(client).toMatchObject({ client: "gemini", model: "gemini-3-pro" });
   });
 
-  test('routes gemini custom base URLs through the chat/completions adapter', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
+  test("routes gemini custom base URLs through the chat/completions adapter", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
     const createGeminiClient = vi.fn();
-    vi.doMock('../../src/oracle/gemini.js', () => ({ createGeminiClient }));
+    vi.doMock("../../src/oracle/gemini.js", () => ({ createGeminiClient }));
 
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    const client = factory('abc', {
-      model: 'gemini-3-pro',
-      resolvedModelId: 'gem-3-pro',
-      baseUrl: 'https://litellm.test/v1',
+    const client = factory("abc", {
+      model: "gemini-3-pro",
+      resolvedModelId: "gem-3-pro",
+      baseUrl: "https://litellm.test/v1",
     });
 
     expect(createGeminiClient).not.toHaveBeenCalled();
@@ -81,45 +81,45 @@ describe('createDefaultClientFactory', () => {
     });
   });
 
-  test('routes claude models through the Claude client', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
+  test("routes claude models through the Claude client", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
     const createClaudeClient = vi.fn((key, model, resolvedModelId, baseUrl) => ({
-      client: 'claude',
+      client: "claude",
       key,
       model,
       resolvedModelId,
       baseUrl,
     }));
-    vi.doMock('../../src/oracle/claude.js', () => ({ createClaudeClient }));
+    vi.doMock("../../src/oracle/claude.js", () => ({ createClaudeClient }));
 
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    const client = factory('xyz', {
-      model: 'claude-4.5-sonnet',
-      resolvedModelId: 'claude-sonnet',
-      baseUrl: 'https://api.anthropic.com/v1/messages',
+    const client = factory("xyz", {
+      model: "claude-4.5-sonnet",
+      resolvedModelId: "claude-sonnet",
+      baseUrl: "https://api.anthropic.com/v1/messages",
     });
 
     expect(createClaudeClient).toHaveBeenCalledWith(
-      'xyz',
-      'claude-4.5-sonnet',
-      'claude-sonnet',
-      'https://api.anthropic.com/v1/messages',
+      "xyz",
+      "claude-4.5-sonnet",
+      "claude-sonnet",
+      "https://api.anthropic.com/v1/messages",
     );
-    expect(client).toMatchObject({ client: 'claude', model: 'claude-4.5-sonnet' });
+    expect(client).toMatchObject({ client: "claude", model: "claude-4.5-sonnet" });
   });
 
-  test('routes claude custom base URLs through the chat/completions adapter', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
+  test("routes claude custom base URLs through the chat/completions adapter", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
     const createClaudeClient = vi.fn();
-    vi.doMock('../../src/oracle/claude.js', () => ({ createClaudeClient }));
+    vi.doMock("../../src/oracle/claude.js", () => ({ createClaudeClient }));
 
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
-    const client = factory('xyz', {
-      model: 'claude-4.5-sonnet',
-      resolvedModelId: 'claude-sonnet',
-      baseUrl: 'https://litellm.test/v1',
+    const client = factory("xyz", {
+      model: "claude-4.5-sonnet",
+      resolvedModelId: "claude-sonnet",
+      baseUrl: "https://litellm.test/v1",
     });
 
     expect(createClaudeClient).not.toHaveBeenCalled();
@@ -130,15 +130,19 @@ describe('createDefaultClientFactory', () => {
     });
   });
 
-  test('creates OpenAI clients for default and Azure paths', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
-    const { createDefaultClientFactory } = await import('../../src/oracle/client.js');
+  test("creates OpenAI clients for default and Azure paths", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
+    const { createDefaultClientFactory } = await import("../../src/oracle/client.js");
     const factory = createDefaultClientFactory();
 
-    const defaultClient = factory('sk-test', { model: 'gpt-5.1' });
-    const azureClient = factory('sk-azure', {
-      model: 'gpt-5.1',
-      azure: { endpoint: 'https://example.azure.com', apiVersion: '2025-04-01-preview', deployment: 'gpt5' },
+    const defaultClient = factory("sk-test", { model: "gpt-5.1" });
+    const azureClient = factory("sk-azure", {
+      model: "gpt-5.1",
+      azure: {
+        endpoint: "https://example.azure.com",
+        apiVersion: "2025-04-01-preview",
+        deployment: "gpt5",
+      },
     });
 
     expect(defaultClient.responses).toMatchObject({
@@ -153,23 +157,23 @@ describe('createDefaultClientFactory', () => {
     });
   });
 
-  test('uses the OpenAI client with Azure v1 base URLs for responses', async () => {
-    process.env.ORACLE_CLIENT_FACTORY = '';
+  test("uses the OpenAI client with Azure v1 base URLs for responses", async () => {
+    process.env.ORACLE_CLIENT_FACTORY = "";
     const openAIArgs: unknown[] = [];
     const azureArgs: unknown[] = [];
 
     class MockOpenAI {
       responses = {
-        create: async () => ({ id: 'ok', status: 'completed' }),
+        create: async () => ({ id: "ok", status: "completed" }),
         stream: async () => ({
           [Symbol.asyncIterator]: () => ({
             async next() {
               return { done: true, value: undefined };
             },
           }),
-          finalResponse: async () => ({ id: 'ok', status: 'completed' }),
+          finalResponse: async () => ({ id: "ok", status: "completed" }),
         }),
-        retrieve: async (id: string) => ({ id, status: 'completed' }),
+        retrieve: async (id: string) => ({ id, status: "completed" }),
       };
 
       constructor(options: unknown) {
@@ -183,25 +187,28 @@ describe('createDefaultClientFactory', () => {
       }
     }
 
-    vi.doMock('openai', () => ({
+    vi.doMock("openai", () => ({
       __esModule: true,
       default: MockOpenAI,
       AzureOpenAI: MockAzureOpenAI,
     }));
 
-    const { buildAzureResponsesBaseUrl, createDefaultClientFactory } = await import('../../src/oracle/client.js');
-    expect(buildAzureResponsesBaseUrl('https://example.azure.com/')).toBe('https://example.azure.com/openai/v1');
+    const { buildAzureResponsesBaseUrl, createDefaultClientFactory } =
+      await import("../../src/oracle/client.js");
+    expect(buildAzureResponsesBaseUrl("https://example.azure.com/")).toBe(
+      "https://example.azure.com/openai/v1",
+    );
 
     const factory = createDefaultClientFactory();
-    const client = factory('sk-azure', {
-      model: 'gpt-5.1',
-      azure: { endpoint: 'https://example.azure.com/', deployment: 'gpt5' },
+    const client = factory("sk-azure", {
+      model: "gpt-5.1",
+      azure: { endpoint: "https://example.azure.com/", deployment: "gpt5" },
     });
 
     expect(openAIArgs).toEqual([
       expect.objectContaining({
-        apiKey: 'sk-azure',
-        baseURL: 'https://example.azure.com/openai/v1',
+        apiKey: "sk-azure",
+        baseURL: "https://example.azure.com/openai/v1",
       }),
     ]);
     expect(azureArgs).toEqual([]);

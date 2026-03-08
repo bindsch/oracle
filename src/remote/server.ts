@@ -1,26 +1,26 @@
-import http from 'node:http';
-import os from 'node:os';
-import path from 'node:path';
-import net from 'node:net';
-import { randomBytes, randomUUID } from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
-import chalk from 'chalk';
-import type { BrowserAttachment, BrowserLogger, CookieParam } from '../browser/types.js';
-import { runBrowserMode } from '../browserMode.js';
-import type { BrowserRunResult } from '../browserMode.js';
-import type { RemoteRunPayload, RemoteRunEvent } from './types.js';
-import { getCookies, type Cookie } from '@steipete/sweet-cookie';
-import { CHATGPT_URL } from '../browser/constants.js';
-import { getCliVersion } from '../version.js';
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import net from "node:net";
+import { randomBytes, randomUUID } from "node:crypto";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
+import chalk from "chalk";
+import type { BrowserAttachment, BrowserLogger, CookieParam } from "../browser/types.js";
+import { runBrowserMode } from "../browserMode.js";
+import type { BrowserRunResult } from "../browserMode.js";
+import type { RemoteRunPayload, RemoteRunEvent } from "./types.js";
+import { getCookies, type Cookie } from "@steipete/sweet-cookie";
+import { CHATGPT_URL } from "../browser/constants.js";
+import { getCliVersion } from "../version.js";
 import {
   cleanupStaleProfileState,
   readDevToolsPort,
   verifyDevToolsReachable,
   writeChromePid,
   writeDevToolsActivePort,
-} from '../browser/profileState.js';
-import { normalizeChatgptUrl } from '../browser/utils.js';
+} from "../browser/profileState.js";
+import { normalizeChatgptUrl } from "../browser/utils.js";
 
 export interface RemoteServerOptions {
   host?: string;
@@ -44,14 +44,14 @@ interface RemoteServerInstance {
 async function findAvailablePort(): Promise<number> {
   return await new Promise<number>((resolve, reject) => {
     const srv = net.createServer();
-    srv.on('error', (err) => reject(err));
+    srv.on("error", (err) => reject(err));
     srv.listen(0, () => {
       const address = srv.address();
-      if (typeof address === 'object' && address?.port) {
+      if (typeof address === "object" && address?.port) {
         const port = address.port;
         srv.close(() => resolve(port));
       } else {
-        srv.close(() => reject(new Error('Unable to allocate port')));
+        srv.close(() => reject(new Error("Unable to allocate port")));
       }
     });
   });
@@ -64,39 +64,43 @@ export async function createRemoteServer(
   const runBrowser = deps.runBrowser ?? runBrowserMode;
   const server = http.createServer();
   const logger = options.logger ?? console.log;
-  const authToken = options.token ?? randomBytes(16).toString('hex');
+  const authToken = options.token ?? randomBytes(16).toString("hex");
   const startedAt = Date.now();
-  const verbose = process.argv.includes('--verbose') || process.env.ORACLE_SERVE_VERBOSE === '1';
+  const verbose = process.argv.includes("--verbose") || process.env.ORACLE_SERVE_VERBOSE === "1";
   const color = process.stdout.isTTY
     ? (formatter: (msg: string) => string, msg: string) => formatter(msg)
     : (_formatter: (msg: string) => string, msg: string) => msg;
   // Single-flight guard: remote Chrome can only host one run at a time, so we serialize requests.
   let busy = false;
 
-  if (!process.listenerCount('unhandledRejection')) {
-    process.on('unhandledRejection', (reason) => {
-      logger(`Unhandled promise rejection in remote server: ${reason instanceof Error ? reason.message : String(reason)}`);
+  if (!process.listenerCount("unhandledRejection")) {
+    process.on("unhandledRejection", (reason) => {
+      logger(
+        `Unhandled promise rejection in remote server: ${reason instanceof Error ? reason.message : String(reason)}`,
+      );
     });
   }
 
-  server.on('request', async (req, res) => {
-    if (req.method === 'GET' && req.url === '/status') {
-      logger('[serve] Health check /status');
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+  server.on("request", async (req, res) => {
+    if (req.method === "GET" && req.url === "/status") {
+      logger("[serve] Health check /status");
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
       return;
     }
-    if (req.method === 'GET' && req.url === '/health') {
-      const authHeader = req.headers.authorization ?? '';
+    if (req.method === "GET" && req.url === "/health") {
+      const authHeader = req.headers.authorization ?? "";
       if (authHeader !== `Bearer ${authToken}`) {
         if (verbose) {
-          logger(`[serve] Unauthorized /health attempt from ${formatSocket(req)} (missing/invalid token)`);
+          logger(
+            `[serve] Unauthorized /health attempt from ${formatSocket(req)} (missing/invalid token)`,
+          );
         }
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'unauthorized' }));
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "unauthorized" }));
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
           ok: true,
@@ -106,27 +110,31 @@ export async function createRemoteServer(
       );
       return;
     }
-    if (req.method !== 'POST' || req.url !== '/runs') {
+    if (req.method !== "POST" || req.url !== "/runs") {
       res.statusCode = 404;
       res.end();
       return;
     }
 
-    const authHeader = req.headers.authorization ?? '';
+    const authHeader = req.headers.authorization ?? "";
     if (authHeader !== `Bearer ${authToken}`) {
       if (verbose) {
-        logger(`[serve] Unauthorized /runs attempt from ${formatSocket(req)} (missing/invalid token)`);
+        logger(
+          `[serve] Unauthorized /runs attempt from ${formatSocket(req)} (missing/invalid token)`,
+        );
       }
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'unauthorized' }));
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
       return;
     }
     if (busy) {
       if (verbose) {
-        logger(`[serve] Busy: rejecting new run from ${formatSocket(req)} while another run is active`);
+        logger(
+          `[serve] Busy: rejecting new run from ${formatSocket(req)} while another run is active`,
+        );
       }
-      res.writeHead(409, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'busy' }));
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "busy" }));
       return;
     }
     busy = true;
@@ -139,20 +147,22 @@ export async function createRemoteServer(
       if (payload?.browserConfig) {
         payload.browserConfig.url = normalizeChatgptUrl(payload.browserConfig.url, CHATGPT_URL);
       }
-    } catch (_error) {
+    } catch {
       busy = false;
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'invalid_request' }));
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid_request" }));
       return;
     }
 
-    res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+    res.writeHead(200, { "Content-Type": "application/x-ndjson" });
 
     const runId = randomUUID();
-    logger(`[serve] Accepted run ${runId} from ${formatSocket(req)} (prompt ${payload?.prompt?.length ?? 0} chars)`);
+    logger(
+      `[serve] Accepted run ${runId} from ${formatSocket(req)} (prompt ${payload?.prompt?.length ?? 0} chars)`,
+    );
     // Each run gets an isolated temp dir so attachments/logs don't collide.
     const runDir = await mkdtemp(path.join(os.tmpdir(), `oracle-serve-${runId}-`));
-    const attachmentDir = path.join(runDir, 'attachments');
+    const attachmentDir = path.join(runDir, "attachments");
     await mkdir(attachmentDir, { recursive: true });
 
     const sendEvent = (event: RemoteRunEvent) => {
@@ -165,7 +175,7 @@ export async function createRemoteServer(
       for (const [index, attachment] of attachmentsPayload.entries()) {
         const safeName = sanitizeName(attachment.fileName ?? `attachment-${index + 1}`);
         const filePath = path.join(attachmentDir, safeName);
-        await writeFile(filePath, Buffer.from(attachment.contentBase64, 'base64'));
+        await writeFile(filePath, Buffer.from(attachment.contentBase64, "base64"));
         attachments.push({
           path: filePath,
           displayPath: attachment.displayPath,
@@ -175,8 +185,8 @@ export async function createRemoteServer(
 
       // Reuse the existing browser logger surface so clients see the same log stream.
       const automationLogger: BrowserLogger = ((message?: string) => {
-        if (typeof message === 'string') {
-          sendEvent({ type: 'log', message });
+        if (typeof message === "string") {
+          sendEvent({ type: "log", message });
         }
       }) as BrowserLogger;
       automationLogger.verbose = Boolean(payload.options.verbose);
@@ -197,7 +207,7 @@ export async function createRemoteServer(
         payload.browserConfig.keepBrowser = true;
         if (verbose) {
           logger(
-            `[serve] Enforcing manual-login profile at ${options.manualLoginProfileDir ?? 'default'} for remote run ${runId}`,
+            `[serve] Enforcing manual-login profile at ${options.manualLoginProfileDir ?? "default"} for remote run ${runId}`,
           );
         }
       }
@@ -211,11 +221,11 @@ export async function createRemoteServer(
         verbose: payload.options.verbose,
       });
 
-      sendEvent({ type: 'result', result: sanitizeResult(result) });
+      sendEvent({ type: "result", result: sanitizeResult(result) });
       logger(`[serve] Run ${runId} completed in ${Date.now() - runStartedAt}ms`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      sendEvent({ type: 'error', message });
+      sendEvent({ type: "error", message });
       logger(`[serve] Run ${runId} failed after ${Date.now() - runStartedAt}ms: ${message}`);
     } finally {
       busy = false;
@@ -229,20 +239,20 @@ export async function createRemoteServer(
   });
 
   await new Promise<void>((resolve) => {
-    server.listen(options.port ?? 0, options.host ?? '0.0.0.0', () => resolve());
+    server.listen(options.port ?? 0, options.host ?? "0.0.0.0", () => resolve());
   });
 
   const address = server.address();
-  if (!address || typeof address === 'string') {
-    throw new Error('Unable to determine server address.');
+  if (!address || typeof address === "string") {
+    throw new Error("Unable to determine server address.");
   }
   const reachable = formatReachableAddresses(address.address, address.port);
   const primary = reachable[0] ?? `${address.address}:${address.port}`;
   const extras = reachable.slice(1);
-  const also = extras.length ? `, also [${extras.join(', ')}]` : '';
+  const also = extras.length ? `, also [${extras.join(", ")}]` : "";
   logger(color(chalk.cyanBright.bold, `Listening at ${primary}${also}`));
   logger(color(chalk.yellowBright, `Access token: ${authToken}`));
-  logger('Leave this terminal running; press Ctrl+C to stop oracle serve.');
+  logger("Leave this terminal running; press Ctrl+C to stop oracle serve.");
 
   return {
     port: address.port,
@@ -256,15 +266,22 @@ export async function createRemoteServer(
 }
 
 export async function serveRemote(options: RemoteServerOptions = {}): Promise<void> {
-  const manualProfileDir = options.manualLoginProfileDir ?? path.join(os.homedir(), '.oracle', 'browser-profile');
-  const preferManualLogin = options.manualLoginDefault || process.platform === 'win32' || isWsl();
+  const manualProfileDir =
+    options.manualLoginProfileDir ?? path.join(os.homedir(), ".oracle", "browser-profile");
+  const preferManualLogin = options.manualLoginDefault || process.platform === "win32" || isWsl();
   let cookies: CookieParam[] | null = null;
   let opened = false;
 
-  if (isWsl() && process.env.ORACLE_ALLOW_WSL_SERVE !== '1') {
-    console.log('WSL detected. For reliable browser automation, run `oracle serve` from Windows PowerShell/Command Prompt so we can use your Windows Chrome profile.');
-    console.log('If you want to stay in WSL anyway, set ORACLE_ALLOW_WSL_SERVE=1 and ensure a Linux Chrome is installed, then rerun.');
-    console.log('Alternatively, start Windows Chrome with --remote-debugging-port=9222 and use `--remote-chrome <windows-ip>:9222`.');
+  if (isWsl() && process.env.ORACLE_ALLOW_WSL_SERVE !== "1") {
+    console.log(
+      "WSL detected. For reliable browser automation, run `oracle serve` from Windows PowerShell/Command Prompt so we can use your Windows Chrome profile.",
+    );
+    console.log(
+      "If you want to stay in WSL anyway, set ORACLE_ALLOW_WSL_SERVE=1 and ensure a Linux Chrome is installed, then rerun.",
+    );
+    console.log(
+      "Alternatively, start Windows Chrome with --remote-debugging-port=9222 and use `--remote-chrome <windows-ip>:9222`.",
+    );
     return;
   }
 
@@ -276,7 +293,7 @@ export async function serveRemote(options: RemoteServerOptions = {}): Promise<vo
   }
 
   if (!cookies || cookies.length === 0) {
-    console.log('No ChatGPT cookies detected on this host.');
+    console.log("No ChatGPT cookies detected on this host.");
     if (preferManualLogin) {
       await mkdir(manualProfileDir, { recursive: true });
       console.log(
@@ -286,27 +303,39 @@ export async function serveRemote(options: RemoteServerOptions = {}): Promise<vo
       if (existingPort) {
         const reachable = await verifyDevToolsReachable({ port: existingPort });
         if (reachable.ok) {
-          console.log('Detected an existing automation Chrome session; will reuse it for manual login.');
+          console.log(
+            "Detected an existing automation Chrome session; will reuse it for manual login.",
+          );
         } else {
           console.log(
             `Found stale DevToolsActivePort (port ${existingPort}, ${reachable.error}); launching a fresh manual-login Chrome.`,
           );
-          await cleanupStaleProfileState(manualProfileDir, console.log, { lockRemovalMode: 'never' });
+          await cleanupStaleProfileState(manualProfileDir, console.log, {
+            lockRemovalMode: "never",
+          });
           void launchManualLoginChrome(manualProfileDir, CHATGPT_URL, console.log);
         }
       } else {
         void launchManualLoginChrome(manualProfileDir, CHATGPT_URL, console.log);
       }
     } else if (opened) {
-      console.log('Opened chatgpt.com for login. Sign in, then restart `oracle serve` to continue.');
+      console.log(
+        "Opened chatgpt.com for login. Sign in, then restart `oracle serve` to continue.",
+      );
       return;
     } else {
-      console.log('Please open https://chatgpt.com/ in this host\'s browser and sign in; then rerun.');
-      console.log('Tip: install xdg-utils (xdg-open) to enable automatic browser opening on Linux/WSL.');
+      console.log(
+        "Please open https://chatgpt.com/ in this host's browser and sign in; then rerun.",
+      );
+      console.log(
+        "Tip: install xdg-utils (xdg-open) to enable automatic browser opening on Linux/WSL.",
+      );
       return;
     }
   } else {
-    console.log(`Detected ${cookies.length} ChatGPT cookies on this host; runs will reuse this session.`);
+    console.log(
+      `Detected ${cookies.length} ChatGPT cookies on this host; runs will reuse this session.`,
+    );
   }
 
   const server = await createRemoteServer({
@@ -316,27 +345,27 @@ export async function serveRemote(options: RemoteServerOptions = {}): Promise<vo
   });
   await new Promise<void>((resolve) => {
     const shutdown = () => {
-      console.log('Shutting down remote service...');
+      console.log("Shutting down remote service...");
       server
         .close()
-        .catch((error) => console.error('Failed to close remote server:', error))
+        .catch((error) => console.error("Failed to close remote server:", error))
         .finally(() => resolve());
     };
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
   });
 }
 
 async function readRequestBody(req: http.IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
-  return Buffer.concat(chunks).toString('utf8');
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 function sanitizeName(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return raw.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
 function sanitizeResult(result: BrowserRunResult): BrowserRunResult {
@@ -355,16 +384,16 @@ function sanitizeResult(result: BrowserRunResult): BrowserRunResult {
 
 function formatSocket(req: http.IncomingMessage): string {
   const socket = req.socket;
-  const host = socket.remoteAddress ?? 'unknown';
-  const port = socket.remotePort ?? '0';
+  const host = socket.remoteAddress ?? "unknown";
+  const port = socket.remotePort ?? "0";
   return `${host}:${port}`;
 }
 
 function formatReachableAddresses(bindAddress: string, port: number): string[] {
   const ipv4: string[] = [];
   const ipv6: string[] = [];
-  if (bindAddress && bindAddress !== '::' && bindAddress !== '0.0.0.0') {
-    if (bindAddress.includes(':')) {
+  if (bindAddress && bindAddress !== "::" && bindAddress !== "0.0.0.0") {
+    if (bindAddress.includes(":")) {
       ipv6.push(`[${bindAddress}]:${port}`);
     } else {
       ipv4.push(`${bindAddress}:${port}`);
@@ -375,17 +404,26 @@ function formatReachableAddresses(bindAddress: string, port: number): string[] {
     for (const entries of Object.values(interfaces)) {
       if (!entries) continue;
       for (const entry of entries) {
-        const iface = entry as { family?: string | number; address: string; internal?: boolean } | undefined;
+        const iface = entry as
+          | { family?: string | number; address: string; internal?: boolean }
+          | undefined;
         if (!iface || iface.internal) continue;
-        const family = typeof iface.family === 'string' ? iface.family : iface.family === 4 ? 'IPv4' : iface.family === 6 ? 'IPv6' : '';
-        if (family === 'IPv4') {
+        const family =
+          typeof iface.family === "string"
+            ? iface.family
+            : iface.family === 4
+              ? "IPv4"
+              : iface.family === 6
+                ? "IPv6"
+                : "";
+        if (family === "IPv4") {
           const addr = iface.address;
-          if (addr.startsWith('127.')) continue;
-          if (addr.startsWith('169.254.')) continue; // APIPA/link-local
+          if (addr.startsWith("127.")) continue;
+          if (addr.startsWith("169.254.")) continue; // APIPA/link-local
           ipv4.push(`${addr}:${port}`);
-        } else if (family === 'IPv6') {
+        } else if (family === "IPv6") {
           const addr = iface.address.toLowerCase();
-          if (addr === '::1' || addr.startsWith('fe80:')) continue; // loopback/link-local
+          if (addr === "::1" || addr.startsWith("fe80:")) continue; // loopback/link-local
           ipv6.push(`[${iface.address}]:${port}`);
         }
       }
@@ -397,22 +435,25 @@ function formatReachableAddresses(bindAddress: string, port: number): string[] {
   return Array.from(new Set([...ipv4, ...ipv6]));
 }
 
-async function loadLocalChatgptCookies(logger: (message: string) => void, targetUrl: string): Promise<{ cookies: CookieParam[] | null; opened: boolean }> {
+async function loadLocalChatgptCookies(
+  logger: (message: string) => void,
+  targetUrl: string,
+): Promise<{ cookies: CookieParam[] | null; opened: boolean }> {
   try {
-    logger('Loading ChatGPT cookies from this host\'s Chrome profile...');
+    logger("Loading ChatGPT cookies from this host's Chrome profile...");
     const { cookies: rawCookies, warnings } = await getCookies({
       url: targetUrl,
-      browsers: ['chrome'],
-      mode: 'merge',
-      chromeProfile: 'Default',
+      browsers: ["chrome"],
+      mode: "merge",
+      chromeProfile: "Default",
       timeoutMs: 5_000,
     });
     if (warnings.length) {
-      logger(`Cookie warnings:\n- ${warnings.join('\n- ')}`);
+      logger(`Cookie warnings:\n- ${warnings.join("\n- ")}`);
     }
     const cookies = rawCookies.map(toCdpCookie).filter((c): c is CookieParam => Boolean(c));
     if (!cookies || cookies.length === 0) {
-      logger('No local ChatGPT cookies found on this host. Please log in once; opening ChatGPT...');
+      logger("No local ChatGPT cookies found on this host. Please log in once; opening ChatGPT...");
       const opened = triggerLocalLoginPrompt(logger, targetUrl);
       return { cookies: null, opened };
     }
@@ -423,13 +464,15 @@ async function loadLocalChatgptCookies(logger: (message: string) => void, target
     const missingDbMatch = message.match(/Unable to locate Chrome cookie DB at (.+?)(?:\.|$)/);
     if (missingDbMatch) {
       const lookedPath = missingDbMatch[1];
-      logger(`Chrome cookies not found at ${lookedPath}. Set --browser-cookie-path to your Chrome profile or log in manually.`);
+      logger(
+        `Chrome cookies not found at ${lookedPath}. Set --browser-cookie-path to your Chrome profile or log in manually.`,
+      );
     } else {
       logger(`Unable to load local ChatGPT cookies on this host: ${message}`);
     }
-    if (process.platform === 'linux' && isWsl()) {
+    if (process.platform === "linux" && isWsl()) {
       logger(
-        'WSL hint: Chrome lives under /mnt/c/Users/<you>/AppData/Local/Google/Chrome/User Data/Default; pass --browser-cookie-path to that directory if auto-detect fails.',
+        "WSL hint: Chrome lives under /mnt/c/Users/<you>/AppData/Local/Google/Chrome/User Data/Default; pass --browser-cookie-path to that directory if auto-detect fails.",
       );
     }
     const opened = triggerLocalLoginPrompt(logger, targetUrl);
@@ -443,60 +486,67 @@ function toCdpCookie(cookie: Cookie): CookieParam | null {
     name: cookie.name,
     value: cookie.value,
     domain: cookie.domain,
-    path: cookie.path ?? '/',
+    path: cookie.path ?? "/",
     secure: cookie.secure ?? true,
     httpOnly: cookie.httpOnly ?? false,
   };
-  if (typeof cookie.expires === 'number') out.expires = cookie.expires;
-  if (cookie.sameSite === 'Lax' || cookie.sameSite === 'Strict' || cookie.sameSite === 'None') {
+  if (typeof cookie.expires === "number") out.expires = cookie.expires;
+  if (cookie.sameSite === "Lax" || cookie.sameSite === "Strict" || cookie.sameSite === "None") {
     out.sameSite = cookie.sameSite;
   }
   return out;
 }
 
 function triggerLocalLoginPrompt(logger: (message: string) => void, url: string): boolean {
-  const verbose = process.argv.includes('--verbose') || process.env.ORACLE_SERVE_VERBOSE === '1';
+  const verbose = process.argv.includes("--verbose") || process.env.ORACLE_SERVE_VERBOSE === "1";
   const openers: Array<{ cmd: string; args?: string[] }> = [];
 
-  if (process.platform === 'darwin') {
-    openers.push({ cmd: 'open' });
-  } else if (process.platform === 'win32') {
-    openers.push({ cmd: 'start' });
+  if (process.platform === "darwin") {
+    openers.push({ cmd: "open" });
+  } else if (process.platform === "win32") {
+    openers.push({ cmd: "start" });
   } else {
     if (isWsl()) {
       // Prefer wslview when available, then fall back to Windows start.exe to open in the host browser.
-      openers.push({ cmd: 'wslview' });
-      openers.push({ cmd: 'cmd.exe', args: ['/c', 'start', '', url] });
+      openers.push({ cmd: "wslview" });
+      openers.push({ cmd: "cmd.exe", args: ["/c", "start", "", url] });
     }
-    openers.push({ cmd: 'xdg-open' });
+    openers.push({ cmd: "xdg-open" });
   }
 
   // Add a cross-platform, low-friction fallback when nothing above is available.
-  openers.push({ cmd: 'sensible-browser' });
+  openers.push({ cmd: "sensible-browser" });
 
   try {
     // Fire and forget; user completes login in the opened browser window.
     if (verbose) {
-      logger(`[serve] Login opener candidates: ${openers.map((o) => o.cmd).join(', ')}`);
+      logger(`[serve] Login opener candidates: ${openers.map((o) => o.cmd).join(", ")}`);
     }
     const candidate = openers.find((opener) => canSpawn(opener.cmd));
     if (candidate) {
-      const child = spawn(candidate.cmd, candidate.args ?? [url], { stdio: 'ignore', detached: true });
+      const child = spawn(candidate.cmd, candidate.args ?? [url], {
+        stdio: "ignore",
+        detached: true,
+      });
       child.unref();
-      child.once('error', (error) => {
+      child.once("error", (error) => {
         if (verbose) {
-          logger(`[serve] Opener ${candidate.cmd} failed: ${error instanceof Error ? error.message : String(error)}`);
+          logger(
+            `[serve] Opener ${candidate.cmd} failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
         logger(`Please open ${url} in this host's browser and sign in; then rerun.`);
       });
-      logger(`Opened ${url} locally via ${candidate.cmd}. Please sign in; subsequent runs will reuse the session.`);
+      logger(
+        `Opened ${url} locally via ${candidate.cmd}. Please sign in; subsequent runs will reuse the session.`,
+      );
       if (verbose && candidate.args) {
-        logger(`[serve] Opener args: ${candidate.args.join(' ')}`);
+        logger(`[serve] Opener args: ${candidate.args.join(" ")}`);
       }
       return true;
     }
     if (verbose) {
-      logger('[serve] No available opener found; prompting manual login.');
+      logger("[serve] No available opener found; prompting manual login.");
     }
     return false;
   } catch {
@@ -505,29 +555,33 @@ function triggerLocalLoginPrompt(logger: (message: string) => void, url: string)
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') return false;
-  return Boolean(process.env.WSL_DISTRO_NAME || os.release().toLowerCase().includes('microsoft'));
+  if (process.platform !== "linux") return false;
+  return Boolean(process.env.WSL_DISTRO_NAME || os.release().toLowerCase().includes("microsoft"));
 }
 
 function canSpawn(cmd: string): boolean {
   if (!cmd) return false;
   try {
-    if (process.platform === 'win32') {
+    if (process.platform === "win32") {
       // `where` returns non-zero when the command is not found.
-      const result = spawnSync('where', [cmd], { stdio: 'ignore' });
+      const result = spawnSync("where", [cmd], { stdio: "ignore" });
       return result.status === 0;
     }
     // `command -v` is a shell builtin; run through sh. Fallback to `which`.
-    const shResult = spawnSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' });
+    const shResult = spawnSync("sh", ["-c", `command -v ${cmd}`], { stdio: "ignore" });
     if (shResult.status === 0) return true;
-    const whichResult = spawnSync('which', [cmd], { stdio: 'ignore' });
+    const whichResult = spawnSync("which", [cmd], { stdio: "ignore" });
     return whichResult.status === 0;
   } catch {
     return false;
   }
 }
 
-async function launchManualLoginChrome(profileDir: string, url: string, logger: (msg: string) => void): Promise<void> {
+async function launchManualLoginChrome(
+  profileDir: string,
+  url: string,
+  logger: (msg: string) => void,
+): Promise<void> {
   const timeoutMs = 7000;
   let finished = false;
   const timeout = setTimeout(() => {
@@ -539,7 +593,7 @@ async function launchManualLoginChrome(profileDir: string, url: string, logger: 
   }, timeoutMs);
 
   try {
-    const chromeLauncher = await import('chrome-launcher');
+    const chromeLauncher = await import("chrome-launcher");
     const { launch } = chromeLauncher;
     const debugPort = await findAvailablePort();
     logger(`Planned manual-login Chrome DevTools port: ${debugPort}`);
@@ -550,10 +604,10 @@ async function launchManualLoginChrome(profileDir: string, url: string, logger: 
       userDataDir: profileDir,
       startingUrl: url,
       chromeFlags: [
-        '--no-first-run',
-        '--no-default-browser-check',
+        "--no-first-run",
+        "--no-default-browser-check",
         `--user-data-dir=${profileDir}`,
-        '--remote-allow-origins=*',
+        "--remote-allow-origins=*",
         `--remote-debugging-port=${debugPort}`, // ensure DevToolsActivePort is written even on Windows
       ],
     });
@@ -568,13 +622,17 @@ async function launchManualLoginChrome(profileDir: string, url: string, logger: 
       logger(`Manual-login Chrome DevTools port: ${chosenPort}`);
       logger(`If needed, DevTools JSON at http://127.0.0.1:${chosenPort}/json/version`);
     } else {
-      logger('Warning: unable to determine manual-login Chrome DevTools port. Remote runs may fail to attach.');
+      logger(
+        "Warning: unable to determine manual-login Chrome DevTools port. Remote runs may fail to attach.",
+      );
     }
 
     finished = true;
     clearTimeout(timeout);
-    const portInfo = chosenPort ? ` (DevTools port ${chosenPort})` : '';
-    logger(`Opened Chrome with manual-login profile at ${profileDir}${portInfo}. Complete login, then rerun remote sessions.`);
+    const portInfo = chosenPort ? ` (DevTools port ${chosenPort})` : "";
+    logger(
+      `Opened Chrome with manual-login profile at ${profileDir}${portInfo}. Complete login, then rerun remote sessions.`,
+    );
   } catch (error) {
     finished = true;
     clearTimeout(timeout);

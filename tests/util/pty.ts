@@ -1,6 +1,6 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 // Minimal PTY helper shared across interactive tests (TUI + streaming).
 // Third-party modules ship without types; keep the surface tiny and typed as any.
@@ -9,15 +9,15 @@ let pty: any | null = null;
 try {
   // Prefer the new package, fall back to the legacy one.
   // biome-ignore lint/suspicious/noExplicitAny: PTY modules do not provide types
-  const mod: any = await import('@cdktf/node-pty-prebuilt-multiarch').catch(() =>
-    import('@homebridge/node-pty-prebuilt-multiarch'),
+  const mod: any = await import("@cdktf/node-pty-prebuilt-multiarch").catch(
+    () => import("@homebridge/node-pty-prebuilt-multiarch"),
   );
   pty = mod.default ?? mod;
 } catch {
   pty = null;
 }
 
-export const ptyAvailable = Boolean(pty) && process.platform !== 'linux';
+export const ptyAvailable = Boolean(pty) && process.platform !== "linux";
 
 export type PtyStep = {
   /** Substring or regex that must appear in the accumulated output to trigger this step. */
@@ -53,34 +53,34 @@ export async function runOracleTuiWithPty({
   killAfterMs?: number;
 }): Promise<RunPtyResult> {
   if (!pty) {
-    throw new Error('PTY module not available');
+    throw new Error("PTY module not available");
   }
 
-  const home = homeDir ?? (await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-tui-')));
-  const entry = path.join(process.cwd(), 'dist/bin/oracle-cli.js');
+  const home = homeDir ?? (await fs.mkdtemp(path.join(os.tmpdir(), "oracle-tui-")));
+  const entry = path.join(process.cwd(), "dist/bin/oracle-cli.js");
   const env = {
     ...process.env,
     // Uppercase env names are intentional for CLI behavior.
     // biome-ignore lint/style/useNamingConvention: env keys stay uppercase
-    ORACLE_FORCE_TUI: '1',
+    ORACLE_FORCE_TUI: "1",
     // biome-ignore lint/style/useNamingConvention: env keys stay uppercase
     ORACLE_HOME_DIR: home,
     // biome-ignore lint/style/useNamingConvention: env keys stay uppercase
-    FORCE_COLOR: '1',
+    FORCE_COLOR: "1",
     // biome-ignore lint/style/useNamingConvention: env keys stay uppercase
-    CI: '',
+    CI: "",
     ...envOverrides,
   } satisfies Record<string, string | undefined>;
 
   const ps = pty.spawn(process.execPath, [entry], {
-    name: 'xterm-color',
+    name: "xterm-color",
     cols,
     rows,
     cwd: process.cwd(),
     env,
   });
 
-  let output = '';
+  let output = "";
   const pending = [...steps];
   const startedAt = Date.now();
 
@@ -88,7 +88,7 @@ export async function runOracleTuiWithPty({
     while (pending.length > 0) {
       const step = pending[0];
       const matched =
-        typeof step.match === 'string' ? output.includes(step.match) : step.match.test(output);
+        typeof step.match === "string" ? output.includes(step.match) : step.match.test(output);
       const elapsed = Date.now() - startedAt;
       // Fall back to a time-based trigger so the PTY never hangs if the prompt text shifts.
       if (!matched && elapsed < 1_000) {
@@ -113,7 +113,7 @@ export async function runOracleTuiWithPty({
   const flushInterval = setInterval(maybeFlushSteps, 200);
 
   const killTimer =
-    typeof killAfterMs === 'number' && killAfterMs > 0
+    typeof killAfterMs === "number" && killAfterMs > 0
       ? setTimeout(() => {
           try {
             ps.kill();

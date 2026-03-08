@@ -1,8 +1,8 @@
-import type { RunOracleOptions } from '../oracle.js';
-import type { EngineMode } from '../cli/engine.js';
-import type { UserConfig } from '../config.js';
-import { resolveRunOptionsFromConfig } from '../cli/runOptions.js';
-import { Launcher } from 'chrome-launcher';
+import type { RunOracleOptions } from "../oracle.js";
+import type { EngineMode } from "../cli/engine.js";
+import type { UserConfig } from "../config.js";
+import { resolveRunOptionsFromConfig } from "../cli/runOptions.js";
+import { Launcher } from "chrome-launcher";
 
 export function mapConsultToRunOptions({
   prompt,
@@ -22,7 +22,7 @@ export function mapConsultToRunOptions({
   models?: string[];
   engine?: EngineMode;
   search?: boolean;
-  browserAttachments?: 'auto' | 'never' | 'always';
+  browserAttachments?: "auto" | "never" | "always";
   browserBundleFiles?: boolean;
   userConfig?: UserConfig;
   env?: NodeJS.ProcessEnv;
@@ -33,21 +33,32 @@ export function mapConsultToRunOptions({
     Array.isArray(models) && models.length > 0
       ? [model, ...models].filter((entry): entry is string => Boolean(entry?.trim()))
       : models;
-  const result = resolveRunOptionsFromConfig({ prompt, files, model, models: mergedModels, engine, userConfig, env });
-  if (typeof search === 'boolean') {
+  const result = resolveRunOptionsFromConfig({
+    prompt,
+    files,
+    model,
+    models: mergedModels,
+    engine,
+    userConfig,
+    env,
+  });
+  if (typeof search === "boolean") {
     result.runOptions.search = search;
   }
   if (browserAttachments) {
     result.runOptions.browserAttachments = browserAttachments;
   }
-  if (typeof browserBundleFiles === 'boolean') {
+  if (typeof browserBundleFiles === "boolean") {
     result.runOptions.browserBundleFiles = browserBundleFiles;
   }
   return result;
 }
 
-export function ensureBrowserAvailable(engine: EngineMode, options?: { remoteHost?: string | null }): string | null {
-  if (engine !== 'browser') {
+export function ensureBrowserAvailable(
+  engine: EngineMode,
+  options?: { remoteHost?: string | null },
+): string | null {
+  if (engine !== "browser") {
     return null;
   }
   const remoteHost = options?.remoteHost?.trim() || process.env.ORACLE_REMOTE_HOST?.trim();
@@ -59,7 +70,7 @@ export function ensureBrowserAvailable(engine: EngineMode, options?: { remoteHos
   }
   const found = Launcher.getFirstInstallation();
   if (!found) {
-    return 'Browser engine unavailable: no Chrome installation found and CHROME_PATH is unset.';
+    return "Browser engine unavailable: no Chrome installation found and CHROME_PATH is unset.";
   }
   return null;
 }

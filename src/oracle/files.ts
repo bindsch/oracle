@@ -1,12 +1,21 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import fg from 'fast-glob';
-import type { FileContent, FileSection, MinimalFsModule, FsStats } from './types.js';
-import { FileValidationError } from './errors.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import fg from "fast-glob";
+import type { FileContent, FileSection, MinimalFsModule, FsStats } from "./types.js";
+import { FileValidationError } from "./errors.js";
 
 export const DEFAULT_MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 const DEFAULT_FS = fs as MinimalFsModule;
-const DEFAULT_IGNORED_DIRS = ['node_modules', 'dist', 'coverage', '.git', '.turbo', '.next', 'build', 'tmp'];
+const DEFAULT_IGNORED_DIRS = new Set([
+  "node_modules",
+  "dist",
+  "coverage",
+  ".git",
+  ".turbo",
+  ".next",
+  "build",
+  "tmp",
+]);
 
 interface PartitionedFiles {
   globPatterns: string[];
@@ -49,21 +58,27 @@ export async function readFiles(
     }
   } else {
     if (partitioned.globPatterns.length > 0 || partitioned.excludePatterns.length > 0) {
-      throw new Error('Glob patterns and exclusions are only supported for on-disk files.');
+      throw new Error("Glob patterns and exclusions are only supported for on-disk files.");
     }
     candidatePaths = await expandWithCustomFs(partitioned, fsModule);
   }
 
   const allowedLiteralDirs = partitioned.literalDirectories
     .map((dir) => path.resolve(dir))
-    .filter((dir) => DEFAULT_IGNORED_DIRS.includes(path.basename(dir)));
+    .filter((dir) => DEFAULT_IGNORED_DIRS.has(path.basename(dir)));
   const allowedLiteralFiles = partitioned.literalFiles.map((file) => path.resolve(file));
   const resolvedLiteralDirs = new Set(allowedLiteralDirs);
   const allowedPaths = new Set([...allowedLiteralDirs, ...allowedLiteralFiles]);
   const ignoredWhitelist = await buildIgnoredWhitelist(candidatePaths, cwd, fsModule);
   const ignoredLog = new Set<string>();
   const filteredCandidates = candidatePaths.filter((filePath) => {
-    const ignoredDir = findIgnoredAncestor(filePath, cwd, resolvedLiteralDirs, allowedPaths, ignoredWhitelist);
+    const ignoredDir = findIgnoredAncestor(
+      filePath,
+      cwd,
+      resolvedLiteralDirs,
+      allowedPaths,
+      ignoredWhitelist,
+    );
     if (!ignoredDir) {
       return true;
     }
@@ -77,7 +92,7 @@ export async function readFiles(
   });
 
   if (filteredCandidates.length === 0) {
-    throw new FileValidationError('No files matched the provided --file patterns.', {
+    throw new FileValidationError("No files matched the provided --file patterns.", {
       patterns: partitioned.globPatterns,
       excludes: partitioned.excludePatterns,
     });
@@ -90,12 +105,16 @@ export async function readFiles(
     try {
       stats = await fsModule.stat(filePath);
     } catch (error) {
-      throw new FileValidationError(`Missing file or directory: ${relativePath(filePath, cwd)}`, { path: filePath }, error);
+      throw new FileValidationError(
+        `Missing file or directory: ${relativePath(filePath, cwd)}`,
+        { path: filePath },
+        error,
+      );
     }
     if (!stats.isFile()) {
       continue;
     }
-    if (maxFileSizeBytes && typeof stats.size === 'number' && stats.size > maxFileSizeBytes) {
+    if (maxFileSizeBytes && typeof stats.size === "number" && stats.size > maxFileSizeBytes) {
       const relative = path.relative(cwd, filePath) || filePath;
       oversized.push(`${relative} (${formatBytes(stats.size)})`);
       continue;
@@ -104,15 +123,18 @@ export async function readFiles(
   }
 
   if (oversized.length > 0) {
-    throw new FileValidationError(`The following files exceed the ${formatBytes(maxFileSizeBytes)} limit:\n- ${oversized.join('\n- ')}`, {
-      files: oversized,
-      limitBytes: maxFileSizeBytes,
-    });
+    throw new FileValidationError(
+      `The following files exceed the ${formatBytes(maxFileSizeBytes)} limit:\n- ${oversized.join("\n- ")}`,
+      {
+        files: oversized,
+        limitBytes: maxFileSizeBytes,
+      },
+    );
   }
 
   const files: FileContent[] = [];
   for (const filePath of accepted) {
-    const content = readContents ? await fsModule.readFile(filePath, 'utf8') : '';
+    const content = readContents ? await fsModule.readFile(filePath, "utf8") : "";
     files.push({ path: filePath, content });
   }
   return files;
@@ -135,7 +157,7 @@ async function partitionFileInputs(
     if (!raw) {
       continue;
     }
-    if (raw.startsWith('!')) {
+    if (raw.startsWith("!")) {
       const normalized = normalizeGlob(raw.slice(1), cwd);
       if (normalized) {
         result.excludePatterns.push(normalized);
@@ -153,7 +175,11 @@ async function partitionFileInputs(
     try {
       stats = await fsModule.stat(absolutePath);
     } catch (error) {
-      throw new FileValidationError(`Missing file or directory: ${raw}`, { path: absolutePath }, error);
+      throw new FileValidationError(
+        `Missing file or directory: ${raw}`,
+        { path: absolutePath },
+        error,
+      );
     }
     if (stats.isDirectory()) {
       result.literalDirectories.push(absolutePath);
@@ -171,7 +197,9 @@ async function expandWithNativeGlob(partitioned: PartitionedFiles, cwd: string):
   const patterns = [
     ...partitioned.globPatterns,
     ...partitioned.literalFiles.map((absPath) => toPosixRelativeOrBasename(absPath, cwd)),
-    ...partitioned.literalDirectories.map((absDir) => makeDirectoryPattern(toPosixRelative(absDir, cwd))),
+    ...partitioned.literalDirectories.map((absDir) =>
+      makeDirectoryPattern(toPosixRelative(absDir, cwd)),
+    ),
   ].filter(Boolean);
 
   if (patterns.length === 0) {
@@ -193,14 +221,16 @@ async function expandWithNativeGlob(partitioned: PartitionedFiles, cwd: string):
   })) as string[];
   const resolved = matches.map((match) => path.resolve(cwd, match));
   const filtered = resolved.filter((filePath) => !isGitignored(filePath, gitignoreSets));
-  const finalFiles = dotfileOptIn ? filtered : filtered.filter((filePath) => !path.basename(filePath).startsWith('.'));
+  const finalFiles = dotfileOptIn
+    ? filtered
+    : filtered.filter((filePath) => !path.basename(filePath).startsWith("."));
   return Array.from(new Set(finalFiles));
 }
 
 type GitignoreSet = { dir: string; patterns: string[] };
 
 async function loadGitignoreSets(cwd: string): Promise<GitignoreSet[]> {
-  const gitignorePaths = await fg('**/.gitignore', {
+  const gitignorePaths = await fg("**/.gitignore", {
     cwd,
     dot: true,
     absolute: true,
@@ -211,11 +241,11 @@ async function loadGitignoreSets(cwd: string): Promise<GitignoreSet[]> {
   const sets: GitignoreSet[] = [];
   for (const filePath of gitignorePaths) {
     try {
-      const raw = await fs.readFile(filePath, 'utf8');
+      const raw = await fs.readFile(filePath, "utf8");
       const patterns = raw
-        .split('\n')
+        .split("\n")
         .map((line) => line.trim())
-        .filter((line) => line.length > 0 && !line.startsWith('#'));
+        .filter((line) => line.length > 0 && !line.startsWith("#"));
       if (patterns.length > 0) {
         sets.push({ dir: path.dirname(filePath), patterns });
       }
@@ -240,7 +270,11 @@ function isGitignored(filePath: string, sets: GitignoreSet[]): boolean {
   return false;
 }
 
-async function buildIgnoredWhitelist(filePaths: string[], cwd: string, fsModule: MinimalFsModule): Promise<Set<string>> {
+async function buildIgnoredWhitelist(
+  filePaths: string[],
+  cwd: string,
+  fsModule: MinimalFsModule,
+): Promise<Set<string>> {
   const whitelist = new Set<string>();
   for (const filePath of filePaths) {
     const absolute = path.resolve(filePath);
@@ -248,7 +282,7 @@ async function buildIgnoredWhitelist(filePaths: string[], cwd: string, fsModule:
     const parts = rel.split(path.sep).filter(Boolean);
     for (let i = 0; i < parts.length - 1; i += 1) {
       const part = parts[i];
-      if (!DEFAULT_IGNORED_DIRS.includes(part)) {
+      if (!DEFAULT_IGNORED_DIRS.has(part)) {
         continue;
       }
       const dirPath = path.resolve(cwd, ...parts.slice(0, i + 1));
@@ -256,7 +290,7 @@ async function buildIgnoredWhitelist(filePaths: string[], cwd: string, fsModule:
         continue;
       }
       try {
-        const stats = await fsModule.stat(path.join(dirPath, '.gitignore'));
+        const stats = await fsModule.stat(path.join(dirPath, ".gitignore"));
         if (stats.isFile()) {
           whitelist.add(dirPath);
         }
@@ -276,14 +310,18 @@ function findIgnoredAncestor(
   ignoredWhitelist: Set<string>,
 ): string | null {
   const absolute = path.resolve(filePath);
-  if (Array.from(allowedPaths).some((allowed) => absolute === allowed || absolute.startsWith(`${allowed}${path.sep}`))) {
+  if (
+    Array.from(allowedPaths).some(
+      (allowed) => absolute === allowed || absolute.startsWith(`${allowed}${path.sep}`),
+    )
+  ) {
     return null; // explicitly requested path overrides default ignore when the ignored dir itself was passed
   }
   const rel = path.relative(cwd, absolute);
   const parts = rel.split(path.sep);
   for (let idx = 0; idx < parts.length; idx += 1) {
     const part = parts[idx];
-    if (!DEFAULT_IGNORED_DIRS.includes(part)) {
+    if (!DEFAULT_IGNORED_DIRS.has(part)) {
       continue;
     }
     const ignoredDir = path.resolve(cwd, parts.slice(0, idx + 1).join(path.sep));
@@ -303,9 +341,9 @@ function matchesPattern(relativePath: string, pattern: string): boolean {
   if (!pattern) {
     return false;
   }
-  const normalized = pattern.replace(/\\+/g, '/');
+  const normalized = pattern.replace(/\\+/g, "/");
   // Directory rule
-  if (normalized.endsWith('/')) {
+  if (normalized.endsWith("/")) {
     const dir = normalized.slice(0, -1);
     return relativePath === dir || relativePath.startsWith(`${dir}/`);
   }
@@ -315,20 +353,21 @@ function matchesPattern(relativePath: string, pattern: string): boolean {
 }
 
 function globToRegex(pattern: string): RegExp {
-  const withMarkers = pattern.replace(/\*\*/g, '§§DOUBLESTAR§§').replace(/\*/g, '§§SINGLESTAR§§');
-  const escaped = withMarkers.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-  const restored = escaped
-    .replace(/§§DOUBLESTAR§§/g, '.*')
-    .replace(/§§SINGLESTAR§§/g, '[^/]*');
+  const withMarkers = pattern.replace(/\*\*/g, "§§DOUBLESTAR§§").replace(/\*/g, "§§SINGLESTAR§§");
+  const escaped = withMarkers.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  const restored = escaped.replace(/§§DOUBLESTAR§§/g, ".*").replace(/§§SINGLESTAR§§/g, "[^/]*");
   return new RegExp(`^${restored}$`);
 }
 
 function includesDotfileSegment(pattern: string): boolean {
-  const segments = pattern.split('/');
-  return segments.some((segment) => segment.startsWith('.') && segment.length > 1);
+  const segments = pattern.split("/");
+  return segments.some((segment) => segment.startsWith(".") && segment.length > 1);
 }
 
-async function expandWithCustomFs(partitioned: PartitionedFiles, fsModule: MinimalFsModule): Promise<string[]> {
+async function expandWithCustomFs(
+  partitioned: PartitionedFiles,
+  fsModule: MinimalFsModule,
+): Promise<string[]> {
   const paths = new Set<string>();
   partitioned.literalFiles.forEach((file) => {
     paths.add(file);
@@ -342,7 +381,10 @@ async function expandWithCustomFs(partitioned: PartitionedFiles, fsModule: Minim
   return Array.from(paths);
 }
 
-async function expandDirectoryRecursive(directory: string, fsModule: MinimalFsModule): Promise<string[]> {
+async function expandDirectoryRecursive(
+  directory: string,
+  fsModule: MinimalFsModule,
+): Promise<string[]> {
   const entries = await fsModule.readdir(directory);
   const results: string[] = [];
   for (const entry of entries) {
@@ -358,44 +400,44 @@ async function expandDirectoryRecursive(directory: string, fsModule: MinimalFsMo
 }
 
 function makeDirectoryPattern(relative: string): string {
-  if (relative === '.' || relative === '') {
-    return '**/*';
+  if (relative === "." || relative === "") {
+    return "**/*";
   }
   return `${stripTrailingSlashes(relative)}/**/*`;
 }
 
 function isNativeFsModule(fsModule: MinimalFsModule): boolean {
   return (
-    ((fsModule as unknown as Record<string, unknown>).__nativeFs === true ||
+    (fsModule as unknown as Record<string, unknown>).__nativeFs === true ||
     (fsModule.readFile === DEFAULT_FS.readFile &&
       fsModule.stat === DEFAULT_FS.stat &&
-      fsModule.readdir === DEFAULT_FS.readdir))
+      fsModule.readdir === DEFAULT_FS.readdir)
   );
 }
 
 function normalizeGlob(pattern: string, cwd: string): string {
   if (!pattern) {
-    return '';
+    return "";
   }
   let normalized = pattern;
   if (path.isAbsolute(normalized)) {
     normalized = path.relative(cwd, normalized);
   }
   normalized = toPosix(normalized);
-  if (normalized.startsWith('./')) {
+  if (normalized.startsWith("./")) {
     normalized = normalized.slice(2);
   }
   return normalized;
 }
 
 function toPosix(value: string): string {
-  return value.replace(/\\/g, '/');
+  return value.replace(/\\/g, "/");
 }
 
 function toPosixRelative(absPath: string, cwd: string): string {
   const relative = path.relative(cwd, absPath);
   if (!relative) {
-    return '.';
+    return ".";
   }
   return toPosix(relative);
 }
@@ -407,7 +449,7 @@ function toPosixRelativeOrBasename(absPath: string, cwd: string): string {
 
 function stripTrailingSlashes(value: string): string {
   const normalized = toPosix(value);
-  return normalized.replace(/\/+$/g, '');
+  return normalized.replace(/\/+$/g, "");
 }
 
 function formatBytes(size: number): string {
@@ -421,20 +463,20 @@ function formatBytes(size: number): string {
 }
 
 function formatScaled(value: number): string {
-  return value.toFixed(1).replace(/\.0$/, '');
+  return value.toFixed(1).replace(/\.0$/, "");
 }
 
 export function normalizeMaxFileSizeBytes(
   value: number | string | undefined | null,
-  source = 'max file size',
+  source = "max file size",
 ): number | undefined {
-  if (value == null || value === '') {
+  if (value == null || value === "") {
     return undefined;
   }
   const parsed =
-    typeof value === 'number'
+    typeof value === "number"
       ? value
-      : Number.parseInt(typeof value === 'string' ? value.trim() : String(value), 10);
+      : Number.parseInt(typeof value === "string" ? value.trim() : String(value), 10);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error(`${source} must be a positive integer number of bytes.`);
   }
@@ -451,10 +493,10 @@ export function createFileSections(files: FileContent[], cwd = process.cwd()): F
     const relative = toPosix(path.relative(cwd, file.path) || file.path);
     const sectionText = [
       `### File ${index + 1}: ${relative}`,
-      '```',
+      "```",
       file.content.trimEnd(),
-      '```',
-    ].join('\n');
+      "```",
+    ].join("\n");
     return {
       index: index + 1,
       absolutePath: file.path,

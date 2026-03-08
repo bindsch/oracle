@@ -1,35 +1,35 @@
 export type TokenizerFn = (input: unknown, options?: Record<string, unknown>) => number;
 
 export type KnownModelName =
-  | 'gpt-5.4'
-  | 'gpt-5.4-pro'
-  | 'gpt-5.1-pro'
-  | 'gpt-5-pro'
-  | 'gpt-5.1'
-  | 'gpt-5.1-codex'
-  | 'gpt-5.2'
-  | 'gpt-5.2-instant'
-  | 'gpt-5.2-pro'
-  | 'gemini-3.1-pro'
-  | 'gemini-3-pro'
-  | 'claude-4.5-sonnet'
-  | 'claude-4.1-opus'
-  | 'grok-4.1';
+  | "gpt-5.4"
+  | "gpt-5.4-pro"
+  | "gpt-5.1-pro"
+  | "gpt-5-pro"
+  | "gpt-5.1"
+  | "gpt-5.1-codex"
+  | "gpt-5.2"
+  | "gpt-5.2-instant"
+  | "gpt-5.2-pro"
+  | "gemini-3.1-pro"
+  | "gemini-3-pro"
+  | "claude-4.5-sonnet"
+  | "claude-4.1-opus"
+  | "grok-4.1";
 
 // ModelName now allows arbitrary strings so OpenRouter / custom IDs can pass through.
 export type ModelName = KnownModelName | (string & {});
 
 export type ProModelName =
-  | 'gpt-5.4-pro'
-  | 'gpt-5.1-pro'
-  | 'gpt-5-pro'
-  | 'gpt-5.2-pro'
-  | 'claude-4.5-sonnet'
-  | 'claude-4.1-opus';
+  | "gpt-5.4-pro"
+  | "gpt-5.1-pro"
+  | "gpt-5-pro"
+  | "gpt-5.2-pro"
+  | "claude-4.5-sonnet"
+  | "claude-4.1-opus";
 
-export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
-export type ThinkingTimeLevel = 'light' | 'standard' | 'extended' | 'heavy';
+export type ThinkingTimeLevel = "light" | "standard" | "extended" | "heavy";
 
 export interface AzureOptions {
   endpoint?: string;
@@ -53,7 +53,7 @@ export interface ModelConfig {
   /** Provider-specific model id used for API calls (defaults to `model`). */
   apiModel?: string;
   /** Upstream provider to help with OpenRouter mapping and auth precedence. */
-  provider?: 'openai' | 'anthropic' | 'google' | 'xai' | 'other';
+  provider?: "openai" | "anthropic" | "google" | "xai" | "other";
   /** Explicit OpenRouter model id when it differs from apiModel/model. */
   openRouterId?: string;
   tokenizer: TokenizerFn;
@@ -65,7 +65,7 @@ export interface ModelConfig {
   reasoning: { effort: ReasoningEffort } | null;
   supportsBackground?: boolean;
   supportsSearch?: boolean;
-  searchToolType?: ToolConfig['type'];
+  searchToolType?: ToolConfig["type"];
 }
 
 export interface FileContent {
@@ -105,7 +105,7 @@ export interface FileTokenStats {
   totalTokens: number;
 }
 
-export type PreviewMode = 'summary' | 'json' | 'full';
+export type PreviewMode = "summary" | "json" | "full";
 
 export interface ResponseStreamEvent {
   type: string;
@@ -160,14 +160,14 @@ export interface RunOracleOptions {
    * Browser-only: controls whether `--file` inputs are pasted inline (never upload),
    * uploaded as attachments (always), or selected automatically based on prompt size.
    */
-  browserAttachments?: 'auto' | 'never' | 'always';
+  browserAttachments?: "auto" | "never" | "always";
   browserInlineFiles?: boolean;
   browserBundleFiles?: boolean;
   background?: boolean;
   /** Optional absolute path to save only the assistant's final text output. */
   writeOutputPath?: string;
   /** Number of seconds to wait before timing out, or 'auto' to use model defaults. */
-  timeoutSeconds?: number | 'auto';
+  timeoutSeconds?: number | "auto";
   /** Override HTTP client timeout (milliseconds). */
   httpTimeoutMs?: number;
   /** Override zombie timeout for the session (milliseconds). */
@@ -193,7 +193,7 @@ export interface UsageSummary {
 }
 
 export interface PreviewResult {
-  mode: 'preview';
+  mode: "preview";
   previewMode: PreviewMode;
   requestBody: OracleRequestBody;
   estimatedInputTokens: number;
@@ -201,7 +201,7 @@ export interface PreviewResult {
 }
 
 export interface LiveResult {
-  mode: 'live';
+  mode: "live";
   response: OracleResponse;
   usage: UsageSummary;
   elapsedMs: number;
@@ -235,7 +235,7 @@ export interface BuildRequestBodyParams {
 }
 
 export interface ToolConfig {
-  type: 'web_search_preview' | 'web_search';
+  type: "web_search_preview" | "web_search";
 }
 
 export interface OracleRequestBody {
@@ -243,9 +243,9 @@ export interface OracleRequestBody {
   previous_response_id?: string;
   instructions: string;
   input: Array<{
-    role: 'user';
+    role: "user";
     content: Array<{
-      type: 'input_text';
+      type: "input_text";
       text: string;
     }>;
   }>;
@@ -292,10 +292,10 @@ export interface OracleResponseMetadata {
 }
 
 export type TransportFailureReason =
-  | 'client-timeout'
-  | 'connection-lost'
-  | 'client-abort'
-  | 'api-error'
-  | 'model-unavailable'
-  | 'unsupported-endpoint'
-  | 'unknown';
+  | "client-timeout"
+  | "connection-lost"
+  | "client-abort"
+  | "api-error"
+  | "model-unavailable"
+  | "unsupported-endpoint"
+  | "unknown";

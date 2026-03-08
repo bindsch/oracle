@@ -1,6 +1,6 @@
-import http from 'node:http';
-import net from 'node:net';
-import { parseHostPort } from '../bridge/connection.js';
+import http from "node:http";
+import net from "node:net";
+import { parseHostPort } from "../bridge/connection.js";
 
 export interface RemoteHealthResult {
   ok: boolean;
@@ -10,7 +10,10 @@ export interface RemoteHealthResult {
   uptimeSeconds?: number;
 }
 
-export async function checkTcpConnection(host: string, timeoutMs = 2000): Promise<{ ok: boolean; error?: string }> {
+export async function checkTcpConnection(
+  host: string,
+  timeoutMs = 2000,
+): Promise<{ ok: boolean; error?: string }> {
   const { hostname, port } = parseHostPort(host);
   return await new Promise((resolve) => {
     const socket = net.createConnection({ host: hostname, port });
@@ -33,9 +36,9 @@ export async function checkTcpConnection(host: string, timeoutMs = 2000): Promis
       socket.unref();
     };
     socket.setTimeout(timeoutMs);
-    socket.once('error', onError);
-    socket.once('connect', onConnect);
-    socket.once('timeout', onTimeout);
+    socket.once("error", onError);
+    socket.once("connect", onConnect);
+    socket.once("timeout", onTimeout);
   });
 }
 
@@ -49,7 +52,7 @@ export async function checkRemoteHealth({
   timeoutMs?: number;
 }): Promise<RemoteHealthResult> {
   const { hostname, port } = parseHostPort(host);
-  const headers: Record<string, string> = { accept: 'application/json' };
+  const headers: Record<string, string> = { accept: "application/json" };
   if (token) {
     headers.authorization = `Bearer ${token}`;
   }
@@ -57,29 +60,30 @@ export async function checkRemoteHealth({
     const response = await requestJson({
       hostname,
       port,
-      path: '/health',
+      path: "/health",
       headers,
       timeoutMs,
     });
-    if (response.statusCode === 200 && typeof response.json === 'object' && response.json) {
+    if (response.statusCode === 200 && typeof response.json === "object" && response.json) {
       const ok = (response.json as { ok?: unknown }).ok === true;
       const version = (response.json as { version?: unknown }).version;
       const uptimeSeconds = (response.json as { uptimeSeconds?: unknown }).uptimeSeconds;
       return {
         ok,
         statusCode: response.statusCode,
-        version: typeof version === 'string' ? version : undefined,
-        uptimeSeconds: typeof uptimeSeconds === 'number' ? uptimeSeconds : undefined,
+        version: typeof version === "string" ? version : undefined,
+        uptimeSeconds: typeof uptimeSeconds === "number" ? uptimeSeconds : undefined,
       };
     }
     if (response.statusCode === 404) {
       return {
         ok: false,
         statusCode: response.statusCode,
-        error: 'remote host does not expose /health (upgrade oracle on the host and retry)',
+        error: "remote host does not expose /health (upgrade oracle on the host and retry)",
       };
     }
-    const error = extractErrorMessage(response.json, response.bodyText) ?? `HTTP ${response.statusCode}`;
+    const error =
+      extractErrorMessage(response.json, response.bodyText) ?? `HTTP ${response.statusCode}`;
     return { ok: false, statusCode: response.statusCode, error };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
@@ -87,9 +91,9 @@ export async function checkRemoteHealth({
 }
 
 function extractErrorMessage(json: unknown, bodyText: string): string | null {
-  if (json && typeof json === 'object') {
+  if (json && typeof json === "object") {
     const err = (json as { error?: unknown }).error;
-    if (typeof err === 'string' && err.trim().length > 0) {
+    if (typeof err === "string" && err.trim().length > 0) {
       return err.trim();
     }
   }
@@ -116,16 +120,16 @@ async function requestJson({
         hostname,
         port,
         path,
-        method: 'GET',
+        method: "GET",
         headers,
       },
       (res) => {
-        res.setEncoding('utf8');
-        let body = '';
-        res.on('data', (chunk: string) => {
+        res.setEncoding("utf8");
+        let body = "";
+        res.on("data", (chunk: string) => {
           body += chunk;
         });
-        res.on('end', () => {
+        res.on("end", () => {
           const statusCode = res.statusCode ?? 0;
           let json: unknown = null;
           try {
@@ -140,7 +144,7 @@ async function requestJson({
     req.setTimeout(timeoutMs, () => {
       req.destroy(new Error(`timeout after ${timeoutMs}ms`));
     });
-    req.on('error', reject);
+    req.on("error", reject);
     req.end();
   });
 }

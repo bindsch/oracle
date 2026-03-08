@@ -1,35 +1,42 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import type { BrowserSessionConfig } from '../sessionStore.js';
-import type { ModelName, ThinkingTimeLevel } from '../oracle.js';
-import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET, isTemporaryChatUrl, normalizeChatgptUrl, parseDuration } from '../browserMode.js';
-import { normalizeBrowserModelStrategy } from '../browser/modelStrategy.js';
-import type { BrowserModelStrategy } from '../browser/types.js';
-import type { CookieParam } from '../browser/types.js';
-import { getOracleHomeDir } from '../oracleHome.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { BrowserSessionConfig } from "../sessionStore.js";
+import type { ModelName, ThinkingTimeLevel } from "../oracle.js";
+import {
+  CHATGPT_URL,
+  DEFAULT_MODEL_STRATEGY,
+  DEFAULT_MODEL_TARGET,
+  isTemporaryChatUrl,
+  normalizeChatgptUrl,
+  parseDuration,
+} from "../browserMode.js";
+import { normalizeBrowserModelStrategy } from "../browser/modelStrategy.js";
+import type { BrowserModelStrategy } from "../browser/types.js";
+import type { CookieParam } from "../browser/types.js";
+import { getOracleHomeDir } from "../oracleHome.js";
 
 const DEFAULT_BROWSER_TIMEOUT_MS = 1_200_000;
 const DEFAULT_BROWSER_INPUT_TIMEOUT_MS = 60_000;
 const DEFAULT_BROWSER_RECHECK_TIMEOUT_MS = 120_000;
 const DEFAULT_BROWSER_AUTO_REATTACH_TIMEOUT_MS = 120_000;
-const DEFAULT_CHROME_PROFILE = 'Default';
+const DEFAULT_CHROME_PROFILE = "Default";
 
 // Ordered array: most specific models first to ensure correct selection.
 // The browser label is passed to the model picker which fuzzy-matches against ChatGPT's UI.
 const BROWSER_MODEL_LABELS: [ModelName, string][] = [
   // Most specific first (e.g., "gpt-5.2-thinking" before "gpt-5.2")
-  ['gpt-5.4-pro', 'GPT-5.4 Pro'],
-  ['gpt-5.2-thinking', 'GPT-5.2 Thinking'],
-  ['gpt-5.2-instant', 'GPT-5.2 Instant'],
-  ['gpt-5.2-pro', 'GPT-5.4 Pro'],
-  ['gpt-5.1-pro', 'GPT-5.4 Pro'],
-  ['gpt-5-pro', 'GPT-5.4 Pro'],
+  ["gpt-5.4-pro", "GPT-5.4 Pro"],
+  ["gpt-5.2-thinking", "GPT-5.2 Thinking"],
+  ["gpt-5.2-instant", "GPT-5.2 Instant"],
+  ["gpt-5.2-pro", "GPT-5.4 Pro"],
+  ["gpt-5.1-pro", "GPT-5.4 Pro"],
+  ["gpt-5-pro", "GPT-5.4 Pro"],
   // Base models last (least specific)
-  ['gpt-5.4', 'Thinking 5.4'],
-  ['gpt-5.2', 'GPT-5.2'],       // Selects "Auto" in ChatGPT UI
-  ['gpt-5.1', 'GPT-5.2'],       // Legacy alias → Auto
-  ['gemini-3-pro', 'Gemini 3 Pro'],
-  ['gemini-3-pro-deep-think', 'gemini-3-deep-think'],
+  ["gpt-5.4", "Thinking 5.4"],
+  ["gpt-5.2", "GPT-5.2"], // Selects "Auto" in ChatGPT UI
+  ["gpt-5.1", "GPT-5.2"], // Legacy alias → Auto
+  ["gemini-3-pro", "Gemini 3 Pro"],
+  ["gemini-3-pro-deep-think", "gemini-3-deep-think"],
 ];
 
 export interface BrowserFlagOptions {
@@ -71,41 +78,46 @@ export interface BrowserFlagOptions {
 
 export function normalizeChatGptModelForBrowser(model: ModelName): ModelName {
   const normalized = model.toLowerCase() as ModelName;
-  if (!normalized.startsWith('gpt-') || normalized.includes('codex')) {
+  if (!normalized.startsWith("gpt-") || normalized.includes("codex")) {
     return model;
   }
 
-  if (normalized === 'gpt-5.4-pro' || normalized === 'gpt-5.4') {
+  if (normalized === "gpt-5.4-pro" || normalized === "gpt-5.4") {
     return normalized;
   }
 
   // Pro variants: resolve to the latest Pro model in ChatGPT.
-  if (normalized === 'gpt-5-pro' || normalized === 'gpt-5.1-pro' || normalized === 'gpt-5.2-pro') {
-    return 'gpt-5.4-pro';
+  if (normalized === "gpt-5-pro" || normalized === "gpt-5.1-pro" || normalized === "gpt-5.2-pro") {
+    return "gpt-5.4-pro";
   }
 
   // Explicit model variants: keep as-is (they have their own browser labels)
-  if (normalized === 'gpt-5.2-thinking' || normalized === 'gpt-5.2-instant') {
+  if (normalized === "gpt-5.2-thinking" || normalized === "gpt-5.2-instant") {
     return normalized;
   }
 
   // Legacy aliases: map to base GPT-5.2 (Auto)
-  if (normalized === 'gpt-5.1') {
-    return 'gpt-5.2';
+  if (normalized === "gpt-5.1") {
+    return "gpt-5.2";
   }
 
   return model;
 }
 
-export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<BrowserSessionConfig> {
+export async function buildBrowserConfig(
+  options: BrowserFlagOptions,
+): Promise<BrowserSessionConfig> {
   const desiredModelOverride = options.browserModelLabel?.trim();
-  const normalizedOverride = desiredModelOverride?.toLowerCase() ?? '';
+  const normalizedOverride = desiredModelOverride?.toLowerCase() ?? "";
   const baseModel = options.model.toLowerCase();
-  const isChatGptModel = baseModel.startsWith('gpt-') && !baseModel.includes('codex');
-  const shouldUseOverride = !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
+  const isChatGptModel = baseModel.startsWith("gpt-") && !baseModel.includes("codex");
+  const shouldUseOverride =
+    !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
   const modelStrategy =
     normalizeBrowserModelStrategy(options.browserModelStrategy) ?? DEFAULT_MODEL_STRATEGY;
-  const cookieNames = parseCookieNames(options.browserCookieNames ?? process.env.ORACLE_BROWSER_COOKIE_NAMES);
+  const cookieNames = parseCookieNames(
+    options.browserCookieNames ?? process.env.ORACLE_BROWSER_COOKIE_NAMES,
+  );
   let inline = await resolveInlineCookies({
     inlineArg: options.browserInlineCookies,
     inlineFileArg: options.browserInlineCookiesFile,
@@ -113,7 +125,7 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     envFile: process.env.ORACLE_BROWSER_COOKIES_FILE,
     cwd: process.cwd(),
   });
-  if (inline?.source?.startsWith('home:') && options.browserNoCookieSync !== true) {
+  if (inline?.source?.startsWith("home:") && options.browserNoCookieSync !== true) {
     inline = undefined;
   }
 
@@ -130,9 +142,14 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
       ? desiredModelOverride
       : mapModelToBrowserLabel(options.model);
 
-  if (modelStrategy === 'select' && url && isTemporaryChatUrl(url) && /\bpro\b/i.test(desiredModel ?? '')) {
+  if (
+    modelStrategy === "select" &&
+    url &&
+    isTemporaryChatUrl(url) &&
+    /\bpro\b/i.test(desiredModel ?? "")
+  ) {
     throw new Error(
-      'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
+      "Temporary Chat mode does not expose Pro models in the ChatGPT model picker. " +
         'Remove "temporary-chat=true" from --chatgpt-url (or omit --chatgpt-url), or use a non-Pro model (e.g. --model gpt-5.2).',
     );
   }
@@ -143,7 +160,9 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     chromeCookiePath: options.browserCookiePath ?? null,
     url,
     debugPort: selectBrowserPort(options),
-    timeoutMs: options.browserTimeout ? parseDuration(options.browserTimeout, DEFAULT_BROWSER_TIMEOUT_MS) : undefined,
+    timeoutMs: options.browserTimeout
+      ? parseDuration(options.browserTimeout, DEFAULT_BROWSER_TIMEOUT_MS)
+      : undefined,
     inputTimeoutMs: options.browserInputTimeout
       ? parseDuration(options.browserInputTimeout, DEFAULT_BROWSER_INPUT_TIMEOUT_MS)
       : undefined,
@@ -153,7 +172,9 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     assistantRecheckTimeoutMs: options.browserRecheckTimeout
       ? parseDuration(options.browserRecheckTimeout, DEFAULT_BROWSER_RECHECK_TIMEOUT_MS)
       : undefined,
-    reuseChromeWaitMs: options.browserReuseWait ? parseDuration(options.browserReuseWait, 0) : undefined,
+    reuseChromeWaitMs: options.browserReuseWait
+      ? parseDuration(options.browserReuseWait, 0)
+      : undefined,
     profileLockTimeoutMs: options.browserProfileLockTimeout
       ? parseDuration(options.browserProfileLockTimeout, 0)
       : undefined,
@@ -166,7 +187,9 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     autoReattachTimeoutMs: options.browserAutoReattachTimeout
       ? parseDuration(options.browserAutoReattachTimeout, DEFAULT_BROWSER_AUTO_REATTACH_TIMEOUT_MS)
       : undefined,
-    cookieSyncWaitMs: options.browserCookieWait ? parseDuration(options.browserCookieWait, 0) : undefined,
+    cookieSyncWaitMs: options.browserCookieWait
+      ? parseDuration(options.browserCookieWait, 0)
+      : undefined,
     cookieSync: options.browserNoCookieSync ? false : undefined,
     cookieNames,
     inlineCookies: inline?.cookies,
@@ -207,7 +230,7 @@ export function mapModelToBrowserLabel(model: ModelName): string {
 }
 
 export function resolveBrowserModelLabel(input: string | undefined, model: ModelName): string {
-  const trimmed = input?.trim?.() ?? '';
+  const trimmed = input?.trim?.() ?? "";
   if (!trimmed) {
     return mapModelToBrowserLabel(model);
   }
@@ -221,7 +244,9 @@ export function resolveBrowserModelLabel(input: string | undefined, model: Model
 function parseRemoteChromeTarget(raw: string): { host: string; port: number } {
   const target = raw.trim();
   if (!target) {
-    throw new Error('Invalid remote-chrome value: expected host:port but received an empty string.');
+    throw new Error(
+      "Invalid remote-chrome value: expected host:port but received an empty string.",
+    );
   }
 
   const ipv6Match = target.match(/^\[(.+)]:(\d+)$/);
@@ -232,30 +257,30 @@ function parseRemoteChromeTarget(raw: string): { host: string; port: number } {
     host = ipv6Match[1]?.trim();
     portSegment = ipv6Match[2]?.trim();
   } else {
-    const lastColon = target.lastIndexOf(':');
+    const lastColon = target.lastIndexOf(":");
     if (lastColon === -1) {
       throw new Error(
-        `Invalid remote-chrome format: ${target}. Expected host:port (IPv6 must use [host]:port notation).`
+        `Invalid remote-chrome format: ${target}. Expected host:port (IPv6 must use [host]:port notation).`,
       );
     }
     host = target.slice(0, lastColon).trim();
     portSegment = target.slice(lastColon + 1).trim();
-    if (host.includes(':')) {
+    if (host.includes(":")) {
       throw new Error(
-        `Invalid remote-chrome format: ${target}. Wrap IPv6 addresses in brackets, e.g. --remote-chrome "[2001:db8::1]:9222".`
+        `Invalid remote-chrome format: ${target}. Wrap IPv6 addresses in brackets, e.g. --remote-chrome "[2001:db8::1]:9222".`,
       );
     }
   }
 
   if (!host) {
     throw new Error(
-      `Invalid remote-chrome format: ${target}. Host portion is missing; expected host:port.`
+      `Invalid remote-chrome format: ${target}. Host portion is missing; expected host:port.`,
     );
   }
-  const port = Number.parseInt(portSegment ?? '', 10);
+  const port = Number.parseInt(portSegment ?? "", 10);
   if (!Number.isFinite(port) || port <= 0 || port > 65_535) {
     throw new Error(
-      `Invalid remote-chrome port: "${portSegment ?? ''}". Expected a number between 1 and 65535.`
+      `Invalid remote-chrome port: "${portSegment ?? ""}". Expected a number between 1 and 65535.`,
     );
   }
   return { host, port };
@@ -264,7 +289,7 @@ function parseRemoteChromeTarget(raw: string): { host: string; port: number } {
 function parseCookieNames(raw?: string | null): string[] | undefined {
   if (!raw) return undefined;
   const names = raw
-    .split(',')
+    .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
   return names.length ? names : undefined;
@@ -292,7 +317,7 @@ async function resolveInlineCookies({
       try {
         const stat = await fs.stat(resolved);
         if (stat.isFile()) {
-          const fileContent = await fs.readFile(resolved, 'utf8');
+          const fileContent = await fs.readFile(resolved, "utf8");
           const parsed = parseInlineCookiesPayload(fileContent);
           if (parsed) return parsed;
         }
@@ -304,10 +329,10 @@ async function resolveInlineCookies({
   };
 
   const sources = [
-    { value: inlineFileArg, allowPath: true, source: 'inline-file' },
-    { value: inlineArg, allowPath: true, source: 'inline-arg' },
-    { value: envFile, allowPath: true, source: 'env-file' },
-    { value: envPayload, allowPath: false, source: 'env-payload' },
+    { value: inlineFileArg, allowPath: true, source: "inline-file" },
+    { value: inlineArg, allowPath: true, source: "inline-arg" },
+    { value: envFile, allowPath: true, source: "env-file" },
+    { value: envPayload, allowPath: false, source: "env-payload" },
   ];
 
   for (const { value, allowPath, source } of sources) {
@@ -317,13 +342,13 @@ async function resolveInlineCookies({
 
   // fallback: ~/.oracle/cookies.{json,base64}
   const oracleHome = getOracleHomeDir();
-  const candidates = ['cookies.json', 'cookies.base64'];
+  const candidates = ["cookies.json", "cookies.base64"];
   for (const file of candidates) {
     const fullPath = path.join(oracleHome, file);
     try {
       const stat = await fs.stat(fullPath);
       if (!stat.isFile()) continue;
-      const content = await fs.readFile(fullPath, 'utf8');
+      const content = await fs.readFile(fullPath, "utf8");
       const parsed = parseInlineCookiesPayload(content);
       if (parsed) return { cookies: parsed, source: `home:${file}` };
     } catch {
@@ -340,8 +365,8 @@ function parseInlineCookiesPayload(raw?: string | null): CookieParam[] | undefin
   let jsonPayload = text;
   // Attempt base64 decode first; fall back to raw text on failure.
   try {
-    const decoded = Buffer.from(text, 'base64').toString('utf8');
-    if (decoded.trim().startsWith('[')) {
+    const decoded = Buffer.from(text, "base64").toString("utf8");
+    if (decoded.trim().startsWith("[")) {
       jsonPayload = decoded;
     }
   } catch {

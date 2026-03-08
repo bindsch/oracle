@@ -6,15 +6,17 @@
  * - Prints a WSL-friendly firewall hint if the port is unreachable.
  */
 
-import { setTimeout as sleep } from 'node:timers/promises';
-import { launch } from 'chrome-launcher';
-import os from 'node:os';
-import { readFileSync } from 'node:fs';
+import { setTimeout as sleep } from "node:timers/promises";
+import { launch } from "chrome-launcher";
+import os from "node:os";
+import { readFileSync } from "node:fs";
 
 const DEFAULT_PORT = 45871;
-const port = normalizePort(process.env.ORACLE_BROWSER_PORT ?? process.env.ORACLE_BROWSER_DEBUG_PORT) ?? DEFAULT_PORT;
+const port =
+  normalizePort(process.env.ORACLE_BROWSER_PORT ?? process.env.ORACLE_BROWSER_DEBUG_PORT) ??
+  DEFAULT_PORT;
 const hostHint = resolveWslHost();
-const targetHost = hostHint ?? '127.0.0.1';
+const targetHost = hostHint ?? "127.0.0.1";
 
 function normalizePort(raw?: string | null): number | null {
   if (!raw) return null;
@@ -24,16 +26,16 @@ function normalizePort(raw?: string | null): number | null {
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') return false;
+  if (process.platform !== "linux") return false;
   if (process.env.WSL_DISTRO_NAME) return true;
-  return os.release().toLowerCase().includes('microsoft');
+  return os.release().toLowerCase().includes("microsoft");
 }
 
 function resolveWslHost(): string | null {
   if (!isWsl()) return null;
   try {
-    const resolv = readFileSync('/etc/resolv.conf', 'utf8');
-    for (const line of resolv.split('\n')) {
+    const resolv = readFileSync("/etc/resolv.conf", "utf8");
+    for (const line of resolv.split("\n")) {
       const match = line.match(/^nameserver\s+([0-9.]+)/);
       if (match?.[1]) return match[1];
     }
@@ -47,20 +49,22 @@ function firewallHint(host: string, devtoolsPort: number): string | null {
   if (!isWsl()) return null;
   return [
     `DevTools port ${host}:${devtoolsPort} is blocked from WSL.`,
-    '',
-    'PowerShell (admin):',
+    "",
+    "PowerShell (admin):",
     `New-NetFirewallRule -DisplayName 'Chrome DevTools ${devtoolsPort}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${devtoolsPort}`,
     "New-NetFirewallRule -DisplayName 'Chrome DevTools (chrome.exe)' -Direction Inbound -Action Allow -Program 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' -Protocol TCP",
-    '',
-    'Re-run ./runner pnpm test:browser after adding the rule.',
-  ].join('\n');
+    "",
+    "Re-run ./runner pnpm test:browser after adding the rule.",
+  ].join("\n");
 }
 
 async function fetchVersion(host: string, devtoolsPort: number): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`http://${host}:${devtoolsPort}/json/version`, { signal: controller.signal });
+    const res = await fetch(`http://${host}:${devtoolsPort}/json/version`, {
+      signal: controller.signal,
+    });
     if (!res.ok) return false;
     const json = (await res.json()) as { webSocketDebuggerUrl?: string };
     return Boolean(json.webSocketDebuggerUrl);
@@ -75,7 +79,7 @@ async function main() {
   console.log(`[browser-test] launching Chrome on ${targetHost}:${port} (headful)…`);
   const chrome = await launch({
     port,
-    chromeFlags: ['--remote-debugging-address=0.0.0.0'],
+    chromeFlags: ["--remote-debugging-address=0.0.0.0"],
   });
 
   let ok = await fetchVersion(targetHost, chrome.port);
@@ -100,6 +104,9 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('[browser-test] Unexpected failure:', error instanceof Error ? error.message : String(error));
+  console.error(
+    "[browser-test] Unexpected failure:",
+    error instanceof Error ? error.message : String(error),
+  );
   process.exit(1);
 });

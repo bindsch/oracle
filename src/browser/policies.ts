@@ -1,6 +1,6 @@
-import { formatFileSection } from '../oracle/markdown.js';
-import type { BrowserAttachment } from './types.js';
-import type { BrowserSessionConfig } from '../sessionManager.js';
+import { formatFileSection } from "../oracle/markdown.js";
+import type { BrowserAttachment } from "./types.js";
+import type { BrowserSessionConfig } from "../sessionManager.js";
 
 export interface AttachmentSection {
   displayPath: string;
@@ -9,7 +9,7 @@ export interface AttachmentSection {
 }
 
 export interface AttachmentPlan {
-  mode: 'inline' | 'upload' | 'bundle';
+  mode: "inline" | "upload" | "bundle";
   inlineBlock: string;
   inlineFileCount: number;
   attachments: BrowserAttachment[];
@@ -27,11 +27,11 @@ export function buildAttachmentPlan(
   if (inlineFiles) {
     const inlineLines: string[] = [];
     sections.forEach((section) => {
-      inlineLines.push(formatFileSection(section.displayPath, section.content).trimEnd(), '');
+      inlineLines.push(formatFileSection(section.displayPath, section.content).trimEnd(), "");
     });
-    const inlineBlock = inlineLines.join('\n').trim();
+    const inlineBlock = inlineLines.join("\n").trim();
     return {
-      mode: 'inline',
+      mode: "inline",
       inlineBlock,
       inlineFileCount: sections.length,
       attachments: [],
@@ -42,13 +42,13 @@ export function buildAttachmentPlan(
   const attachments: BrowserAttachment[] = sections.map((section) => ({
     path: section.absolutePath,
     displayPath: section.displayPath,
-    sizeBytes: Buffer.byteLength(section.content, 'utf8'),
+    sizeBytes: Buffer.byteLength(section.content, "utf8"),
   }));
   const shouldBundle = bundleRequested || attachments.length > maxAttachments;
 
   return {
-    mode: shouldBundle ? 'bundle' : 'upload',
-    inlineBlock: '',
+    mode: shouldBundle ? "bundle" : "upload",
+    inlineBlock: "",
     inlineFileCount: 0,
     attachments,
     shouldBundle,
@@ -56,22 +56,24 @@ export function buildAttachmentPlan(
 }
 
 export type CookiePlan =
-  | { type: 'inline'; description: string }
-  | { type: 'disabled'; description: string }
-  | { type: 'copy'; description: string };
+  | { type: "inline"; description: string }
+  | { type: "disabled"; description: string }
+  | { type: "copy"; description: string };
 
 export function buildCookiePlan(config?: BrowserSessionConfig): CookiePlan {
   if (config?.inlineCookies && config.inlineCookies.length > 0) {
-    const source = config.inlineCookiesSource ?? 'inline';
-    return { type: 'inline', description: `Cookies: inline payload (${config.inlineCookies.length}) via ${source}.` };
+    const source = config.inlineCookiesSource ?? "inline";
+    return {
+      type: "inline",
+      description: `Cookies: inline payload (${config.inlineCookies.length}) via ${source}.`,
+    };
   }
   if (config?.cookieSync === false) {
-    return { type: 'disabled', description: 'Cookies: sync disabled (--browser-no-cookie-sync).' };
+    return { type: "disabled", description: "Cookies: sync disabled (--browser-no-cookie-sync)." };
   }
   const allowlist =
     config?.cookieNames && config.cookieNames.length > 0
-      ? config.cookieNames.join(', ')
-      : 'all from Chrome profile';
-  return { type: 'copy', description: `Cookies: copy from Chrome (${allowlist}).` };
+      ? config.cookieNames.join(", ")
+      : "all from Chrome profile";
+  return { type: "copy", description: `Cookies: copy from Chrome (${allowlist}).` };
 }
-

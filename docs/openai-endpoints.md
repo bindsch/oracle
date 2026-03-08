@@ -19,12 +19,14 @@ export AZURE_OPENAI_DEPLOYMENT="gpt-5-1-pro"
 ```
 
 Key lookup for GPT-family models when an Azure endpoint is set:
+
 - First looks for `AZURE_OPENAI_API_KEY`.
 - Falls back to `OPENAI_API_KEY` if the Azure key is missing.
 
 Without an Azure endpoint, Oracle keeps using `OPENAI_API_KEY` as before.
 
 Notes:
+
 - Oracle calls Azure at `https://<resource>.openai.azure.com/openai/v1`.
 - For Responses API runs, Azure expects `model` to be your deployment name. Use `--azure-deployment` or `azure.deployment` when the deployment name does not exactly match the CLI model alias.
 - `AZURE_OPENAI_API_VERSION` is still accepted for back-compat, but Azure's v1 Responses endpoint does not require it.
@@ -60,6 +62,7 @@ Oracle keeps a stable CLI-facing model set, but some names are aliases for the c
 - `gpt-5.1-pro`, `gpt-5.2-pro` → `gpt-5.4-pro` (API)
 
 Notes:
+
 - `gpt-5.1-pro` and `gpt-5.2-pro` are **CLI aliases** for “the current Pro API model” — OpenAI’s API uses `gpt-5.4-pro`.
 - If you want the classic Pro tier explicitly, use `gpt-5-pro`.
 
@@ -89,6 +92,6 @@ export OPENROUTER_API_KEY="sk-or-..."
 oracle --model minimax/minimax-m2 --prompt "Summarize the notes"
 ```
 
- - If `OPENROUTER_API_KEY` is set and no provider-specific key is available for the chosen model, Oracle defaults the base URL to `https://openrouter.ai/api/v1`.
- - You can still set `--base-url` explicitly; if it points at OpenRouter (with or without a trailing `/responses`), Oracle will use `OPENROUTER_API_KEY` and forward optional attribution headers (`OPENROUTER_REFERER` / `OPENROUTER_TITLE`).
+- If `OPENROUTER_API_KEY` is set and no provider-specific key is available for the chosen model, Oracle defaults the base URL to `https://openrouter.ai/api/v1`.
+- You can still set `--base-url` explicitly; if it points at OpenRouter (with or without a trailing `/responses`), Oracle will use `OPENROUTER_API_KEY` and forward optional attribution headers (`OPENROUTER_REFERER` / `OPENROUTER_TITLE`).
 - Multi-model runs accept OpenRouter ids alongside built-in ones. See `docs/openrouter.md` for details.

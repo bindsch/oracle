@@ -1,7 +1,7 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
-import { startHeartbeat } from '../../src/heartbeat.js';
+import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
+import { startHeartbeat } from "../../src/heartbeat.js";
 
-describe('startHeartbeat', () => {
+describe("startHeartbeat", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -10,7 +10,7 @@ describe('startHeartbeat', () => {
     vi.useRealTimers();
   });
 
-  test('logs messages on interval while active and stops when stopped', async () => {
+  test("logs messages on interval while active and stops when stopped", async () => {
     const log = vi.fn();
     const isActive = vi.fn(() => true);
     const makeMessage = vi.fn(async (elapsed: number) => `tick-${elapsed}`);
@@ -26,17 +26,16 @@ describe('startHeartbeat', () => {
     expect(log).toHaveBeenCalledTimes(2);
   });
 
-  test('no-ops when interval is missing or non-positive', async () => {
+  test("no-ops when interval is missing or non-positive", async () => {
     const log = vi.fn();
     const stop = startHeartbeat({
       intervalMs: 0,
       log,
       isActive: () => true,
-      makeMessage: () => 'noop',
+      makeMessage: () => "noop",
     });
     await vi.advanceTimersByTimeAsync(50);
     expect(log).not.toHaveBeenCalled();
     stop();
   });
 });
-

@@ -1,12 +1,12 @@
-import type { BrowserLogger, ChromeClient } from '../types.js';
-import type { ProviderDomAdapter, ProviderDomFlowContext } from '../providerDomFlow.js';
-import { ensurePromptReady } from '../actions/navigation.js';
-import { submitPrompt } from '../actions/promptComposer.js';
-import { waitForAssistantResponse } from '../actions/assistantResponse.js';
+import type { BrowserLogger, ChromeClient } from "../types.js";
+import type { ProviderDomAdapter, ProviderDomFlowContext } from "../providerDomFlow.js";
+import { ensurePromptReady } from "../actions/navigation.js";
+import { submitPrompt } from "../actions/promptComposer.js";
+import { waitForAssistantResponse } from "../actions/assistantResponse.js";
 
 interface ChatgptDomProviderState {
-  runtime: ChromeClient['Runtime'];
-  input: ChromeClient['Input'];
+  runtime: ChromeClient["Runtime"];
+  input: ChromeClient["Input"];
   logger: BrowserLogger;
   timeoutMs: number;
   inputTimeoutMs?: number;
@@ -18,7 +18,7 @@ interface ChatgptDomProviderState {
 function requireState(ctx: ProviderDomFlowContext): ChatgptDomProviderState {
   const state = ctx.state as ChatgptDomProviderState | undefined;
   if (!state?.runtime || !state?.input || !state?.logger) {
-    throw new Error('chatgptDomProvider requires runtime/input/logger in context.state.');
+    throw new Error("chatgptDomProvider requires runtime/input/logger in context.state.");
   }
   return state;
 }
@@ -45,10 +45,12 @@ async function submitPromptViaAdapter(ctx: ProviderDomFlowContext): Promise<void
     ctx.prompt,
     state.logger,
   );
-  state.committedTurns = typeof committedTurns === 'number' && Number.isFinite(committedTurns)
-    ? committedTurns
-    : null;
-  if (state.committedTurns != null && (state.baselineTurns == null || state.committedTurns > state.baselineTurns)) {
+  state.committedTurns =
+    typeof committedTurns === "number" && Number.isFinite(committedTurns) ? committedTurns : null;
+  if (
+    state.committedTurns != null &&
+    (state.baselineTurns == null || state.committedTurns > state.baselineTurns)
+  ) {
     state.baselineTurns = Math.max(0, state.committedTurns - 1);
   }
 }
@@ -73,7 +75,7 @@ async function waitForResponse(ctx: ProviderDomFlowContext): Promise<{
 }
 
 export const chatgptDomProvider: ProviderDomAdapter = {
-  providerName: 'chatgpt-web',
+  providerName: "chatgpt-web",
   waitForUi,
   typePrompt,
   submitPrompt: submitPromptViaAdapter,

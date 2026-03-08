@@ -1,9 +1,9 @@
-import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './constants.js';
-import { normalizeBrowserModelStrategy } from './modelStrategy.js';
-import type { BrowserAutomationConfig, ResolvedBrowserConfig } from './types.js';
-import { isTemporaryChatUrl, normalizeChatgptUrl } from './utils.js';
-import os from 'node:os';
-import path from 'node:path';
+import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from "./constants.js";
+import { normalizeBrowserModelStrategy } from "./modelStrategy.js";
+import type { BrowserAutomationConfig, ResolvedBrowserConfig } from "./types.js";
+import { isTemporaryChatUrl, normalizeChatgptUrl } from "./utils.js";
+import os from "node:os";
+import path from "node:path";
 
 export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   chromeProfile: null,
@@ -39,48 +39,64 @@ export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   manualLoginCookieSync: false,
 };
 
-export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined): ResolvedBrowserConfig {
+export function resolveBrowserConfig(
+  config: BrowserAutomationConfig | undefined,
+): ResolvedBrowserConfig {
   const debugPortEnv = parseDebugPort(
     process.env.ORACLE_BROWSER_PORT ?? process.env.ORACLE_BROWSER_DEBUG_PORT,
   );
   const envAllowCookieErrors =
-    (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? '').trim().toLowerCase() === 'true' ||
-    (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? '').trim() === '1';
+    (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? "").trim().toLowerCase() === "true" ||
+    (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? "").trim() === "1";
   const rawUrl = config?.chatgptUrl ?? config?.url ?? DEFAULT_BROWSER_CONFIG.url;
-  const normalizedUrl = normalizeChatgptUrl(rawUrl ?? DEFAULT_BROWSER_CONFIG.url, DEFAULT_BROWSER_CONFIG.url);
-  const desiredModel = config?.desiredModel ?? DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET;
+  const normalizedUrl = normalizeChatgptUrl(
+    rawUrl ?? DEFAULT_BROWSER_CONFIG.url,
+    DEFAULT_BROWSER_CONFIG.url,
+  );
+  const desiredModel =
+    config?.desiredModel ?? DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET;
   const modelStrategy =
     normalizeBrowserModelStrategy(config?.modelStrategy) ??
     DEFAULT_BROWSER_CONFIG.modelStrategy ??
     DEFAULT_MODEL_STRATEGY;
-  if (modelStrategy === 'select' && isTemporaryChatUrl(normalizedUrl) && /\bpro\b/i.test(desiredModel)) {
+  if (
+    modelStrategy === "select" &&
+    isTemporaryChatUrl(normalizedUrl) &&
+    /\bpro\b/i.test(desiredModel)
+  ) {
     throw new Error(
-      'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
+      "Temporary Chat mode does not expose Pro models in the ChatGPT model picker. " +
         'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.2").',
     );
   }
-  const isWindows = process.platform === 'win32';
-  const manualLogin = config?.manualLogin ?? (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
+  const isWindows = process.platform === "win32";
+  const manualLogin =
+    config?.manualLogin ?? (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
   const cookieSyncDefault = isWindows ? false : DEFAULT_BROWSER_CONFIG.cookieSync;
   const resolvedProfileDir =
     config?.manualLoginProfileDir ??
     process.env.ORACLE_BROWSER_PROFILE_DIR ??
-    path.join(os.homedir(), '.oracle', 'browser-profile');
+    path.join(os.homedir(), ".oracle", "browser-profile");
   return {
     ...DEFAULT_BROWSER_CONFIG,
-    ...(config ?? {}),
+    ...config,
     url: normalizedUrl,
     chatgptUrl: normalizedUrl,
     timeoutMs: config?.timeoutMs ?? DEFAULT_BROWSER_CONFIG.timeoutMs,
     debugPort: config?.debugPort ?? debugPortEnv ?? DEFAULT_BROWSER_CONFIG.debugPort,
     inputTimeoutMs: config?.inputTimeoutMs ?? DEFAULT_BROWSER_CONFIG.inputTimeoutMs,
-    assistantRecheckDelayMs: config?.assistantRecheckDelayMs ?? DEFAULT_BROWSER_CONFIG.assistantRecheckDelayMs,
-    assistantRecheckTimeoutMs: config?.assistantRecheckTimeoutMs ?? DEFAULT_BROWSER_CONFIG.assistantRecheckTimeoutMs,
+    assistantRecheckDelayMs:
+      config?.assistantRecheckDelayMs ?? DEFAULT_BROWSER_CONFIG.assistantRecheckDelayMs,
+    assistantRecheckTimeoutMs:
+      config?.assistantRecheckTimeoutMs ?? DEFAULT_BROWSER_CONFIG.assistantRecheckTimeoutMs,
     reuseChromeWaitMs: config?.reuseChromeWaitMs ?? DEFAULT_BROWSER_CONFIG.reuseChromeWaitMs,
-    profileLockTimeoutMs: config?.profileLockTimeoutMs ?? DEFAULT_BROWSER_CONFIG.profileLockTimeoutMs,
+    profileLockTimeoutMs:
+      config?.profileLockTimeoutMs ?? DEFAULT_BROWSER_CONFIG.profileLockTimeoutMs,
     autoReattachDelayMs: config?.autoReattachDelayMs ?? DEFAULT_BROWSER_CONFIG.autoReattachDelayMs,
-    autoReattachIntervalMs: config?.autoReattachIntervalMs ?? DEFAULT_BROWSER_CONFIG.autoReattachIntervalMs,
-    autoReattachTimeoutMs: config?.autoReattachTimeoutMs ?? DEFAULT_BROWSER_CONFIG.autoReattachTimeoutMs,
+    autoReattachIntervalMs:
+      config?.autoReattachIntervalMs ?? DEFAULT_BROWSER_CONFIG.autoReattachIntervalMs,
+    autoReattachTimeoutMs:
+      config?.autoReattachTimeoutMs ?? DEFAULT_BROWSER_CONFIG.autoReattachTimeoutMs,
     cookieSync: config?.cookieSync ?? cookieSyncDefault,
     cookieNames: config?.cookieNames ?? DEFAULT_BROWSER_CONFIG.cookieNames,
     cookieSyncWaitMs: config?.cookieSyncWaitMs ?? DEFAULT_BROWSER_CONFIG.cookieSyncWaitMs,
@@ -95,11 +111,13 @@ export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined
     chromePath: config?.chromePath ?? DEFAULT_BROWSER_CONFIG.chromePath,
     chromeCookiePath: config?.chromeCookiePath ?? DEFAULT_BROWSER_CONFIG.chromeCookiePath,
     debug: config?.debug ?? DEFAULT_BROWSER_CONFIG.debug,
-    allowCookieErrors: config?.allowCookieErrors ?? envAllowCookieErrors ?? DEFAULT_BROWSER_CONFIG.allowCookieErrors,
+    allowCookieErrors:
+      config?.allowCookieErrors ?? envAllowCookieErrors ?? DEFAULT_BROWSER_CONFIG.allowCookieErrors,
     thinkingTime: config?.thinkingTime,
     manualLogin,
     manualLoginProfileDir: manualLogin ? resolvedProfileDir : null,
-    manualLoginCookieSync: config?.manualLoginCookieSync ?? DEFAULT_BROWSER_CONFIG.manualLoginCookieSync,
+    manualLoginCookieSync:
+      config?.manualLoginCookieSync ?? DEFAULT_BROWSER_CONFIG.manualLoginCookieSync,
   };
 }
 

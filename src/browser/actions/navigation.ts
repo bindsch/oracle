@@ -1,15 +1,11 @@
-import type { ChromeClient, BrowserLogger } from '../types.js';
-import {
-  CLOUDFLARE_SCRIPT_SELECTOR,
-  CLOUDFLARE_TITLE,
-  INPUT_SELECTORS,
-} from '../constants.js';
-import { delay } from '../utils.js';
-import { logDomFailure } from '../domDebug.js';
-import { BrowserAutomationError } from '../../oracle/errors.js';
+import type { ChromeClient, BrowserLogger } from "../types.js";
+import { CLOUDFLARE_SCRIPT_SELECTOR, CLOUDFLARE_TITLE, INPUT_SELECTORS } from "../constants.js";
+import { delay } from "../utils.js";
+import { logDomFailure } from "../domDebug.js";
+import { BrowserAutomationError } from "../../oracle/errors.js";
 
 export function installJavaScriptDialogAutoDismissal(
-  Page: ChromeClient['Page'],
+  Page: ChromeClient["Page"],
   logger: BrowserLogger,
 ): () => void {
   type DialogEvent = { type?: string; message?: string };
@@ -20,29 +16,29 @@ export function installJavaScriptDialogAutoDismissal(
     handleJavaScriptDialog?: (params: { accept: boolean; promptText?: string }) => Promise<void>;
   };
 
-  if (typeof pageAny.on !== 'function' || typeof pageAny.handleJavaScriptDialog !== 'function') {
+  if (typeof pageAny.on !== "function" || typeof pageAny.handleJavaScriptDialog !== "function") {
     return () => {};
   }
 
   const handler = async (params: DialogEvent) => {
-    const type = typeof params?.type === 'string' ? params.type : 'unknown';
-    const message = typeof params?.message === 'string' ? params.message : '';
-    logger(`[nav] dismissing JS dialog (${type})${message ? `: ${message.slice(0, 140)}` : ''}`);
+    const type = typeof params?.type === "string" ? params.type : "unknown";
+    const message = typeof params?.message === "string" ? params.message : "";
+    logger(`[nav] dismissing JS dialog (${type})${message ? `: ${message.slice(0, 140)}` : ""}`);
     try {
-      await pageAny.handleJavaScriptDialog?.({ accept: true, promptText: '' });
+      await pageAny.handleJavaScriptDialog?.({ accept: true, promptText: "" });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger(`[nav] failed to dismiss JS dialog: ${msg}`);
     }
   };
 
-  pageAny.on('javascriptDialogOpening', handler);
+  pageAny.on("javascriptDialogOpening", handler);
   return () => {
     try {
-      pageAny.off?.('javascriptDialogOpening', handler);
+      pageAny.off?.("javascriptDialogOpening", handler);
     } catch {
       try {
-        pageAny.removeListener?.('javascriptDialogOpening', handler);
+        pageAny.removeListener?.("javascriptDialogOpening", handler);
       } catch {
         // ignore
       }
@@ -51,8 +47,8 @@ export function installJavaScriptDialogAutoDismissal(
 }
 
 export async function navigateToChatGPT(
-  Page: ChromeClient['Page'],
-  Runtime: ChromeClient['Runtime'],
+  Page: ChromeClient["Page"],
+  Runtime: ChromeClient["Runtime"],
   url: string,
   logger: BrowserLogger,
 ) {
@@ -76,7 +72,10 @@ export interface PromptReadyNavigationDeps {
   ensurePromptReady?: typeof ensurePromptReady;
 }
 
-async function dismissBlockingUi(Runtime: ChromeClient['Runtime'], logger: BrowserLogger): Promise<boolean> {
+async function dismissBlockingUi(
+  Runtime: ChromeClient["Runtime"],
+  logger: BrowserLogger,
+): Promise<boolean> {
   const outcome = await Runtime.evaluate({
     expression: `(() => {
       const isVisible = (el) => {
@@ -129,26 +128,19 @@ async function dismissBlockingUi(Runtime: ChromeClient['Runtime'], logger: Brows
   }).catch(() => null);
   const value = outcome?.result?.value as { dismissed?: boolean; action?: string } | undefined;
   if (value?.dismissed) {
-    logger(`[nav] dismissed blocking UI (${value.action ?? 'unknown'})`);
+    logger(`[nav] dismissed blocking UI (${value.action ?? "unknown"})`);
     return true;
   }
   return false;
 }
 
 export async function navigateToPromptReadyWithFallback(
-  Page: ChromeClient['Page'],
-  Runtime: ChromeClient['Runtime'],
+  Page: ChromeClient["Page"],
+  Runtime: ChromeClient["Runtime"],
   options: PromptReadyNavigationOptions,
   deps: PromptReadyNavigationDeps = {},
 ): Promise<{ usedFallback: boolean }> {
-  const {
-    url,
-    fallbackUrl,
-    timeoutMs,
-    fallbackTimeoutMs,
-    headless,
-    logger,
-  } = options;
+  const { url, fallbackUrl, timeoutMs, fallbackTimeoutMs, headless, logger } = options;
   const navigate = deps.navigateToChatGPT ?? navigateToChatGPT;
   const ensureBlocked = deps.ensureNotBlocked ?? ensureNotBlocked;
   const ensureReady = deps.ensurePromptReady ?? ensurePromptReady;
@@ -175,20 +167,24 @@ export async function navigateToPromptReadyWithFallback(
   }
 }
 
-export async function ensureNotBlocked(Runtime: ChromeClient['Runtime'], headless: boolean, logger: BrowserLogger) {
+export async function ensureNotBlocked(
+  Runtime: ChromeClient["Runtime"],
+  headless: boolean,
+  logger: BrowserLogger,
+) {
   if (await isCloudflareInterstitial(Runtime)) {
     const message = headless
-      ? 'Cloudflare challenge detected in headless mode. Re-run with --headful so you can solve the challenge.'
-      : 'Cloudflare challenge detected. Complete the “Just a moment…” check in the open browser, then rerun.';
-    logger('Cloudflare anti-bot page detected');
-    throw new BrowserAutomationError(message, { stage: 'cloudflare-challenge', headless });
+      ? "Cloudflare challenge detected in headless mode. Re-run with --headful so you can solve the challenge."
+      : "Cloudflare challenge detected. Complete the “Just a moment…” check in the open browser, then rerun.";
+    logger("Cloudflare anti-bot page detected");
+    throw new BrowserAutomationError(message, { stage: "cloudflare-challenge", headless });
   }
 }
 
 const LOGIN_CHECK_TIMEOUT_MS = 5_000;
 
 export async function ensureLoggedIn(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger: BrowserLogger,
   options: { appliedCookies?: number | null; remoteSession?: boolean } = {},
 ) {
@@ -201,7 +197,9 @@ export async function ensureLoggedIn(
   });
   const probe = normalizeLoginProbe(outcome.result?.value);
   if (probe.ok) {
-    logger(`Login check passed (status=${probe.status}, domLoginCta=${Boolean(probe.domLoginCta)})`);
+    logger(
+      `Login check passed (status=${probe.status}, domLoginCta=${Boolean(probe.domLoginCta)})`,
+    );
     return;
   }
 
@@ -217,7 +215,7 @@ export async function ensureLoggedIn(
     });
     const retryProbe = normalizeLoginProbe(retryOutcome.result?.value);
     if (retryProbe.ok) {
-      logger('Login restored via Welcome back account picker');
+      logger("Login restored via Welcome back account picker");
       return;
     }
     logger(
@@ -230,20 +228,23 @@ export async function ensureLoggedIn(
   logger(
     `Login probe failed (status=${probe.status}, domLoginCta=${Boolean(probe.domLoginCta)}, onAuthPage=${Boolean(
       probe.onAuthPage,
-    )}, url=${probe.pageUrl ?? 'n/a'}, error=${probe.error ?? 'none'})`,
+    )}, url=${probe.pageUrl ?? "n/a"}, error=${probe.error ?? "none"})`,
   );
 
-  const domLabel = probe.domLoginCta ? ' Login button detected on page.' : '';
+  const domLabel = probe.domLoginCta ? " Login button detected on page." : "";
   const cookieHint = options.remoteSession
-    ? 'The remote Chrome session is not signed into ChatGPT. Sign in there, then rerun.'
+    ? "The remote Chrome session is not signed into ChatGPT. Sign in there, then rerun."
     : (options.appliedCookies ?? 0) === 0
-      ? 'No ChatGPT cookies were applied; sign in to chatgpt.com in Chrome or pass inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).'
-      : 'ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).';
+      ? "No ChatGPT cookies were applied; sign in to chatgpt.com in Chrome or pass inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON)."
+      : "ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).";
 
   throw new Error(`ChatGPT session not detected.${domLabel} ${cookieHint}`);
 }
 
-async function attemptWelcomeBackLogin(Runtime: ChromeClient['Runtime'], logger: BrowserLogger): Promise<boolean> {
+async function attemptWelcomeBackLogin(
+  Runtime: ChromeClient["Runtime"],
+  logger: BrowserLogger,
+): Promise<boolean> {
   const outcome = await Runtime.evaluate({
     expression: `(() => {
       // Learned: "Welcome back" shows as a modal with account chips; click the email chip.
@@ -302,74 +303,82 @@ async function attemptWelcomeBackLogin(Runtime: ChromeClient['Runtime'], logger:
   if (outcome.exceptionDetails) {
     const details = outcome.exceptionDetails;
     const description =
-      (details.exception && typeof details.exception.description === 'string' && details.exception.description) ||
+      (details.exception &&
+        typeof details.exception.description === "string" &&
+        details.exception.description) ||
       details.text ||
-      'unknown error';
+      "unknown error";
     logger(`Welcome back auto-select probe failed: ${description}`);
   }
-  const result = outcome.result?.value as { clicked?: boolean; reason?: string; label?: string } | undefined;
+  const result = outcome.result?.value as
+    | { clicked?: boolean; reason?: string; label?: string }
+    | undefined;
   if (!result) {
-    logger('Welcome back auto-select probe returned no result.');
+    logger("Welcome back auto-select probe returned no result.");
     return false;
   }
   if (result?.clicked) {
-    logger(`Welcome back modal detected; selected account ${result.label ?? '(unknown)'}`);
+    logger(`Welcome back modal detected; selected account ${result.label ?? "(unknown)"}`);
     return true;
   }
-  if (result?.reason && result.reason !== 'timeout') {
+  if (result?.reason && result.reason !== "timeout") {
     logger(`Welcome back modal present but auto-select failed (${result.reason}).`);
   }
-  if (result?.reason === 'timeout') {
-    logger('Welcome back modal not detected after login probe failure.');
+  if (result?.reason === "timeout") {
+    logger("Welcome back modal not detected after login probe failure.");
   }
   return false;
 }
 
-export async function ensurePromptReady(Runtime: ChromeClient['Runtime'], timeoutMs: number, logger: BrowserLogger) {
+export async function ensurePromptReady(
+  Runtime: ChromeClient["Runtime"],
+  timeoutMs: number,
+  logger: BrowserLogger,
+) {
   const ready = await waitForPrompt(Runtime, timeoutMs);
   if (!ready) {
     const authUrl = await currentUrl(Runtime);
     if (authUrl && isAuthLoginUrl(authUrl)) {
       // Learned: auth.openai.com/login can appear after cookies are copied; allow manual login window.
-      logger('Auth login page detected; waiting for manual login to complete...');
+      logger("Auth login page detected; waiting for manual login to complete...");
       const extended = Math.min(Math.max(timeoutMs, 60_000), 20 * 60_000);
       const loggedIn = await waitForPrompt(Runtime, extended);
       if (loggedIn) {
         return;
       }
     }
-    await logDomFailure(Runtime, logger, 'prompt-textarea');
-    throw new Error('Prompt textarea did not appear before timeout');
+    await logDomFailure(Runtime, logger, "prompt-textarea");
+    throw new Error("Prompt textarea did not appear before timeout");
   }
 }
 
-async function waitForDocumentReady(Runtime: ChromeClient['Runtime'], timeoutMs: number) {
+async function waitForDocumentReady(Runtime: ChromeClient["Runtime"], timeoutMs: number) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const { result } = await Runtime.evaluate({
       expression: `document.readyState`,
       returnByValue: true,
     });
-    if (result?.value === 'complete' || result?.value === 'interactive') {
+    if (result?.value === "complete" || result?.value === "interactive") {
       return;
     }
     await delay(100);
   }
-  throw new Error('Page did not reach ready state in time');
+  throw new Error("Page did not reach ready state in time");
 }
 
-async function currentUrl(Runtime: ChromeClient['Runtime']): Promise<string | null> {
+async function currentUrl(Runtime: ChromeClient["Runtime"]): Promise<string | null> {
   const { result } = await Runtime.evaluate({
     expression: 'typeof location === "object" && location.href ? location.href : null',
     returnByValue: true,
   });
-  return typeof result?.value === 'string' ? result.value : null;
+  return typeof result?.value === "string" ? result.value : null;
 }
 
 function isAuthLoginUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname.includes('auth.openai.com')) {
+    if (parsed.hostname.includes("auth.openai.com")) {
       return true;
     }
     return /^\/log-?in/i.test(parsed.pathname);
@@ -378,7 +387,10 @@ function isAuthLoginUrl(url: string): boolean {
   }
 }
 
-async function waitForPrompt(Runtime: ChromeClient['Runtime'], timeoutMs: number): Promise<boolean> {
+async function waitForPrompt(
+  Runtime: ChromeClient["Runtime"],
+  timeoutMs: number,
+): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const { result } = await Runtime.evaluate({
@@ -402,9 +414,12 @@ async function waitForPrompt(Runtime: ChromeClient['Runtime'], timeoutMs: number
   return false;
 }
 
-async function isCloudflareInterstitial(Runtime: ChromeClient['Runtime']): Promise<boolean> {
-  const { result: titleResult } = await Runtime.evaluate({ expression: 'document.title', returnByValue: true });
-  const title = typeof titleResult.value === 'string' ? titleResult.value : '';
+async function isCloudflareInterstitial(Runtime: ChromeClient["Runtime"]): Promise<boolean> {
+  const { result: titleResult } = await Runtime.evaluate({
+    expression: "document.title",
+    returnByValue: true,
+  });
+  const title = typeof titleResult.value === "string" ? titleResult.value : "";
   const challengeTitle = CLOUDFLARE_TITLE.toLowerCase();
   if (title.toLowerCase().includes(challengeTitle)) {
     return true;
@@ -515,25 +530,25 @@ function buildLoginProbeExpression(timeoutMs: number): string {
 }
 
 function normalizeLoginProbe(raw: unknown): LoginProbeResult {
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== "object") {
     return { ok: false, status: 0 };
   }
   const value = raw as Record<string, unknown>;
   const statusRaw = value.status;
   const status =
-    typeof statusRaw === 'number'
+    typeof statusRaw === "number"
       ? statusRaw
-      : typeof statusRaw === 'string' && !Number.isNaN(Number(statusRaw))
+      : typeof statusRaw === "string" && !Number.isNaN(Number(statusRaw))
         ? Number(statusRaw)
         : 0;
 
   return {
     ok: Boolean(value.ok),
     status: Number.isFinite(status) ? (status as number) : 0,
-    url: typeof value.url === 'string' ? value.url : null,
+    url: typeof value.url === "string" ? value.url : null,
     redirected: Boolean(value.redirected),
-    error: typeof value.error === 'string' ? value.error : null,
-    pageUrl: typeof value.pageUrl === 'string' ? value.pageUrl : null,
+    error: typeof value.error === "string" ? value.error : null,
+    pageUrl: typeof value.pageUrl === "string" ? value.pageUrl : null,
     domLoginCta: Boolean(value.domLoginCta),
     onAuthPage: Boolean(value.onAuthPage),
   };

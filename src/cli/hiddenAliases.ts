@@ -1,4 +1,4 @@
-import type { OptionValues } from 'commander';
+import type { OptionValues } from "commander";
 
 export interface HiddenAliasOptions extends OptionValues {
   prompt?: string;
@@ -18,18 +18,21 @@ type OptionSetter = (key: string, value: unknown) => void;
  * - `--include` extends the `--file` list.
  * - `--mode` maps to `--engine` for backward compatibility with older docs/UX.
  */
-export function applyHiddenAliases(options: HiddenAliasOptions, setOptionValue?: OptionSetter): void {
+export function applyHiddenAliases(
+  options: HiddenAliasOptions,
+  setOptionValue?: OptionSetter,
+): void {
   if (options.include && options.include.length > 0) {
     const mergedFiles = [...(options.file ?? []), ...options.include];
     options.file = mergedFiles;
-    setOptionValue?.('file', mergedFiles);
+    setOptionValue?.("file", mergedFiles);
   }
   if (!options.prompt && options.message) {
     options.prompt = options.message;
-    setOptionValue?.('prompt', options.message);
+    setOptionValue?.("prompt", options.message);
   }
   if (!options.engine && options.mode) {
     options.engine = options.mode as string;
-    setOptionValue?.('engine', options.mode);
+    setOptionValue?.("engine", options.mode);
   }
 }

@@ -1,8 +1,8 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
-const LOCK_ROOT = path.join(os.homedir(), '.oracle', 'live-test-locks');
+const LOCK_ROOT = path.join(os.homedir(), ".oracle", "live-test-locks");
 
 type LockInfo = {
   pid: number;
@@ -15,7 +15,7 @@ function lockDir(label: string): string {
 }
 
 function lockInfoPath(label: string): string {
-  return path.join(lockDir(label), 'info.json');
+  return path.join(lockDir(label), "info.json");
 }
 
 function isProcessRunning(pid: number): boolean {
@@ -27,7 +27,10 @@ function isProcessRunning(pid: number): boolean {
   }
 }
 
-export async function acquireLiveTestLock(label: string, timeoutMs = 20 * 60 * 1000): Promise<void> {
+export async function acquireLiveTestLock(
+  label: string,
+  timeoutMs = 20 * 60 * 1000,
+): Promise<void> {
   await fs.mkdir(LOCK_ROOT, { recursive: true });
   const deadline = Date.now() + timeoutMs;
   const dir = lockDir(label);
@@ -37,20 +40,20 @@ export async function acquireLiveTestLock(label: string, timeoutMs = 20 * 60 * 1
     try {
       await fs.mkdir(dir);
       const info: LockInfo = { pid: process.pid, label, startedAt: Date.now() };
-      await fs.writeFile(infoPath, JSON.stringify(info, null, 2), 'utf8');
+      await fs.writeFile(infoPath, JSON.stringify(info, null, 2), "utf8");
       return;
     } catch (error) {
       const err = error as NodeJS.ErrnoException | undefined;
-      if (err?.code !== 'EEXIST') {
+      if (err?.code !== "EEXIST") {
         throw error;
       }
     }
 
     let stale = false;
     try {
-      const raw = await fs.readFile(infoPath, 'utf8');
+      const raw = await fs.readFile(infoPath, "utf8");
       const info = JSON.parse(raw) as Partial<LockInfo>;
-      if (typeof info.pid === 'number' && !isProcessRunning(info.pid)) {
+      if (typeof info.pid === "number" && !isProcessRunning(info.pid)) {
         stale = true;
       }
     } catch {

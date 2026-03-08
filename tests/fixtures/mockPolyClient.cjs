@@ -11,11 +11,11 @@ class MockStream {
         return {
           done: false,
           value: {
-            type: 'response.output_text.delta',
+            type: "response.output_text.delta",
             response_id: this.response.id,
             output_index: 0,
             item_index: 0,
-            delta: this.response.output_text?.[0] ?? 'Mock answer text.',
+            delta: this.response.output_text?.[0] ?? "Mock answer text.",
           },
         };
       },
@@ -28,10 +28,10 @@ class MockStream {
 }
 
 function makeResponse(body) {
-  const text = `Echo(${body.model ?? 'unknown'}): ${body.input?.[0]?.content?.[0]?.text ?? ''}`;
+  const text = `Echo(${body.model ?? "unknown"}): ${body.input?.[0]?.content?.[0]?.text ?? ""}`;
   return {
-    id: `mock-${body.model ?? 'id'}`,
-    status: 'completed',
+    id: `mock-${body.model ?? "id"}`,
+    status: "completed",
     usage: {
       input_tokens: 12,
       output_tokens: 8,
@@ -39,8 +39,8 @@ function makeResponse(body) {
       total_tokens: 20,
     },
     output_text: [text],
-    output: [{ type: 'text', text }],
-    _request_id: 'mock-req',
+    output: [{ type: "text", text }],
+    _request_id: "mock-req",
   };
 }
 

@@ -11,8 +11,8 @@ Either pass the CLI flag or set it once in `~/.oracle/config.json`:
   ```json5
   {
     browser: {
-      chromePath: "/Applications/Chromium.app/Contents/MacOS/Chromium"
-    }
+      chromePath: "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    },
   }
   ```
 
@@ -36,8 +36,8 @@ Config example (JSON5):
   browser: {
     chromePath: "/usr/bin/chromium",
     chromeCookiePath: "/home/you/.config/chromium/Default/Cookies",
-    chromeProfile: null
-  }
+    chromeProfile: null,
+  },
 }
 ```
 
@@ -45,11 +45,11 @@ If you omit `chromeCookiePath`, Oracle falls back to `chromeProfile` (name or ex
 
 ## Common cookie DB paths
 
-| Browser | macOS | Linux | Windows |
-| --- | --- | --- | --- |
-| Chrome (default) | `~/Library/Application Support/Google/Chrome/Default/Cookies` | `~/.config/google-chrome/Default/Cookies` | `%LOCALAPPDATA%/Google/Chrome/User Data/Default/Network/Cookies` |
-| Chromium | `~/Library/Application Support/Chromium/Default/Cookies` | `~/.config/chromium/Default/Cookies` | `%LOCALAPPDATA%/Chromium/User Data/Default/Network/Cookies` |
-| Microsoft Edge | `~/Library/Application Support/Microsoft Edge/Default/Cookies` (profiles are `Profile 1`, `Profile 2`, …) | `~/.config/microsoft-edge/Default/Cookies` | `%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Network/Cookies` |
+| Browser          | macOS                                                                                                     | Linux                                      | Windows                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| Chrome (default) | `~/Library/Application Support/Google/Chrome/Default/Cookies`                                             | `~/.config/google-chrome/Default/Cookies`  | `%LOCALAPPDATA%/Google/Chrome/User Data/Default/Network/Cookies`  |
+| Chromium         | `~/Library/Application Support/Chromium/Default/Cookies`                                                  | `~/.config/chromium/Default/Cookies`       | `%LOCALAPPDATA%/Chromium/User Data/Default/Network/Cookies`       |
+| Microsoft Edge   | `~/Library/Application Support/Microsoft Edge/Default/Cookies` (profiles are `Profile 1`, `Profile 2`, …) | `~/.config/microsoft-edge/Default/Cookies` | `%LOCALAPPDATA%/Microsoft/Edge/User Data/Default/Network/Cookies` |
 
 Brave and other forks work the same way—inspect `%APPDATA%`/`~/Library/Application Support`/`~/.config` for their `Cookies` file and pass its full path to `--browser-cookie-path`.
 

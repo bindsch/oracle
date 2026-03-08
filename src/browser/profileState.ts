@@ -1,20 +1,20 @@
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { delay } from './utils.js';
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { delay } from "./utils.js";
 
 export type ProfileStateLogger = (message: string) => void;
 
-const DEVTOOLS_ACTIVE_PORT_FILENAME = 'DevToolsActivePort';
+const DEVTOOLS_ACTIVE_PORT_FILENAME = "DevToolsActivePort";
 const DEVTOOLS_ACTIVE_PORT_RELATIVE_PATHS = [
   DEVTOOLS_ACTIVE_PORT_FILENAME,
-  path.join('Default', DEVTOOLS_ACTIVE_PORT_FILENAME),
+  path.join("Default", DEVTOOLS_ACTIVE_PORT_FILENAME),
 ] as const;
 
-const CHROME_PID_FILENAME = 'chrome.pid';
-const ORACLE_PROFILE_LOCK_FILENAME = 'oracle-automation.lock';
+const CHROME_PID_FILENAME = "chrome.pid";
+const ORACLE_PROFILE_LOCK_FILENAME = "oracle-automation.lock";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,9 +25,9 @@ export function getDevToolsActivePortPaths(userDataDir: string): string[] {
 export async function readDevToolsPort(userDataDir: string): Promise<number | null> {
   for (const candidate of getDevToolsActivePortPaths(userDataDir)) {
     try {
-      const raw = await readFile(candidate, 'utf8');
+      const raw = await readFile(candidate, "utf8");
       const firstLine = raw.split(/\r?\n/u)[0]?.trim();
-      const port = Number.parseInt(firstLine ?? '', 10);
+      const port = Number.parseInt(firstLine ?? "", 10);
       if (Number.isFinite(port)) {
         return port;
       }
@@ -43,7 +43,7 @@ export async function writeDevToolsActivePort(userDataDir: string, port: number)
   for (const candidate of getDevToolsActivePortPaths(userDataDir)) {
     try {
       await mkdir(path.dirname(candidate), { recursive: true });
-      await writeFile(candidate, contents, 'utf8');
+      await writeFile(candidate, contents, "utf8");
     } catch {
       // best effort
     }
@@ -53,7 +53,7 @@ export async function writeDevToolsActivePort(userDataDir: string, port: number)
 export async function readChromePid(userDataDir: string): Promise<number | null> {
   const pidPath = path.join(userDataDir, CHROME_PID_FILENAME);
   try {
-    const raw = (await readFile(pidPath, 'utf8')).trim();
+    const raw = (await readFile(pidPath, "utf8")).trim();
     const pid = Number.parseInt(raw, 10);
     if (!Number.isFinite(pid) || pid <= 0) {
       return null;
@@ -69,7 +69,7 @@ export async function writeChromePid(userDataDir: string, pid: number): Promise<
   const pidPath = path.join(userDataDir, CHROME_PID_FILENAME);
   try {
     await mkdir(path.dirname(pidPath), { recursive: true });
-    await writeFile(pidPath, `${Math.trunc(pid)}\n`, 'utf8');
+    await writeFile(pidPath, `${Math.trunc(pid)}\n`, "utf8");
   } catch {
     // best effort
   }
@@ -82,7 +82,12 @@ export function isProcessAlive(pid: number): boolean {
     return true;
   } catch (error) {
     // EPERM means "exists but no permission"; treat as alive.
-    if (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'EPERM') {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "EPERM"
+    ) {
       return true;
     }
     return false;
@@ -107,7 +112,7 @@ function parseProfileRunLock(payload: string | null): ProfileRunLockRecord | nul
   try {
     const parsed = JSON.parse(payload) as ProfileRunLockRecord;
     if (!Number.isFinite(parsed.pid) || parsed.pid <= 0) return null;
-    if (!parsed.lockId || typeof parsed.lockId !== 'string') return null;
+    if (!parsed.lockId || typeof parsed.lockId !== "string") return null;
     return parsed;
   } catch {
     return null;
@@ -128,7 +133,7 @@ export async function acquireProfileRunLock(
     return null;
   }
   const pollMs =
-    typeof options.pollMs === 'number' && Number.isFinite(options.pollMs) && options.pollMs > 0
+    typeof options.pollMs === "number" && Number.isFinite(options.pollMs) && options.pollMs > 0
       ? options.pollMs
       : 1000;
   const lockPath = path.join(userDataDir, ORACLE_PROFILE_LOCK_FILENAME);
@@ -145,7 +150,7 @@ export async function acquireProfileRunLock(
         sessionId: options.sessionId,
       };
       await mkdir(path.dirname(lockPath), { recursive: true });
-      await writeFile(lockPath, JSON.stringify(payload), { encoding: 'utf8', flag: 'wx' });
+      await writeFile(lockPath, JSON.stringify(payload), { encoding: "utf8", flag: "wx" });
       options.logger?.(`Acquired Oracle profile lock at ${lockPath}`);
       return {
         path: lockPath,
@@ -154,16 +159,16 @@ export async function acquireProfileRunLock(
       };
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code !== 'EEXIST') {
+      if (code !== "EEXIST") {
         throw error;
       }
-      let existing = parseProfileRunLock(await readFile(lockPath, 'utf8').catch(() => null));
+      let existing = parseProfileRunLock(await readFile(lockPath, "utf8").catch(() => null));
       if (!existing) {
         // Likely partial write / corruption; re-read once, then delete (user preference: delete unreadable lockfiles).
         await delay(200);
-        existing = parseProfileRunLock(await readFile(lockPath, 'utf8').catch(() => null));
+        existing = parseProfileRunLock(await readFile(lockPath, "utf8").catch(() => null));
         if (!existing) {
-          options.logger?.('Oracle profile lock unreadable; deleting lockfile.');
+          options.logger?.("Oracle profile lock unreadable; deleting lockfile.");
           await rm(lockPath, { force: true }).catch(() => undefined);
           continue;
         }
@@ -174,7 +179,9 @@ export async function acquireProfileRunLock(
       }
       if (!warned) {
         const waited = Math.round(timeoutMs / 1000);
-        options.logger?.(`Oracle profile lock held by pid ${existing.pid}; waiting up to ${waited}s.`);
+        options.logger?.(
+          `Oracle profile lock held by pid ${existing.pid}; waiting up to ${waited}s.`,
+        );
         warned = true;
       }
       const elapsed = Date.now() - startedAt;
@@ -194,7 +201,7 @@ export async function releaseProfileRunLock(
   logger?: ProfileStateLogger,
 ): Promise<void> {
   try {
-    const existing = parseProfileRunLock(await readFile(lockPath, 'utf8').catch(() => null));
+    const existing = parseProfileRunLock(await readFile(lockPath, "utf8").catch(() => null));
     if (!existing || existing.lockId !== lockId) {
       return;
     }
@@ -207,7 +214,7 @@ export async function releaseProfileRunLock(
 
 export async function verifyDevToolsReachable({
   port,
-  host = '127.0.0.1',
+  host = "127.0.0.1",
   attempts = 3,
   timeoutMs = 3000,
 }: {
@@ -236,7 +243,7 @@ export async function verifyDevToolsReachable({
       return { ok: false, error: message };
     }
   }
-  return { ok: false, error: 'unreachable' };
+  return { ok: false, error: "unreachable" };
 }
 
 export async function shouldCleanupManualLoginProfileState(
@@ -267,7 +274,7 @@ export async function shouldCleanupManualLoginProfileState(
 export async function cleanupStaleProfileState(
   userDataDir: string,
   logger?: ProfileStateLogger,
-  options: { lockRemovalMode?: 'never' | 'if_oracle_pid_dead' } = {},
+  options: { lockRemovalMode?: "never" | "if_oracle_pid_dead" } = {},
 ): Promise<void> {
   for (const candidate of getDevToolsActivePortPaths(userDataDir)) {
     try {
@@ -278,8 +285,8 @@ export async function cleanupStaleProfileState(
     }
   }
 
-  const lockRemovalMode = options.lockRemovalMode ?? 'never';
-  if (lockRemovalMode === 'never') {
+  const lockRemovalMode = options.lockRemovalMode ?? "never";
+  if (lockRemovalMode === "never") {
     return;
   }
 
@@ -295,37 +302,39 @@ export async function cleanupStaleProfileState(
   // Extra safety: if Chrome is running with this profile (but with a different PID, e.g. user relaunched
   // without remote debugging), never delete lock files.
   if (await isChromeUsingUserDataDir(userDataDir)) {
-    logger?.('Detected running Chrome using this profile; skipping profile lock cleanup');
+    logger?.("Detected running Chrome using this profile; skipping profile lock cleanup");
     return;
   }
 
   const lockFiles = [
-    path.join(userDataDir, 'lockfile'),
-    path.join(userDataDir, 'SingletonLock'),
-    path.join(userDataDir, 'SingletonSocket'),
-    path.join(userDataDir, 'SingletonCookie'),
+    path.join(userDataDir, "lockfile"),
+    path.join(userDataDir, "SingletonLock"),
+    path.join(userDataDir, "SingletonSocket"),
+    path.join(userDataDir, "SingletonCookie"),
   ];
   for (const lock of lockFiles) {
     await rm(lock, { force: true }).catch(() => undefined);
   }
-  logger?.('Cleaned up stale Chrome profile locks');
+  logger?.("Cleaned up stale Chrome profile locks");
 }
 
 async function isChromeUsingUserDataDir(userDataDir: string): Promise<boolean> {
-  if (process.platform === 'win32') {
+  if (process.platform === "win32") {
     // On Windows, lockfiles are typically held open and removal should fail anyway; avoid expensive process scans.
     return false;
   }
 
   try {
-    const { stdout } = await execFileAsync('ps', ['-ax', '-o', 'command='], { maxBuffer: 10 * 1024 * 1024 });
-    const lines = String(stdout ?? '').split('\n');
+    const { stdout } = await execFileAsync("ps", ["-ax", "-o", "command="], {
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const lines = String(stdout ?? "").split("\n");
     const needle = userDataDir;
     for (const line of lines) {
       if (!line) continue;
       const lower = line.toLowerCase();
-      if (!lower.includes('chrome') && !lower.includes('chromium')) continue;
-      if (line.includes(needle) && lower.includes('user-data-dir')) {
+      if (!lower.includes("chrome") && !lower.includes("chromium")) continue;
+      if (line.includes(needle) && lower.includes("user-data-dir")) {
         return true;
       }
     }

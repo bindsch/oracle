@@ -5,17 +5,17 @@ import type {
   OracleResponse,
   ResponseStreamEvent,
   ResponseStreamLike,
-} from './types.js';
+} from "./types.js";
 
-const DEFAULT_CLAUDE_ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
+const DEFAULT_CLAUDE_ENDPOINT = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2023-06-01";
 
 function extractPrompt(body: OracleRequestBody): string {
   const first = body.input?.[0]?.content?.[0];
-  if (first && first.type === 'input_text') {
-    return first.text ?? '';
+  if (first && first.type === "input_text") {
+    return first.text ?? "";
   }
-  return '';
+  return "";
 }
 
 async function callClaude({
@@ -37,7 +37,7 @@ async function callClaude({
     max_tokens: 2048,
     messages: [
       {
-        role: 'user',
+        role: "user",
         content: prompt,
       },
     ],
@@ -45,11 +45,11 @@ async function callClaude({
   };
 
   return fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': ANTHROPIC_VERSION,
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
     },
     body: JSON.stringify(payload),
   });
@@ -63,15 +63,15 @@ async function parseClaudeResponse(raw: Response): Promise<OracleResponse> {
     error?: { message?: string };
   };
   if (json.error) {
-    throw new Error(json.error.message || 'Claude request failed');
+    throw new Error(json.error.message || "Claude request failed");
   }
-  const textParts = json.content?.map((part) => part.text ?? '').filter(Boolean) ?? [];
-  const outputText = textParts.join('');
+  const textParts = json.content?.map((part) => part.text ?? "").filter(Boolean) ?? [];
+  const outputText = textParts.join("");
   return {
     id: json.id ?? `claude-${Date.now()}`,
-    status: 'completed',
+    status: "completed",
     output_text: [outputText],
-    output: [{ type: 'text', text: outputText }],
+    output: [{ type: "text", text: outputText }],
     usage: {
       input_tokens: json.usage?.input_tokens ?? 0,
       output_tokens: json.usage?.output_tokens ?? 0,
@@ -90,11 +90,17 @@ export function createClaudeClient(
 
   const stream = async (body: OracleRequestBody): Promise<ResponseStreamLike> => {
     const prompt = extractPrompt(body);
-    const resp = await callClaude({ apiKey, model: modelId, prompt, stream: false, endpoint: baseUrl });
+    const resp = await callClaude({
+      apiKey,
+      model: modelId,
+      prompt,
+      stream: false,
+      endpoint: baseUrl,
+    });
     const parsed = await parseClaudeResponse(resp);
     const iterator = async function* (): AsyncGenerator<ResponseStreamEvent> {
       if (parsed.output_text?.[0]) {
-        yield { type: 'response.output_text.delta', delta: parsed.output_text[0] };
+        yield { type: "response.output_text.delta", delta: parsed.output_text[0] };
       }
       return;
     };
@@ -106,14 +112,20 @@ export function createClaudeClient(
 
   const create = async (body: OracleRequestBody): Promise<OracleResponse> => {
     const prompt = extractPrompt(body);
-    const resp = await callClaude({ apiKey, model: modelId, prompt, stream: false, endpoint: baseUrl });
+    const resp = await callClaude({
+      apiKey,
+      model: modelId,
+      prompt,
+      stream: false,
+      endpoint: baseUrl,
+    });
     return parseClaudeResponse(resp);
   };
 
   const retrieve = async (id: string): Promise<OracleResponse> => ({
     id,
-    status: 'error',
-    error: { message: 'Retrieve by ID not supported for Claude API yet.' },
+    status: "error",
+    error: { message: "Retrieve by ID not supported for Claude API yet." },
   });
 
   return {
@@ -126,11 +138,11 @@ export function createClaudeClient(
 }
 
 export function resolveClaudeModelId(modelName: string): string {
-  if (modelName === 'claude-4.5-sonnet' || modelName === 'claude-sonnet-4-5-20241022') {
-    return 'claude-sonnet-4-5';
+  if (modelName === "claude-4.5-sonnet" || modelName === "claude-sonnet-4-5-20241022") {
+    return "claude-sonnet-4-5";
   }
-  if (modelName === 'claude-4.1-opus' || modelName === 'claude-opus-4-1-20240808') {
-    return 'claude-opus-4-1';
+  if (modelName === "claude-4.1-opus" || modelName === "claude-opus-4-1-20240808") {
+    return "claude-opus-4-1";
   }
   return modelName;
 }

@@ -1,6 +1,6 @@
-import puppeteer from 'puppeteer-core';
+import puppeteer from "puppeteer-core";
 
-const port = parseInt(process.argv[2] || '52990', 10);
+const port = parseInt(process.argv[2] || "52990", 10);
 
 type ExtractedMessage =
   | { selector: string; count: number; text: string }
@@ -17,18 +17,18 @@ async function main() {
 
   for (const page of pages) {
     const url = page.url();
-    if (url.includes('chatgpt.com/c/')) {
+    if (url.includes("chatgpt.com/c/")) {
       targetPage = page;
       break;
     }
   }
 
   if (!targetPage) {
-    console.error('ChatGPT conversation page not found');
+    console.error("ChatGPT conversation page not found");
     process.exit(1);
   }
 
-  console.error('Found page:', await targetPage.url());
+  console.error("Found page:", await targetPage.url());
 
   // Extract the last assistant message
   const content = (await targetPage.evaluate(() => {
@@ -36,8 +36,8 @@ async function main() {
     const selectors = [
       '[data-message-author-role="assistant"] .markdown',
       '[data-message-author-role="assistant"]',
-      '.agent-turn .markdown',
-      '.agent-turn',
+      ".agent-turn .markdown",
+      ".agent-turn",
     ];
 
     for (const selector of selectors) {
@@ -54,11 +54,11 @@ async function main() {
 
     // Debug: show what's on the page
     const body = document.body.innerHTML;
-    return { error: 'No messages found', bodyLength: body.length, sample: body.slice(0, 2000) };
+    return { error: "No messages found", bodyLength: body.length, sample: body.slice(0, 2000) };
   })) as ExtractedMessage;
 
-  if ('error' in content) {
-    console.error('Error:', JSON.stringify(content, null, 2));
+  if ("error" in content) {
+    console.error("Error:", JSON.stringify(content, null, 2));
     process.exit(1);
   }
 

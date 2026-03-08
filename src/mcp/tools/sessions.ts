@@ -1,23 +1,30 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { sessionStore } from '../../sessionStore.js';
-import { sessionsInputSchema } from '../types.js';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { sessionStore } from "../../sessionStore.js";
+import { sessionsInputSchema } from "../types.js";
 
 const sessionsInputShape = {
   id: z
     .string()
     .optional()
-    .describe('Session id or slug. If set, returns a single session (use detail:true to include metadata/request).'),
-  hours: z.number().optional().describe('Look back this many hours when listing sessions (default: 24).'),
-  limit: z.number().optional().describe('Maximum sessions to return when listing (default: 100).'),
+    .describe(
+      "Session id or slug. If set, returns a single session (use detail:true to include metadata/request).",
+    ),
+  hours: z
+    .number()
+    .optional()
+    .describe("Look back this many hours when listing sessions (default: 24)."),
+  limit: z.number().optional().describe("Maximum sessions to return when listing (default: 100)."),
   includeAll: z
     .boolean()
     .optional()
-    .describe('Include sessions outside the time window when listing (mirrors `oracle status --all`).'),
+    .describe(
+      "Include sessions outside the time window when listing (mirrors `oracle status --all`).",
+    ),
   detail: z
     .boolean()
     .optional()
-    .describe('When id is set, include session metadata + stored request + full log text.'),
+    .describe("When id is set, include session metadata + stored request + full log text."),
 } satisfies z.ZodRawShape;
 
 const sessionsOutputShape = {
@@ -45,17 +52,23 @@ const sessionsOutputShape = {
 
 export function registerSessionsTool(server: McpServer): void {
   server.registerTool(
-    'sessions',
+    "sessions",
     {
-      title: 'List or fetch oracle sessions',
+      title: "List or fetch oracle sessions",
       description:
-        'Inspect Oracle session history stored under `ORACLE_HOME_DIR` (shared with the CLI). List recent sessions or fetch one by id/slug (optionally including metadata + request + log).',
+        "Inspect Oracle session history stored under `ORACLE_HOME_DIR` (shared with the CLI). List recent sessions or fetch one by id/slug (optionally including metadata + request + log).",
       inputSchema: sessionsInputShape,
       outputSchema: sessionsOutputShape,
     },
     async (input: unknown) => {
-      const textContent = (text: string) => [{ type: 'text' as const, text }];
-      const { id, hours = 24, limit = 100, includeAll = false, detail = false } = sessionsInputSchema.parse(input);
+      const textContent = (text: string) => [{ type: "text" as const, text }];
+      const {
+        id,
+        hours = 24,
+        limit = 100,
+        includeAll = false,
+        detail = false,
+      } = sessionsInputSchema.parse(input);
 
       if (id) {
         if (!detail) {
@@ -64,7 +77,9 @@ export function registerSessionsTool(server: McpServer): void {
             throw new Error(`Session "${id}" not found.`);
           }
           return {
-            content: textContent(`${metadata.createdAt} | ${metadata.status} | ${metadata.model ?? 'n/a'} | ${metadata.id}`),
+            content: textContent(
+              `${metadata.createdAt} | ${metadata.status} | ${metadata.model ?? "n/a"} | ${metadata.id}`,
+            ),
             structuredContent: {
               entries: [
                 {
@@ -93,12 +108,21 @@ export function registerSessionsTool(server: McpServer): void {
       }
 
       const metas = await sessionStore.listSessions();
-      const { entries, truncated, total } = sessionStore.filterSessions(metas, { hours, includeAll, limit });
+      const { entries, truncated, total } = sessionStore.filterSessions(metas, {
+        hours,
+        includeAll,
+        limit,
+      });
       return {
         content: [
           {
-            type: 'text' as const,
-            text: entries.map((entry) => `${entry.createdAt} | ${entry.status} | ${entry.model ?? 'n/a'} | ${entry.id}`).join('\n'),
+            type: "text" as const,
+            text: entries
+              .map(
+                (entry) =>
+                  `${entry.createdAt} | ${entry.status} | ${entry.model ?? "n/a"} | ${entry.id}`,
+              )
+              .join("\n"),
           },
         ],
         structuredContent: {

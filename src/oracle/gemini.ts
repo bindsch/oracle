@@ -1,22 +1,35 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold, type Tool, type GenerateContentResponse,
-  type GenerateContentResponseUsageMetadata } from '@google/genai';
-import type { ClientLike, ModelName, OracleRequestBody, OracleResponse, ResponseStreamLike, ResponseOutputItem } from './types.js';
+import {
+  GoogleGenAI,
+  HarmCategory,
+  HarmBlockThreshold,
+  type Tool,
+  type GenerateContentResponse,
+  type GenerateContentResponseUsageMetadata,
+} from "@google/genai";
+import type {
+  ClientLike,
+  ModelName,
+  OracleRequestBody,
+  OracleResponse,
+  ResponseStreamLike,
+  ResponseOutputItem,
+} from "./types.js";
 
 const MODEL_ID_MAP: Record<ModelName, string> = {
-  'gemini-3.1-pro': 'gemini-3.1-pro-preview',
-  'gemini-3-pro': 'gemini-3-pro-preview',
-  'gpt-5.4': 'gpt-5.4',
-  'gpt-5.4-pro': 'gpt-5.4-pro',
-  'gpt-5.1-pro': 'gpt-5.1-pro',
-  'gpt-5-pro': 'gpt-5-pro',
-  'gpt-5.1': 'gpt-5.1',
-  'gpt-5.1-codex': 'gpt-5.1-codex',
-  'gpt-5.2': 'gpt-5.2',
-  'gpt-5.2-instant': 'gpt-5.2-instant',
-  'gpt-5.2-pro': 'gpt-5.2-pro',
-  'claude-4.5-sonnet': 'claude-4.5-sonnet',
-  'claude-4.1-opus': 'claude-4.1-opus',
-  'grok-4.1': 'grok-4.1',
+  "gemini-3.1-pro": "gemini-3.1-pro-preview",
+  "gemini-3-pro": "gemini-3-pro-preview",
+  "gpt-5.4": "gpt-5.4",
+  "gpt-5.4-pro": "gpt-5.4-pro",
+  "gpt-5.1-pro": "gpt-5.1-pro",
+  "gpt-5-pro": "gpt-5-pro",
+  "gpt-5.1": "gpt-5.1",
+  "gpt-5.1-codex": "gpt-5.1-codex",
+  "gpt-5.2": "gpt-5.2",
+  "gpt-5.2-instant": "gpt-5.2-instant",
+  "gpt-5.2-pro": "gpt-5.2-pro",
+  "claude-4.5-sonnet": "claude-4.5-sonnet",
+  "claude-4.1-opus": "claude-4.1-opus",
+  "grok-4.1": "grok-4.1",
 };
 
 export function resolveGeminiModelId(modelName: ModelName): string {
@@ -26,7 +39,7 @@ export function resolveGeminiModelId(modelName: ModelName): string {
 
 export function createGeminiClient(
   apiKey: string,
-  modelName: ModelName = 'gemini-3-pro',
+  modelName: ModelName = "gemini-3-pro",
   resolvedModelId?: string,
 ): ClientLike {
   const modelId = resolvedModelId ?? resolveGeminiModelId(modelName);
@@ -34,10 +47,10 @@ export function createGeminiClient(
 
   const adaptBodyToGemini = (body: OracleRequestBody) => {
     const contents = body.input.map((inputItem) => ({
-      role: inputItem.role === 'user' ? 'user' : 'model',
+      role: inputItem.role === "user" ? "user" : "model",
       parts: inputItem.content
         .map((contentPart) => {
-          if (contentPart.type === 'input_text') {
+          if (contentPart.type === "input_text") {
             return { text: contentPart.text };
           }
           return null;
@@ -47,7 +60,7 @@ export function createGeminiClient(
 
     const tools = body.tools
       ?.map((tool) => {
-        if (tool.type === 'web_search_preview') {
+        if (tool.type === "web_search_preview") {
           return {
             googleSearch: {},
           };
@@ -76,7 +89,7 @@ export function createGeminiClient(
     ];
 
     const systemInstruction = body.instructions
-      ? { role: 'system', parts: [{ text: body.instructions }] }
+      ? { role: "system", parts: [{ text: body.instructions }] }
       : undefined;
 
     return {
@@ -98,7 +111,7 @@ export function createGeminiClient(
       candidate.content?.parts?.forEach((part) => {
         if (part.text) {
           outputText.push(part.text);
-          output.push({ type: 'text', text: part.text });
+          output.push({ type: "text", text: part.text });
         }
       });
     });
@@ -106,12 +119,14 @@ export function createGeminiClient(
     const usage = {
       input_tokens: geminiResponse.usageMetadata?.promptTokenCount || 0,
       output_tokens: geminiResponse.usageMetadata?.candidatesTokenCount || 0,
-      total_tokens: (geminiResponse.usageMetadata?.promptTokenCount || 0) + (geminiResponse.usageMetadata?.candidatesTokenCount || 0),
+      total_tokens:
+        (geminiResponse.usageMetadata?.promptTokenCount || 0) +
+        (geminiResponse.usageMetadata?.candidatesTokenCount || 0),
     };
 
     return {
       id: geminiResponse.responseId ?? `gemini-${Date.now()}`,
-      status: 'completed',
+      status: "completed",
       output_text: outputText,
       output,
       usage,
@@ -126,21 +141,22 @@ export function createGeminiClient(
     const usage = {
       input_tokens: usageMetadata?.promptTokenCount ?? 0,
       output_tokens: usageMetadata?.candidatesTokenCount ?? 0,
-      total_tokens: (usageMetadata?.promptTokenCount ?? 0) + (usageMetadata?.candidatesTokenCount ?? 0),
+      total_tokens:
+        (usageMetadata?.promptTokenCount ?? 0) + (usageMetadata?.candidatesTokenCount ?? 0),
     };
 
     return {
       id: responseId ?? `gemini-${Date.now()}`,
-      status: 'completed',
+      status: "completed",
       output_text: [text],
-      output: [{ type: 'text', text }],
+      output: [{ type: "text", text }],
       usage,
     };
   };
 
   const enrichGeminiError = (error: unknown): Error => {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('404')) {
+    if (message.includes("404")) {
       return new Error(
         `Gemini model not available to this API key/region. Confirm preview access and model ID (${modelId}). Original: ${message}`,
       );
@@ -153,7 +169,7 @@ export function createGeminiClient(
       stream: (body: OracleRequestBody): ResponseStreamLike => {
         const geminiBody = adaptBodyToGemini(body);
         let finalResponsePromise: Promise<OracleResponse> | null = null;
-        let aggregatedText = '';
+        let aggregatedText = "";
         let lastUsage: GenerateContentResponseUsageMetadata | undefined;
         let responseId: string | undefined;
         async function* iterator() {
@@ -167,7 +183,7 @@ export function createGeminiClient(
             const text = chunk.text;
             if (text) {
               aggregatedText += text;
-              yield { type: 'chunk', delta: text };
+              yield { type: "chunk", delta: text };
             }
             if (chunk.usageMetadata) {
               lastUsage = chunk.usageMetadata;
@@ -182,21 +198,22 @@ export function createGeminiClient(
         }
 
         const generator = iterator();
-        
+
         return {
           [Symbol.asyncIterator]: () => generator,
           finalResponse: async () => {
             // Ensure the stream has been consumed or at least started to get the promise
             if (!finalResponsePromise) {
-               // In case the user calls finalResponse before iterating, we need to consume the stream
-               // This is a bit edge-casey but safe.
-               for await (const _ of generator) {} 
+              // In case the user calls finalResponse before iterating, we need to consume the stream
+              // This is a bit edge-casey but safe.
+              for await (const _ of generator) {
+              }
             }
             if (!finalResponsePromise) {
-                throw new Error('Response promise not initialized');
+              throw new Error("Response promise not initialized");
             }
             return finalResponsePromise;
-          }
+          },
         };
       },
       create: async (body: OracleRequestBody): Promise<OracleResponse> => {
@@ -212,8 +229,8 @@ export function createGeminiClient(
       retrieve: async (id: string): Promise<OracleResponse> => {
         return {
           id,
-          status: 'error',
-          error: { message: 'Retrieve by ID not supported for Gemini API yet.' },
+          status: "error",
+          error: { message: "Retrieve by ID not supported for Gemini API yet." },
         };
       },
     },

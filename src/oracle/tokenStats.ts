@@ -1,6 +1,6 @@
-import chalk from 'chalk';
-import type { FileContent, FileTokenStats, TokenizerFn } from './types.js';
-import { createFileSections } from './files.js';
+import chalk from "chalk";
+import type { FileContent, FileTokenStats, TokenizerFn } from "./types.js";
+import { createFileSections } from "./files.js";
 
 export function getFileTokenStats(
   files: FileContent[],
@@ -38,16 +38,21 @@ export function getFileTokenStats(
 
 export function printFileTokenStats(
   { stats, totalTokens }: FileTokenStats,
-  { inputTokenBudget, log = console.log }: { inputTokenBudget?: number; log?: (message: string) => void },
+  {
+    inputTokenBudget,
+    log = console.log,
+  }: { inputTokenBudget?: number; log?: (message: string) => void },
 ): void {
   if (!stats.length) {
     return;
   }
-  log(chalk.bold('File Token Usage'));
+  log(chalk.bold("File Token Usage"));
   for (const entry of stats) {
     const percentLabel =
-      inputTokenBudget && entry.percent != null ? `${entry.percent.toFixed(2)}%` : 'n/a';
-    log(`${entry.tokens.toLocaleString().padStart(10)}  ${percentLabel.padStart(8)}  ${entry.displayPath}`);
+      inputTokenBudget && entry.percent != null ? `${entry.percent.toFixed(2)}%` : "n/a";
+    log(
+      `${entry.tokens.toLocaleString().padStart(10)}  ${percentLabel.padStart(8)}  ${entry.displayPath}`,
+    );
   }
   if (inputTokenBudget) {
     const totalPercent = (totalTokens / inputTokenBudget) * 100;

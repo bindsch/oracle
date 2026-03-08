@@ -1,11 +1,11 @@
-import type CDP from 'chrome-remote-interface';
-import type Protocol from 'devtools-protocol';
-import type { BrowserRuntimeMetadata } from '../sessionStore.js';
-import type { ThinkingTimeLevel } from '../oracle/types.js';
+import type CDP from "chrome-remote-interface";
+import type Protocol from "devtools-protocol";
+import type { BrowserRuntimeMetadata } from "../sessionStore.js";
+import type { ThinkingTimeLevel } from "../oracle/types.js";
 
 export type ChromeClient = Awaited<ReturnType<typeof CDP>>;
 export type CookieParam = Protocol.Network.CookieParam;
-export type BrowserModelStrategy = 'select' | 'current' | 'ignore';
+export type BrowserModelStrategy = "select" | "current" | "ignore";
 
 export type BrowserLogger = ((message: string) => void) & {
   verbose?: boolean;
@@ -96,7 +96,13 @@ export interface BrowserRunResult {
 export type ResolvedBrowserConfig = Required<
   Omit<
     BrowserAutomationConfig,
-    'chromeProfile' | 'chromePath' | 'chromeCookiePath' | 'desiredModel' | 'remoteChrome' | 'thinkingTime' | 'modelStrategy'
+    | "chromeProfile"
+    | "chromePath"
+    | "chromeCookiePath"
+    | "desiredModel"
+    | "remoteChrome"
+    | "thinkingTime"
+    | "modelStrategy"
   >
 > & {
   chromeProfile?: string | null;

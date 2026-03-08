@@ -3,12 +3,14 @@
 Use these steps to validate CLI + MCP end-to-end before releasing. The npm package now ships `oracle-mcp`, but the local build remains the fastest path for development (see the `oracle-local` entry in `config/mcporter.json`).
 
 ## Checklist (run all four lanes)
-1) CLI (API engine)
-2) CLI (browser engine)
-3) MCP via mcporter (API + browser)
-4) Claude Code via MCP (API defaults)
+
+1. CLI (API engine)
+2. CLI (browser engine)
+3. MCP via mcporter (API + browser)
+4. Claude Code via MCP (API defaults)
 
 Shared prereqs
+
 - `pnpm build` (ensures `dist/bin/oracle-mcp.js` exists)
 - `OPENAI_API_KEY` set in env
 - `config/mcporter.json` contains the `oracle` entry pointing to `npx -y @steipete/oracle oracle-mcp` (already committed).
@@ -17,6 +19,7 @@ Shared prereqs
 - macOS notifications: `vendor/oracle-notifier/OracleNotifier.app` ships with the package (preferred); falls back to toasted-notifier if missing/broken.
 
 ## CLI smokes
+
 - API:
   ```bash
   pnpm run oracle -- --engine api --model gpt-5.2 --prompt "API smoke: say two words"
@@ -27,12 +30,15 @@ Shared prereqs
   ```
 
 ## MCP via mcporter
-1) List tools/schema to confirm discovery (use the local entry):
+
+1. List tools/schema to confirm discovery (use the local entry):
+
    ```bash
    mcporter list oracle-local --schema --config config/mcporter.json
    ```
 
-2) API consult (GPT-5.2):
+2. API consult (GPT-5.2):
+
    ```bash
    mcporter call oracle-local.consult \
      prompt:"Say hello from GPT-5.2" \
@@ -41,17 +47,19 @@ Shared prereqs
      --config config/mcporter.json
    ```
 
-3) Sessions list:
+3. Sessions list:
+
    ```bash
    mcporter call oracle-local.sessions hours:12 limit:3 --config config/mcporter.json
    ```
 
-4) Session detail:
+4. Session detail:
+
    ```bash
    mcporter call oracle-local.sessions id:"say-hello-from-gpt-5-2" detail:true --config config/mcporter.json
    ```
 
-5) Browser smoke:
+5. Browser smoke:
    ```bash
    mcporter call oracle-local.consult \
      prompt:"Browser smoke" \
@@ -66,22 +74,24 @@ Shared prereqs
 Use this to verify Claude Code can reach the Oracle MCP server end-to-end.
 
 Prereqs
+
 - `pnpm build`
 - `OPENAI_API_KEY` exported (for the API engine default)
 - Oracle MCP registered with Claude (once per project):  
   `claude mcp add --transport stdio oracle -- oracle-mcp`
 
 Steps
-1) Start Claude in tmux:
+
+1. Start Claude in tmux:
    ```bash
    tmux new -s claude-smoke 'cd /Users/steipete/Projects/oracle && OPENAI_API_KEY=$OPENAI_API_KEY claude --permission-mode bypassPermissions --mcp-config ~/.mcp/oracle.json'
    ```
-2) From another shell, use the helper to drive it:
+2. From another shell, use the helper to drive it:
    ```bash
    bun scripts/agent-send.ts --session claude-smoke --wait-ms 800 --entry double -- \
      'Call the oracle sessions MCP tool with {"limit":1,"detail":true} and show the result'
    ```
-3) Validate the pane shows a successful `oracle sessions` tool call (or adjust `--mcp-config` if it reports no tools). When finished, `tmux kill-session -t claude-smoke`.
+3. Validate the pane shows a successful `oracle sessions` tool call (or adjust `--mcp-config` if it reports no tools). When finished, `tmux kill-session -t claude-smoke`.
 
 See `docs/mcp.md` for full tool/resource schemas and behavior.
 

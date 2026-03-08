@@ -1,21 +1,21 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { mkdtemp, rm, readFile, stat } from 'node:fs/promises';
-import { createServer } from 'node:net';
-import type { AddressInfo } from 'node:net';
-import path from 'node:path';
-import os from 'node:os';
-import { setOracleHomeDirOverrideForTest } from '../src/oracleHome.js';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { createServer } from "node:net";
+import type { AddressInfo } from "node:net";
+import path from "node:path";
+import os from "node:os";
+import { setOracleHomeDirOverrideForTest } from "../src/oracleHome.js";
 
-type SessionModule = typeof import('../src/sessionManager.ts');
-type SessionMetadata = Awaited<ReturnType<SessionModule['initializeSession']>>;
+type SessionModule = typeof import("../src/sessionManager.ts");
+type SessionMetadata = Awaited<ReturnType<SessionModule["initializeSession"]>>;
 
 let sessionModule: SessionModule;
 let oracleHomeDir: string;
 
 beforeAll(async () => {
-  oracleHomeDir = await mkdtemp(path.join(os.tmpdir(), 'oracle-session-tests-'));
+  oracleHomeDir = await mkdtemp(path.join(os.tmpdir(), "oracle-session-tests-"));
   setOracleHomeDirOverrideForTest(oracleHomeDir);
-  sessionModule = await import('../src/sessionManager.ts');
+  sessionModule = await import("../src/sessionManager.ts");
   await sessionModule.ensureSessionStorage();
 });
 
@@ -29,8 +29,8 @@ afterAll(async () => {
   setOracleHomeDirOverrideForTest(null);
 });
 
-describe('session storage setup', () => {
-  test('ensureSessionStorage creates the sessions directory', async () => {
+describe("session storage setup", () => {
+  test("ensureSessionStorage creates the sessions directory", async () => {
     await rm(sessionModule.getSessionsDir(), { recursive: true, force: true });
     await sessionModule.ensureSessionStorage();
     const stats = await stat(sessionModule.getSessionsDir());
@@ -38,194 +38,210 @@ describe('session storage setup', () => {
   });
 });
 
-describe('session identifiers', () => {
-  test('createSessionId slugifies prompts without timestamps', () => {
-    const id = sessionModule.createSessionId('  Hello, WORLD??? -- Example ');
-    expect(id).toBe('hello-world-example');
+describe("session identifiers", () => {
+  test("createSessionId slugifies prompts without timestamps", () => {
+    const id = sessionModule.createSessionId("  Hello, WORLD??? -- Example ");
+    expect(id).toBe("hello-world-example");
   });
 
-  test('createSessionId preserves whole words up to max limit', () => {
-    const id = sessionModule.createSessionId('Alpha beta gamma delta epsilon zeta');
-    expect(id).toBe('alpha-beta-gamma-delta-epsilon');
+  test("createSessionId preserves whole words up to max limit", () => {
+    const id = sessionModule.createSessionId("Alpha beta gamma delta epsilon zeta");
+    expect(id).toBe("alpha-beta-gamma-delta-epsilon");
   });
 
-  test('createSessionId accepts custom slugs and enforces word bounds', () => {
-    const id = sessionModule.createSessionId('ignored', 'Launch plan QA sync ready??');
-    expect(id).toBe('launch-plan-qa-sync-ready');
-    expect(() => sessionModule.createSessionId('ignored', 'only two')).toThrow(/Custom slug/i);
+  test("createSessionId accepts custom slugs and enforces word bounds", () => {
+    const id = sessionModule.createSessionId("ignored", "Launch plan QA sync ready??");
+    expect(id).toBe("launch-plan-qa-sync-ready");
+    expect(() => sessionModule.createSessionId("ignored", "only two")).toThrow(/Custom slug/i);
   });
 
-  test('createSessionId truncates overly long words to keep slugs readable', () => {
-    const id = sessionModule.createSessionId('abcdefghijklm nopqrstuvwxyz shorty');
-    expect(id).toBe('abcdefghij-nopqrstuvw-shorty');
+  test("createSessionId truncates overly long words to keep slugs readable", () => {
+    const id = sessionModule.createSessionId("abcdefghijklm nopqrstuvwxyz shorty");
+    expect(id).toBe("abcdefghij-nopqrstuvw-shorty");
   });
 });
 
-describe('session lifecycle', () => {
-  test('initializeSession writes metadata, request, and log files', async () => {
+describe("session lifecycle", () => {
+  test("initializeSession writes metadata, request, and log files", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-04-01T00:00:00Z'));
-	    const metadata = await sessionModule.initializeSession(
-	      {
-	        prompt: 'Inspect code',
-	        model: 'gpt-5.2-pro',
-        file: ['notes.md'],
-        previousResponseId: 'resp-parent-123',
-        followupSessionId: 'parent-session',
-        followupModel: 'gpt-5.1',
+    vi.setSystemTime(new Date("2025-04-01T00:00:00Z"));
+    const metadata = await sessionModule.initializeSession(
+      {
+        prompt: "Inspect code",
+        model: "gpt-5.2-pro",
+        file: ["notes.md"],
+        previousResponseId: "resp-parent-123",
+        followupSessionId: "parent-session",
+        followupModel: "gpt-5.1",
         maxFileSizeBytes: 2_097_152,
         maxInput: 123,
-        system: 'SYS',
+        system: "SYS",
         maxOutput: 456,
         silent: false,
         filesReport: true,
       },
-      '/tmp/cwd',
+      "/tmp/cwd",
     );
     vi.useRealTimers();
-	    const baseDir = path.join(sessionModule.getSessionsDir(), metadata.id);
-	    const storedMeta = JSON.parse(await readFile(path.join(baseDir, 'meta.json'), 'utf8'));
-	    expect(storedMeta.options.file).toEqual(['notes.md']);
-      expect(storedMeta.options.maxFileSizeBytes).toBe(2_097_152);
-      expect(storedMeta.options.previousResponseId).toBe('resp-parent-123');
-      expect(storedMeta.options.followupSessionId).toBe('parent-session');
-      expect(storedMeta.options.followupModel).toBe('gpt-5.1');
-	    await expect(readFile(path.join(baseDir, 'request.json'), 'utf8')).rejects.toThrow();
-	    const modelMeta = JSON.parse(await readFile(path.join(baseDir, 'models', 'gpt-5.2-pro.json'), 'utf8'));
-	    expect(modelMeta.status).toBe('pending');
-	    const perModelLog = await readFile(path.join(baseDir, 'models', 'gpt-5.2-pro.log'), 'utf8');
-	    expect(perModelLog).toBe('');
-	    const logContent = await readFile(path.join(baseDir, 'output.log'), 'utf8');
-	    expect(logContent).toBe('');
-	  });
+    const baseDir = path.join(sessionModule.getSessionsDir(), metadata.id);
+    const storedMeta = JSON.parse(await readFile(path.join(baseDir, "meta.json"), "utf8"));
+    expect(storedMeta.options.file).toEqual(["notes.md"]);
+    expect(storedMeta.options.maxFileSizeBytes).toBe(2_097_152);
+    expect(storedMeta.options.previousResponseId).toBe("resp-parent-123");
+    expect(storedMeta.options.followupSessionId).toBe("parent-session");
+    expect(storedMeta.options.followupModel).toBe("gpt-5.1");
+    await expect(readFile(path.join(baseDir, "request.json"), "utf8")).rejects.toThrow();
+    const modelMeta = JSON.parse(
+      await readFile(path.join(baseDir, "models", "gpt-5.2-pro.json"), "utf8"),
+    );
+    expect(modelMeta.status).toBe("pending");
+    const perModelLog = await readFile(path.join(baseDir, "models", "gpt-5.2-pro.log"), "utf8");
+    expect(perModelLog).toBe("");
+    const logContent = await readFile(path.join(baseDir, "output.log"), "utf8");
+    expect(logContent).toBe("");
+  });
 
-  test('readSessionMetadata returns null for missing sessions and updateSessionMetadata persists changes', async () => {
-	    expect(await sessionModule.readSessionMetadata('missing')).toBeNull();
-	    const meta = await sessionModule.initializeSession(
-	      { prompt: 'Update me', model: 'gpt-5.2-pro' },
-	      '/tmp/cwd',
-	    );
-	    await sessionModule.updateSessionMetadata(meta.id, { status: 'complete', promptPreview: 'value' });
+  test("readSessionMetadata returns null for missing sessions and updateSessionMetadata persists changes", async () => {
+    expect(await sessionModule.readSessionMetadata("missing")).toBeNull();
+    const meta = await sessionModule.initializeSession(
+      { prompt: "Update me", model: "gpt-5.2-pro" },
+      "/tmp/cwd",
+    );
+    await sessionModule.updateSessionMetadata(meta.id, {
+      status: "complete",
+      promptPreview: "value",
+    });
     const updated = await sessionModule.readSessionMetadata(meta.id);
-    expect(updated?.status).toBe('complete');
-    expect(updated?.promptPreview).toBe('value');
+    expect(updated?.status).toBe("complete");
+    expect(updated?.promptPreview).toBe("value");
   });
 
-  test('createSessionLogWriter appends logs and supports chunk writes', async () => {
-	    const meta = await sessionModule.initializeSession(
-	      { prompt: 'Log history', model: 'gpt-5.2-pro' },
-	      '/tmp/cwd',
-	    );
+  test("createSessionLogWriter appends logs and supports chunk writes", async () => {
+    const meta = await sessionModule.initializeSession(
+      { prompt: "Log history", model: "gpt-5.2-pro" },
+      "/tmp/cwd",
+    );
     const writer = sessionModule.createSessionLogWriter(meta.id);
-    writer.logLine('First line');
-    writer.writeChunk('Second chunk');
+    writer.logLine("First line");
+    writer.writeChunk("Second chunk");
     writer.stream.end();
-    await new Promise<void>((resolve) => writer.stream.once('close', () => resolve()));
+    await new Promise<void>((resolve) => writer.stream.once("close", () => resolve()));
     const logText = await sessionModule.readSessionLog(meta.id);
-    expect(logText).toContain('First line');
-    expect(logText).toContain('Second chunk');
+    expect(logText).toContain("First line");
+    expect(logText).toContain("Second chunk");
   });
 
-  test('readSessionLog falls back to empty string when no log exists', async () => {
-    expect(await sessionModule.readSessionLog('missing')).toBe('');
+  test("readSessionLog falls back to empty string when no log exists", async () => {
+    expect(await sessionModule.readSessionLog("missing")).toBe("");
   });
 
-  test('initializeSession appends numeric suffix when slug already exists', async () => {
-	    const first = await sessionModule.initializeSession(
-	      { prompt: 'Duplicate slug please', model: 'gpt-5.2-pro', slug: 'alpha beta gamma' },
-	      '/tmp/cwd',
-	    );
-	    const second = await sessionModule.initializeSession(
-	      { prompt: 'Duplicate slug please again', model: 'gpt-5.2-pro', slug: 'alpha beta gamma' },
-	      '/tmp/cwd',
-	    );
-    expect(first.id).toBe('alpha-beta-gamma');
-    expect(second.id).toBe('alpha-beta-gamma-2');
-  });
-
-  test('initializeSession can restart from a base slug override and appends suffix on conflict', async () => {
+  test("initializeSession appends numeric suffix when slug already exists", async () => {
     const first = await sessionModule.initializeSession(
-      { prompt: 'Original', model: 'gpt-5.2-pro', slug: 'alpha beta gamma' },
-      '/tmp/cwd',
+      { prompt: "Duplicate slug please", model: "gpt-5.2-pro", slug: "alpha beta gamma" },
+      "/tmp/cwd",
+    );
+    const second = await sessionModule.initializeSession(
+      { prompt: "Duplicate slug please again", model: "gpt-5.2-pro", slug: "alpha beta gamma" },
+      "/tmp/cwd",
+    );
+    expect(first.id).toBe("alpha-beta-gamma");
+    expect(second.id).toBe("alpha-beta-gamma-2");
+  });
+
+  test("initializeSession can restart from a base slug override and appends suffix on conflict", async () => {
+    const first = await sessionModule.initializeSession(
+      { prompt: "Original", model: "gpt-5.2-pro", slug: "alpha beta gamma" },
+      "/tmp/cwd",
     );
     const restarted = await sessionModule.initializeSession(
-      { prompt: 'Restarted', model: 'gpt-5.2-pro' },
-      '/tmp/cwd',
+      { prompt: "Restarted", model: "gpt-5.2-pro" },
+      "/tmp/cwd",
       undefined,
       first.id,
     );
-    expect(restarted.id).toBe('alpha-beta-gamma-2');
+    expect(restarted.id).toBe("alpha-beta-gamma-2");
   });
 
-  test('marks stale running sessions as zombies after 60 minutes', async () => {
-	    const meta = await sessionModule.initializeSession({ prompt: 'Zombie', model: 'gpt-5.2-pro' }, '/tmp/cwd');
-    const staleStarted = new Date(Date.now() - sessionModule.ZOMBIE_MAX_AGE_MS - 60_000).toISOString();
-    await sessionModule.updateSessionMetadata(meta.id, { status: 'running', startedAt: staleStarted });
+  test("marks stale running sessions as zombies after 60 minutes", async () => {
+    const meta = await sessionModule.initializeSession(
+      { prompt: "Zombie", model: "gpt-5.2-pro" },
+      "/tmp/cwd",
+    );
+    const staleStarted = new Date(
+      Date.now() - sessionModule.ZOMBIE_MAX_AGE_MS - 60_000,
+    ).toISOString();
+    await sessionModule.updateSessionMetadata(meta.id, {
+      status: "running",
+      startedAt: staleStarted,
+    });
     const listed = await sessionModule.listSessionsMetadata();
     const zombie = listed.find((m) => m.id === meta.id);
-    expect(zombie?.status).toBe('error');
+    expect(zombie?.status).toBe("error");
     expect(zombie?.errorMessage).toMatch(/zombie/i);
     const persisted = await sessionModule.readSessionMetadata(meta.id);
-    expect(persisted?.status).toBe('error');
+    expect(persisted?.status).toBe("error");
   });
 
-  test('keeps running browser sessions when Chrome runtime is reachable', async () => {
+  test("keeps running browser sessions when Chrome runtime is reachable", async () => {
     const server = createServer();
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = (server.address() as AddressInfo).port;
     const meta = await sessionModule.initializeSession(
-      { prompt: 'Browser live', model: 'gpt-5.2-pro', mode: 'browser' },
-      '/tmp/cwd',
+      { prompt: "Browser live", model: "gpt-5.2-pro", mode: "browser" },
+      "/tmp/cwd",
     );
     await sessionModule.updateSessionMetadata(meta.id, {
-      status: 'running',
-      mode: 'browser',
+      status: "running",
+      mode: "browser",
       browser: {
         runtime: {
           chromePid: process.pid,
           chromePort: port,
-          chromeHost: '127.0.0.1',
+          chromeHost: "127.0.0.1",
         },
       },
     });
     const refreshed = await sessionModule.readSessionMetadata(meta.id);
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    expect(refreshed?.status).toBe('running');
+    expect(refreshed?.status).toBe("running");
   });
 
-  test('marks running browser sessions as error when Chrome runtime is gone', async () => {
+  test("marks running browser sessions as error when Chrome runtime is gone", async () => {
     const meta = await sessionModule.initializeSession(
-      { prompt: 'Browser dead', model: 'gpt-5.2-pro', mode: 'browser' },
-      '/tmp/cwd',
+      { prompt: "Browser dead", model: "gpt-5.2-pro", mode: "browser" },
+      "/tmp/cwd",
     );
     await sessionModule.updateSessionMetadata(meta.id, {
-      status: 'running',
-      mode: 'browser',
+      status: "running",
+      mode: "browser",
       browser: {
         runtime: {
           chromePid: 999999,
           chromePort: 1,
-          chromeHost: '127.0.0.1',
+          chromeHost: "127.0.0.1",
         },
       },
     });
     const refreshed = await sessionModule.readSessionMetadata(meta.id);
-    expect(refreshed?.status).toBe('error');
+    expect(refreshed?.status).toBe("error");
     expect(refreshed?.errorMessage).toMatch(/chrome/i);
   });
 });
 
-describe('session listing and filtering', () => {
-  test('listSessionsMetadata sorts newest first and filterSessionsByRange enforces limits', async () => {
-	    vi.useFakeTimers();
-	    vi.setSystemTime(new Date('2025-01-01T00:00:00Z'));
-	    await sessionModule.initializeSession({ prompt: 'Old session', model: 'gpt-5.2-pro' }, '/tmp/a');
-	    vi.setSystemTime(new Date('2025-01-02T12:00:00Z'));
-	    const recent = await sessionModule.initializeSession(
-	      { prompt: 'Recent session', model: 'gpt-5.2-pro' },
-	      '/tmp/b',
-	    );
-    vi.setSystemTime(new Date('2025-01-03T00:00:00Z'));
+describe("session listing and filtering", () => {
+  test("listSessionsMetadata sorts newest first and filterSessionsByRange enforces limits", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
+    await sessionModule.initializeSession(
+      { prompt: "Old session", model: "gpt-5.2-pro" },
+      "/tmp/a",
+    );
+    vi.setSystemTime(new Date("2025-01-02T12:00:00Z"));
+    const recent = await sessionModule.initializeSession(
+      { prompt: "Recent session", model: "gpt-5.2-pro" },
+      "/tmp/b",
+    );
+    vi.setSystemTime(new Date("2025-01-03T00:00:00Z"));
     const metas = await sessionModule.listSessionsMetadata();
     expect(metas[0].id).toBe(recent.id);
 
@@ -239,13 +255,19 @@ describe('session listing and filtering', () => {
     vi.useRealTimers();
   });
 
-  test('deleteSessionsOlderThan removes only sessions past the cutoff', async () => {
-	    vi.useFakeTimers();
-	    vi.setSystemTime(new Date('2025-01-01T00:00:00Z'));
-	    const oldMeta = await sessionModule.initializeSession({ prompt: 'Old', model: 'gpt-5.2-pro' }, '/tmp/a');
-	    vi.setSystemTime(new Date('2025-01-03T00:00:00Z'));
-	    const freshMeta = await sessionModule.initializeSession({ prompt: 'Fresh', model: 'gpt-5.2-pro' }, '/tmp/b');
-    vi.setSystemTime(new Date('2025-01-03T12:00:00Z'));
+  test("deleteSessionsOlderThan removes only sessions past the cutoff", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
+    const oldMeta = await sessionModule.initializeSession(
+      { prompt: "Old", model: "gpt-5.2-pro" },
+      "/tmp/a",
+    );
+    vi.setSystemTime(new Date("2025-01-03T00:00:00Z"));
+    const freshMeta = await sessionModule.initializeSession(
+      { prompt: "Fresh", model: "gpt-5.2-pro" },
+      "/tmp/b",
+    );
+    vi.setSystemTime(new Date("2025-01-03T12:00:00Z"));
 
     const result = await sessionModule.deleteSessionsOlderThan({ hours: 24 });
     expect(result).toEqual({ deleted: 1, remaining: 1 });
@@ -254,16 +276,19 @@ describe('session listing and filtering', () => {
     vi.useRealTimers();
   });
 
-  test('deleteSessionsOlderThan clears everything when includeAll is true', async () => {
-	    const meta = await sessionModule.initializeSession({ prompt: 'Only', model: 'gpt-5.2-pro' }, '/tmp/c');
-	    const result = await sessionModule.deleteSessionsOlderThan({ includeAll: true });
-	    expect(result).toEqual({ deleted: 1, remaining: 0 });
-	    expect(await sessionModule.readSessionMetadata(meta.id)).toBeNull();
-	  });
+  test("deleteSessionsOlderThan clears everything when includeAll is true", async () => {
+    const meta = await sessionModule.initializeSession(
+      { prompt: "Only", model: "gpt-5.2-pro" },
+      "/tmp/c",
+    );
+    const result = await sessionModule.deleteSessionsOlderThan({ includeAll: true });
+    expect(result).toEqual({ deleted: 1, remaining: 0 });
+    expect(await sessionModule.readSessionMetadata(meta.id)).toBeNull();
+  });
 });
 
-describe('wait helper', () => {
-  test('wait resolves after the requested duration', async () => {
+describe("wait helper", () => {
+  test("wait resolves after the requested duration", async () => {
     vi.useFakeTimers();
     const pending = sessionModule.wait(500);
     await vi.advanceTimersByTimeAsync(500);

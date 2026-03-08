@@ -1,22 +1,31 @@
-import path from 'node:path';
-import type { ChromeClient, BrowserAttachment, BrowserLogger } from '../types.js';
-import { CONVERSATION_TURN_SELECTOR, INPUT_SELECTORS, SEND_BUTTON_SELECTORS, UPLOAD_STATUS_SELECTORS } from '../constants.js';
-import { delay } from '../utils.js';
-import { logDomFailure } from '../domDebug.js';
-import { transferAttachmentViaDataTransfer } from './attachmentDataTransfer.js';
+import path from "node:path";
+import type { ChromeClient, BrowserAttachment, BrowserLogger } from "../types.js";
+import {
+  CONVERSATION_TURN_SELECTOR,
+  INPUT_SELECTORS,
+  SEND_BUTTON_SELECTORS,
+  UPLOAD_STATUS_SELECTORS,
+} from "../constants.js";
+import { delay } from "../utils.js";
+import { logDomFailure } from "../domDebug.js";
+import { transferAttachmentViaDataTransfer } from "./attachmentDataTransfer.js";
 
 export async function uploadAttachmentFile(
-  deps: { runtime: ChromeClient['Runtime']; dom?: ChromeClient['DOM']; input?: ChromeClient['Input'] },
+  deps: {
+    runtime: ChromeClient["Runtime"];
+    dom?: ChromeClient["DOM"];
+    input?: ChromeClient["Input"];
+  },
   attachment: BrowserAttachment,
   logger: BrowserLogger,
   options?: { expectedCount?: number },
 ): Promise<boolean> {
   const { runtime, dom, input } = deps;
   if (!dom) {
-    throw new Error('DOM domain unavailable while uploading attachments.');
+    throw new Error("DOM domain unavailable while uploading attachments.");
   }
   const expectedCount =
-    typeof options?.expectedCount === 'number' && Number.isFinite(options.expectedCount)
+    typeof options?.expectedCount === "number" && Number.isFinite(options.expectedCount)
       ? Math.max(0, Math.floor(options.expectedCount))
       : 0;
 
@@ -285,18 +294,18 @@ export async function uploadAttachmentFile(
     return {
       ui: Boolean(value?.ui),
       input: Boolean(value?.input),
-      inputCount: typeof value?.inputCount === 'number' ? value?.inputCount : 0,
-      chipCount: typeof value?.chipCount === 'number' ? value?.chipCount : 0,
-      chipSignature: typeof value?.chipSignature === 'string' ? value?.chipSignature : '',
+      inputCount: typeof value?.inputCount === "number" ? value?.inputCount : 0,
+      chipCount: typeof value?.chipCount === "number" ? value?.chipCount : 0,
+      chipSignature: typeof value?.chipSignature === "string" ? value?.chipSignature : "",
       uploading: Boolean(value?.uploading),
-      fileCount: typeof value?.fileCount === 'number' ? value?.fileCount : 0,
+      fileCount: typeof value?.fileCount === "number" ? value?.fileCount : 0,
     };
   };
 
   // New ChatGPT UI hides the real file input behind a composer "+" menu; click it pre-emptively.
   // Learned: synthetic `.click()` is sometimes ignored (isTrusted checks). Prefer a CDP mouse click when possible.
   const clickPlusTrusted = async (): Promise<boolean> => {
-    if (!input || typeof input.dispatchMouseEvent !== 'function') return false;
+    if (!input || typeof input.dispatchMouseEvent !== "function") return false;
     const locate = await runtime
       .evaluate({
         expression: `(() => {
@@ -323,12 +332,12 @@ export async function uploadAttachmentFile(
       })
       .then((res) => res?.result?.value as { ok?: boolean; x?: number; y?: number } | undefined)
       .catch(() => undefined);
-    if (!locate?.ok || typeof locate.x !== 'number' || typeof locate.y !== 'number') return false;
+    if (!locate?.ok || typeof locate.x !== "number" || typeof locate.y !== "number") return false;
     const x = locate.x;
     const y = locate.y;
-    await input.dispatchMouseEvent({ type: 'mouseMoved', x, y });
-    await input.dispatchMouseEvent({ type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
-    await input.dispatchMouseEvent({ type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
+    await input.dispatchMouseEvent({ type: "mouseMoved", x, y });
+    await input.dispatchMouseEvent({ type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await input.dispatchMouseEvent({ type: "mouseReleased", x, y, button: "left", clickCount: 1 });
     return true;
   };
 
@@ -362,13 +371,13 @@ export async function uploadAttachmentFile(
   await delay(350);
 
   const normalizeForMatch = (value: string): string =>
-    String(value || '')
+    String(value || "")
       .toLowerCase()
-      .replace(/\s+/g, ' ')
+      .replace(/\s+/g, " ")
       .trim();
   const expectedName = path.basename(attachment.path);
   const expectedNameLower = normalizeForMatch(expectedName);
-  const expectedNameNoExt = expectedNameLower.replace(/\.[a-z0-9]{1,10}$/i, '');
+  const expectedNameNoExt = expectedNameLower.replace(/\.[a-z0-9]{1,10}$/i, "");
   const matchesExpectedName = (value: string): boolean => {
     const normalized = normalizeForMatch(value);
     if (!normalized) return false;
@@ -393,17 +402,20 @@ export async function uploadAttachmentFile(
     ui?: boolean;
   }): boolean => {
     if (expectedCount <= 0) return false;
-    const fileCount = typeof signals.fileCount === 'number' ? signals.fileCount : 0;
-    const chipCount = typeof signals.chipCount === 'number' ? signals.chipCount : 0;
+    const fileCount = typeof signals.fileCount === "number" ? signals.fileCount : 0;
+    const chipCount = typeof signals.chipCount === "number" ? signals.chipCount : 0;
     if (fileCount >= expectedCount) return true;
     return Boolean(signals.ui && chipCount >= expectedCount);
   };
   const initialInputSatisfied =
     expectedCount > 0 ? initialSignals.inputCount >= expectedCount : Boolean(initialSignals.input);
-  if (expectedCount > 0 && (initialSignals.fileCount >= expectedCount || initialSignals.inputCount >= expectedCount)) {
+  if (
+    expectedCount > 0 &&
+    (initialSignals.fileCount >= expectedCount || initialSignals.inputCount >= expectedCount)
+  ) {
     const satisfiedCount = Math.max(initialSignals.fileCount, initialSignals.inputCount);
     logger(
-      `Attachment already present: composer shows ${satisfiedCount} file${satisfiedCount === 1 ? '' : 's'}`,
+      `Attachment already present: composer shows ${satisfiedCount} file${satisfiedCount === 1 ? "" : "s"}`,
     );
     return true;
   }
@@ -650,62 +662,68 @@ export async function uploadAttachmentFile(
       }
     | undefined;
   const candidateOrder = Array.isArray(candidateValue?.order) ? candidateValue.order : [];
-  const baselineChipCount = typeof candidateValue?.baselineChipCount === 'number' ? candidateValue.baselineChipCount : 0;
-  const baselineChips = Array.isArray(candidateValue?.baselineChips) ? candidateValue.baselineChips : [];
+  const baselineChipCount =
+    typeof candidateValue?.baselineChipCount === "number" ? candidateValue.baselineChipCount : 0;
+  const baselineChips = Array.isArray(candidateValue?.baselineChips)
+    ? candidateValue.baselineChips
+    : [];
   const baselineUploading = Boolean(candidateValue?.baselineUploading);
-  const baselineFileCount = typeof candidateValue?.baselineFileCount === 'number' ? candidateValue.baselineFileCount : 0;
-  const baselineInputCount = typeof candidateValue?.baselineInputCount === 'number' ? candidateValue.baselineInputCount : 0;
+  const baselineFileCount =
+    typeof candidateValue?.baselineFileCount === "number" ? candidateValue.baselineFileCount : 0;
+  const baselineInputCount =
+    typeof candidateValue?.baselineInputCount === "number" ? candidateValue.baselineInputCount : 0;
   const serializeChips = (chips: Array<Record<string, string>>): string =>
     chips
       .map((chip) =>
         [chip.text, chip.aria, chip.title, chip.testid]
-          .map((value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim())
-          .join('|'),
+          .map((value) =>
+            String(value || "")
+              .toLowerCase()
+              .replace(/\s+/g, " ")
+              .trim(),
+          )
+          .join("|"),
       )
-      .join('||');
+      .join("||");
   const baselineChipSignature = serializeChips(baselineChips);
   if (!candidateValue?.ok || candidateOrder.length === 0) {
-    await logDomFailure(runtime, logger, 'file-input-missing');
-    throw new Error('Unable to locate ChatGPT file attachment input.');
+    await logDomFailure(runtime, logger, "file-input-missing");
+    throw new Error("Unable to locate ChatGPT file attachment input.");
   }
 
-  const hasChipDelta = (signals: {
-    chipCount?: number;
-    chipSignature?: string;
-  }): boolean => {
-    const chipCount = typeof signals.chipCount === 'number' ? signals.chipCount : 0;
-    const chipSignature = typeof signals.chipSignature === 'string' ? signals.chipSignature : '';
+  const hasChipDelta = (signals: { chipCount?: number; chipSignature?: string }): boolean => {
+    const chipCount = typeof signals.chipCount === "number" ? signals.chipCount : 0;
+    const chipSignature = typeof signals.chipSignature === "string" ? signals.chipSignature : "";
     if (chipCount > baselineChipCount) return true;
-    if (baselineChipSignature && chipSignature && chipSignature !== baselineChipSignature) return true;
+    if (baselineChipSignature && chipSignature && chipSignature !== baselineChipSignature)
+      return true;
     return false;
   };
   const hasInputDelta = (signals: { inputCount?: number }): boolean =>
-    (typeof signals.inputCount === 'number' ? signals.inputCount : 0) > baselineInputCount;
+    (typeof signals.inputCount === "number" ? signals.inputCount : 0) > baselineInputCount;
   const hasUploadDelta = (signals: { uploading?: boolean }): boolean =>
     Boolean(signals.uploading && !baselineUploading);
   const hasFileCountDelta = (signals: { fileCount?: number }): boolean =>
-    (typeof signals.fileCount === 'number' ? signals.fileCount : 0) > baselineFileCount;
+    (typeof signals.fileCount === "number" ? signals.fileCount : 0) > baselineFileCount;
   const waitForAttachmentUiSignal = async (timeoutMs: number) => {
     const deadline = Date.now() + timeoutMs;
     let sawInputSignal = false;
-    let latest:
-      | {
-          signals: {
-            ui: boolean;
-            input: boolean;
-            inputCount: number;
-            chipCount: number;
-            chipSignature: string;
-            uploading: boolean;
-            fileCount: number;
-          };
-          chipDelta: boolean;
-          inputDelta: boolean;
-          uploadDelta: boolean;
-          fileCountDelta: boolean;
-          expectedSatisfied: boolean;
-        }
-      | null = null;
+    let latest: {
+      signals: {
+        ui: boolean;
+        input: boolean;
+        inputCount: number;
+        chipCount: number;
+        chipSignature: string;
+        uploading: boolean;
+        fileCount: number;
+      };
+      chipDelta: boolean;
+      inputDelta: boolean;
+      uploadDelta: boolean;
+      fileCountDelta: boolean;
+      expectedSatisfied: boolean;
+    } | null = null;
     while (Date.now() < deadline) {
       const signals = await readAttachmentSignals(expectedName);
       const chipDelta = hasChipDelta(signals);
@@ -716,7 +734,14 @@ export async function uploadAttachmentFile(
       if (inputDelta) {
         sawInputSignal = true;
       }
-      latest = { signals, chipDelta, inputDelta: sawInputSignal, uploadDelta, fileCountDelta, expectedSatisfied };
+      latest = {
+        signals,
+        chipDelta,
+        inputDelta: sawInputSignal,
+        uploadDelta,
+        fileCountDelta,
+        expectedSatisfied,
+      };
       if (signals.ui || chipDelta || uploadDelta || fileCountDelta || expectedSatisfied) {
         return latest;
       }
@@ -739,9 +764,9 @@ export async function uploadAttachmentFile(
 
   const parseInputSnapshot = (value: unknown) => {
     const snapshot = value as { names?: string[]; value?: string; count?: number } | undefined;
-    const names = Array.isArray(snapshot?.names) ? snapshot?.names ?? [] : [];
-    const valueText = typeof snapshot?.value === 'string' ? snapshot.value : '';
-    const count = typeof snapshot?.count === 'number' ? snapshot.count : names.length;
+    const names = Array.isArray(snapshot?.names) ? (snapshot?.names ?? []) : [];
+    const valueText = typeof snapshot?.value === "string" ? snapshot.value : "";
+    const count = typeof snapshot?.count === "number" ? snapshot.count : names.length;
     return {
       names,
       value: valueText,
@@ -879,16 +904,14 @@ export async function uploadAttachmentFile(
 
   let confirmedAttachment = false;
   let lastInputNames: string[] = [];
-  let lastInputValue = '';
-  let finalSnapshot:
-    | {
-        chipCount: number;
-        chips: Array<Record<string, string>>;
-        inputNames: string[];
-        composerText: string;
-        uploading: boolean;
-      }
-    | null = null;
+  let lastInputValue = "";
+  let finalSnapshot: {
+    chipCount: number;
+    chips: Array<Record<string, string>>;
+    inputNames: string[];
+    composerText: string;
+    uploading: boolean;
+  } | null = null;
   const resolveInputNameCandidates = () => {
     const snapshot = finalSnapshot as { inputNames?: string[] } | null;
     const snapshotNames = snapshot?.inputNames;
@@ -946,7 +969,7 @@ export async function uploadAttachmentFile(
             chipCount: Number(snapshot.chipCount ?? 0),
             chips: Array.isArray(snapshot.chips) ? snapshot.chips : [],
             inputNames: Array.isArray(snapshot.inputNames) ? snapshot.inputNames : [],
-            composerText: typeof snapshot.composerText === 'string' ? snapshot.composerText : '',
+            composerText: typeof snapshot.composerText === "string" ? snapshot.composerText : "",
             uploading: Boolean(snapshot.uploading),
           };
         }
@@ -975,17 +998,22 @@ export async function uploadAttachmentFile(
           inputHasFile;
         const uiDirect = Boolean(signalResult?.signals?.ui) || expectedSatisfied;
         const uiDelta =
-          Boolean(signalResult?.chipDelta) || Boolean(signalResult?.uploadDelta) || Boolean(signalResult?.fileCountDelta);
+          Boolean(signalResult?.chipDelta) ||
+          Boolean(signalResult?.uploadDelta) ||
+          Boolean(signalResult?.fileCountDelta);
         if (uiDirect || (uiDelta && inputEvidence)) {
-          return { status: 'ui' as const };
+          return { status: "ui" as const };
         }
         const postSignals = await readAttachmentSignals(expectedName);
         if (
           postSignals.ui ||
           isExpectedSatisfied(postSignals) ||
-          ((hasChipDelta(postSignals) || hasUploadDelta(postSignals) || hasFileCountDelta(postSignals)) && inputEvidence)
+          ((hasChipDelta(postSignals) ||
+            hasUploadDelta(postSignals) ||
+            hasFileCountDelta(postSignals)) &&
+            inputEvidence)
         ) {
-          return { status: 'ui' as const };
+          return { status: "ui" as const };
         }
         const inputSignal =
           immediateInputMatch ||
@@ -996,23 +1024,25 @@ export async function uploadAttachmentFile(
           postSignals.input ||
           hasInputDelta(postSignals);
         if (inputSignal) {
-          return { status: 'input' as const };
+          return { status: "input" as const };
         }
-        return { status: 'none' as const };
+        return { status: "none" as const };
       };
 
-      const runInputAttempt = async (mode: 'set' | 'transfer') => {
+      const runInputAttempt = async (mode: "set" | "transfer") => {
         let immediateInputSnapshot = await readInputSnapshot(idx);
         let hasExpectedFile = snapshotMatchesExpected(immediateInputSnapshot);
         if (!hasExpectedFile) {
-          if (mode === 'set') {
+          if (mode === "set") {
             await dom.setFileInputFiles({ nodeId: resultNode.nodeId, files: [attachment.path] });
           } else {
             const selector = `input[type="file"][data-oracle-upload-idx="${idx}"]`;
             try {
               await transferAttachmentViaDataTransfer(runtime, attachment, selector);
             } catch (error) {
-              logger(`Attachment data transfer failed: ${(error as Error)?.message ?? String(error)}`);
+              logger(
+                `Attachment data transfer failed: ${(error as Error)?.message ?? String(error)}`,
+              );
             }
           }
           immediateInputSnapshot = await readInputSnapshot(idx);
@@ -1054,12 +1084,12 @@ export async function uploadAttachmentFile(
           .catch(() => undefined);
       };
 
-      let result = await runInputAttempt('set');
-      if (result.evaluation.status === 'ui') {
+      let result = await runInputAttempt("set");
+      if (result.evaluation.status === "ui") {
         confirmedAttachment = true;
         break;
       }
-      if (result.evaluation.status === 'input') {
+      if (result.evaluation.status === "input") {
         await dispatchInputEvents();
         await delay(150);
         const forcedState = await gatherSignals(1_500);
@@ -1068,25 +1098,27 @@ export async function uploadAttachmentFile(
           forcedState.postInputSignals,
           result.immediateInputMatch,
         );
-        if (forcedEvaluation.status === 'ui') {
+        if (forcedEvaluation.status === "ui") {
           confirmedAttachment = true;
           break;
         }
-        if (forcedEvaluation.status === 'input') {
-          logger('Attachment input set; proceeding without UI confirmation.');
+        if (forcedEvaluation.status === "input") {
+          logger("Attachment input set; proceeding without UI confirmation.");
           inputConfirmed = true;
           break;
         }
-        logger('Attachment input set; retrying with data transfer to trigger ChatGPT upload.');
-        await dom.setFileInputFiles({ nodeId: resultNode.nodeId, files: [] }).catch(() => undefined);
+        logger("Attachment input set; retrying with data transfer to trigger ChatGPT upload.");
+        await dom
+          .setFileInputFiles({ nodeId: resultNode.nodeId, files: [] })
+          .catch(() => undefined);
         await delay(150);
-        result = await runInputAttempt('transfer');
-        if (result.evaluation.status === 'ui') {
+        result = await runInputAttempt("transfer");
+        if (result.evaluation.status === "ui") {
           confirmedAttachment = true;
           break;
         }
-        if (result.evaluation.status === 'input') {
-          logger('Attachment input set; proceeding without UI confirmation.');
+        if (result.evaluation.status === "input") {
+          logger("Attachment input set; proceeding without UI confirmation.");
           inputConfirmed = true;
           break;
         }
@@ -1104,24 +1136,26 @@ export async function uploadAttachmentFile(
         break;
       }
       if (lateSignals.input || hasInputDelta(lateSignals)) {
-        logger('Attachment input set; proceeding without UI confirmation.');
+        logger("Attachment input set; proceeding without UI confirmation.");
         inputConfirmed = true;
         break;
       }
 
-      logger('Attachment not acknowledged after file input set; retrying with data transfer.');
-      result = await runInputAttempt('transfer');
-      if (result.evaluation.status === 'ui') {
+      logger("Attachment not acknowledged after file input set; retrying with data transfer.");
+      result = await runInputAttempt("transfer");
+      if (result.evaluation.status === "ui") {
         confirmedAttachment = true;
         break;
       }
-      if (result.evaluation.status === 'input') {
-        logger('Attachment input set; proceeding without UI confirmation.');
+      if (result.evaluation.status === "input") {
+        logger("Attachment input set; proceeding without UI confirmation.");
         inputConfirmed = true;
         break;
       }
       if (orderIndex < candidateOrder.length - 1) {
-        await dom.setFileInputFiles({ nodeId: resultNode.nodeId, files: [] }).catch(() => undefined);
+        await dom
+          .setFileInputFiles({ nodeId: resultNode.nodeId, files: [] })
+          .catch(() => undefined);
         await delay(150);
       }
     }
@@ -1132,7 +1166,11 @@ export async function uploadAttachmentFile(
       inputNameCandidates.some((name) => matchesExpectedName(name)) ||
       (lastInputValue && matchesExpectedName(lastInputValue));
     await waitForAttachmentVisible(runtime, expectedName, attachmentUiTimeoutMs, logger);
-    logger(inputHasFile ? 'Attachment queued (UI anchored, file input confirmed)' : 'Attachment queued (UI anchored)');
+    logger(
+      inputHasFile
+        ? "Attachment queued (UI anchored, file input confirmed)"
+        : "Attachment queued (UI anchored)",
+    );
     return true;
   }
 
@@ -1142,21 +1180,27 @@ export async function uploadAttachmentFile(
     (lastInputValue && matchesExpectedName(lastInputValue));
   if (await waitForAttachmentAnchored(runtime, expectedName, attachmentUiTimeoutMs)) {
     await waitForAttachmentVisible(runtime, expectedName, attachmentUiTimeoutMs, logger);
-    logger(inputHasFile ? 'Attachment queued (UI anchored, file input confirmed)' : 'Attachment queued (UI anchored)');
+    logger(
+      inputHasFile
+        ? "Attachment queued (UI anchored, file input confirmed)"
+        : "Attachment queued (UI anchored)",
+    );
     return true;
   }
 
   if (inputConfirmed || inputHasFile) {
-    logger('Attachment input accepted the file but UI did not acknowledge it; continuing with input confirmation only.');
+    logger(
+      "Attachment input accepted the file but UI did not acknowledge it; continuing with input confirmation only.",
+    );
     return true;
   }
 
-  await logDomFailure(runtime, logger, 'file-upload-missing');
-  throw new Error('Attachment did not register with the ChatGPT composer in time.');
+  await logDomFailure(runtime, logger, "file-upload-missing");
+  throw new Error("Attachment did not register with the ChatGPT composer in time.");
 }
 
 export async function clearComposerAttachments(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   logger?: BrowserLogger,
 ): Promise<void> {
@@ -1265,8 +1309,8 @@ export async function clearComposerAttachments(
     if (value?.hadAttachments) {
       sawAttachments = true;
     }
-    const chipCount = typeof value?.chipCount === 'number' ? value.chipCount : 0;
-    const inputCount = typeof value?.inputCount === 'number' ? value.inputCount : 0;
+    const chipCount = typeof value?.chipCount === "number" ? value.chipCount : 0;
+    const inputCount = typeof value?.inputCount === "number" ? value.inputCount : 0;
     lastState = { chipCount, inputCount };
     if (chipCount === 0 && inputCount === 0) {
       return;
@@ -1277,12 +1321,14 @@ export async function clearComposerAttachments(
     logger?.(
       `Attachment cleanup timed out; still saw ${lastState?.chipCount ?? 0} chips and ${lastState?.inputCount ?? 0} inputs.`,
     );
-    throw new Error('Existing attachments still present in composer; aborting to avoid duplicate uploads.');
+    throw new Error(
+      "Existing attachments still present in composer; aborting to avoid duplicate uploads.",
+    );
   }
 }
 
 export async function waitForAttachmentCompletion(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   expectedNames: string[] = [],
   logger?: BrowserLogger,
@@ -1503,22 +1549,25 @@ export async function waitForAttachmentCompletion(
   while (Date.now() < deadline) {
     const response = await Runtime.evaluate({ expression, returnByValue: true });
     const { result } = response;
-    const value = result?.value as {
-      state?: string;
-      uploading?: boolean;
-      filesAttached?: boolean;
-      attachedNames?: string[];
-      inputNames?: string[];
-      fileCount?: number;
-    } | undefined;
+    const value = result?.value as
+      | {
+          state?: string;
+          uploading?: boolean;
+          filesAttached?: boolean;
+          attachedNames?: string[];
+          inputNames?: string[];
+          fileCount?: number;
+        }
+      | undefined;
     if (!value && logger?.verbose) {
-      const exception = (response as { exceptionDetails?: { text?: string; exception?: { description?: string } } })
-        ?.exceptionDetails;
+      const exception = (
+        response as { exceptionDetails?: { text?: string; exception?: { description?: string } } }
+      )?.exceptionDetails;
       if (exception) {
         const details = [exception.text, exception.exception?.description]
           .filter((part) => Boolean(part))
-          .join(' - ');
-        logger(`Attachment wait eval failed: ${details || 'unknown error'}`);
+          .join(" - ");
+        logger(`Attachment wait eval failed: ${details || "unknown error"}`);
       }
     }
     if (value) {
@@ -1539,22 +1588,23 @@ export async function waitForAttachmentCompletion(
         }
       }
       const attachedNames = (value.attachedNames ?? [])
-        .map((name) => name.toLowerCase().replace(/\s+/g, ' ').trim())
+        .map((name) => name.toLowerCase().replace(/\s+/g, " ").trim())
         .filter(Boolean);
       const inputNames = (value.inputNames ?? [])
-        .map((name) => name.toLowerCase().replace(/\s+/g, ' ').trim())
+        .map((name) => name.toLowerCase().replace(/\s+/g, " ").trim())
         .filter(Boolean);
-      const fileCount = typeof value.fileCount === 'number' ? value.fileCount : 0;
-      const fileCountSatisfied = expectedNormalized.length > 0 && fileCount >= expectedNormalized.length;
+      const fileCount = typeof value.fileCount === "number" ? value.fileCount : 0;
+      const fileCountSatisfied =
+        expectedNormalized.length > 0 && fileCount >= expectedNormalized.length;
       const matchesExpected = (expected: string): boolean => {
-        const baseName = expected.split('/').pop()?.split('\\').pop() ?? expected;
-        const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, ' ').trim();
-        const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, '');
+        const baseName = expected.split("/").pop()?.split("\\").pop() ?? expected;
+        const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, " ").trim();
+        const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, "");
         return attachedNames.some((raw) => {
           if (raw.includes(normalizedExpected)) return true;
           if (expectedNoExt.length >= 6 && raw.includes(expectedNoExt)) return true;
-          if (raw.includes('…') || raw.includes('...')) {
-            const marker = raw.includes('…') ? '…' : '...';
+          if (raw.includes("…") || raw.includes("...")) {
+            const marker = raw.includes("…") ? "…" : "...";
             const [prefixRaw, suffixRaw] = raw.split(marker);
             const prefix = prefixRaw.trim();
             const suffix = suffixRaw.trim();
@@ -1573,12 +1623,12 @@ export async function waitForAttachmentCompletion(
           attachmentMatchSince = Date.now();
         }
         const stable = Date.now() - attachmentMatchSince > stableThresholdMs;
-        if (stable && value.state === 'ready') {
+        if (stable && value.state === "ready") {
           return;
         }
         // Don't treat disabled button as complete - wait for it to become 'ready'.
         // The spinner detection is unreliable, so a disabled button likely means upload is in progress.
-        if (value.state === 'missing' && (value.filesAttached || fileCountSatisfied)) {
+        if (value.state === "missing" && (value.filesAttached || fileCountSatisfied)) {
           return;
         }
         // If files are attached but button isn't ready yet, give it more time but don't fail immediately.
@@ -1593,17 +1643,20 @@ export async function waitForAttachmentCompletion(
       // Fallback: if the file input has the expected names, allow progress once that condition is stable.
       // Some ChatGPT surfaces only render the filename after sending the message.
       const inputMissing = expectedNormalized.filter((expected) => {
-        const baseName = expected.split('/').pop()?.split('\\').pop() ?? expected;
-        const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, ' ').trim();
-        const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, '');
+        const baseName = expected.split("/").pop()?.split("\\").pop() ?? expected;
+        const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, " ").trim();
+        const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, "");
         return !inputNames.some(
-          (raw) => raw.includes(normalizedExpected) || (expectedNoExt.length >= 6 && raw.includes(expectedNoExt)),
+          (raw) =>
+            raw.includes(normalizedExpected) ||
+            (expectedNoExt.length >= 6 && raw.includes(expectedNoExt)),
         );
       });
       // Don't include 'disabled' - a disabled button likely means upload is still in progress.
-      const inputStateOk = value.state === 'ready' || value.state === 'missing';
+      const inputStateOk = value.state === "ready" || value.state === "missing";
       const inputSeenNow = inputMissing.length === 0 || fileCountSatisfied;
-      const inputEvidenceOk = Boolean(value.filesAttached) || Boolean(value.uploading) || fileCountSatisfied;
+      const inputEvidenceOk =
+        Boolean(value.filesAttached) || Boolean(value.uploading) || fileCountSatisfied;
       const stableThresholdMs = value.uploading ? 3000 : 1500;
       if (inputSeenNow && inputStateOk && inputEvidenceOk) {
         if (inputMatchSince === null) {
@@ -1611,7 +1664,12 @@ export async function waitForAttachmentCompletion(
         }
         sawInputMatch = true;
       }
-      if (inputMatchSince !== null && inputStateOk && inputEvidenceOk && Date.now() - inputMatchSince > stableThresholdMs) {
+      if (
+        inputMatchSince !== null &&
+        inputStateOk &&
+        inputEvidenceOk &&
+        Date.now() - inputMatchSince > stableThresholdMs
+      ) {
         return;
       }
       if (!inputSeenNow && !sawInputMatch) {
@@ -1620,13 +1678,13 @@ export async function waitForAttachmentCompletion(
     }
     await delay(250);
   }
-  logger?.('Attachment upload timed out while waiting for ChatGPT composer to become ready.');
-  await logDomFailure(Runtime, logger ?? (() => {}), 'file-upload-timeout');
-  throw new Error('Attachments did not finish uploading before timeout.');
+  logger?.("Attachment upload timed out while waiting for ChatGPT composer to become ready.");
+  await logDomFailure(Runtime, logger ?? (() => {}), "file-upload-timeout");
+  throw new Error("Attachments did not finish uploading before timeout.");
 }
 
 export async function waitForUserTurnAttachments(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   expectedNames: string[],
   timeoutMs: number,
   logger?: BrowserLogger,
@@ -1723,16 +1781,18 @@ export async function waitForUserTurnAttachments(
     if (value.hasAttachmentUi) {
       sawAttachmentUi = true;
     }
-    const haystack = [value.text ?? '', ...(value.attrs ?? [])].join('\n');
-    const fileCount = typeof value.fileCount === 'number' ? value.fileCount : 0;
-    const attachmentUiCount = typeof value.attachmentUiCount === 'number' ? value.attachmentUiCount : 0;
-    const fileCountSatisfied = fileCount >= expectedNormalized.length && expectedNormalized.length > 0;
+    const haystack = [value.text ?? "", ...(value.attrs ?? [])].join("\n");
+    const fileCount = typeof value.fileCount === "number" ? value.fileCount : 0;
+    const attachmentUiCount =
+      typeof value.attachmentUiCount === "number" ? value.attachmentUiCount : 0;
+    const fileCountSatisfied =
+      fileCount >= expectedNormalized.length && expectedNormalized.length > 0;
     const attachmentUiSatisfied =
       attachmentUiCount >= expectedNormalized.length && expectedNormalized.length > 0;
     const missing = expectedNormalized.filter((expected) => {
-      const baseName = expected.split('/').pop()?.split('\\').pop() ?? expected;
-      const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, ' ').trim();
-      const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, '');
+      const baseName = expected.split("/").pop()?.split("\\").pop() ?? expected;
+      const normalizedExpected = baseName.toLowerCase().replace(/\s+/g, " ").trim();
+      const expectedNoExt = normalizedExpected.replace(/\.[a-z0-9]{1,10}$/i, "");
       if (haystack.includes(normalizedExpected)) return false;
       if (expectedNoExt.length >= 6 && haystack.includes(expectedNoExt)) return false;
       return true;
@@ -1744,17 +1804,17 @@ export async function waitForUserTurnAttachments(
   }
 
   if (!sawAttachmentUi) {
-    logger?.('Sent user message did not expose attachment UI; skipping attachment verification.');
+    logger?.("Sent user message did not expose attachment UI; skipping attachment verification.");
     return false;
   }
 
-  logger?.('Sent user message did not show expected attachment names in time.');
-  await logDomFailure(Runtime, logger ?? (() => {}), 'attachment-missing-user-turn');
-  throw new Error('Attachment was not present on the sent user message.');
+  logger?.("Sent user message did not show expected attachment names in time.");
+  await logDomFailure(Runtime, logger ?? (() => {}), "attachment-missing-user-turn");
+  throw new Error("Attachment was not present on the sent user message.");
 }
 
 export async function waitForAttachmentVisible(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   expectedName: string,
   timeoutMs: number,
   logger?: BrowserLogger,
@@ -1938,13 +1998,13 @@ export async function waitForAttachmentVisible(
     }
     await delay(200);
   }
-  logger?.('Attachment not visible in composer; giving up.');
-  await logDomFailure(Runtime, logger ?? (() => {}), 'attachment-visible');
-  throw new Error('Attachment did not appear in ChatGPT composer.');
+  logger?.("Attachment not visible in composer; giving up.");
+  await logDomFailure(Runtime, logger ?? (() => {}), "attachment-visible");
+  throw new Error("Attachment did not appear in ChatGPT composer.");
 }
 
 async function waitForAttachmentAnchored(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   expectedName: string,
   timeoutMs: number,
 ): Promise<boolean> {

@@ -1,36 +1,37 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
-import { describe, test, expect, beforeAll, afterAll } from 'vitest';
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 
-import type { RunOracleOptions } from '../../src/oracle.ts';
-import type { SessionMetadata } from '../../src/sessionManager.ts';
-import { setOracleHomeDirOverrideForTest } from '../../src/oracleHome.js';
+import type { RunOracleOptions } from "../../src/oracle.ts";
+import type { SessionMetadata } from "../../src/sessionManager.ts";
+import { setOracleHomeDirOverrideForTest } from "../../src/oracleHome.js";
 
-const baseUrl = process.env.OPENAI_BASE_URL ?? '';
-const isOpenRouterBase = baseUrl.includes('openrouter');
-const ENABLE_LIVE = process.env.ORACLE_LIVE_TEST === '1' && process.env.OPENAI_API_KEY && !isOpenRouterBase;
+const baseUrl = process.env.OPENAI_BASE_URL ?? "";
+const isOpenRouterBase = baseUrl.includes("openrouter");
+const ENABLE_LIVE =
+  process.env.ORACLE_LIVE_TEST === "1" && process.env.OPENAI_API_KEY && !isOpenRouterBase;
 
 if (!ENABLE_LIVE) {
-  describe.skip('write-output live e2e', () => {
-    test('Set ORACLE_LIVE_TEST=1 with a real OPENAI_API_KEY (api.openai.com) to run this suite.', () => {});
+  describe.skip("write-output live e2e", () => {
+    test("Set ORACLE_LIVE_TEST=1 with a real OPENAI_API_KEY (api.openai.com) to run this suite.", () => {});
   });
 } else {
-  describe('write-output live e2e', () => {
+  describe("write-output live e2e", () => {
     let tmpHome: string;
-    let performSessionRun: typeof import('../../src/cli/sessionRunner.ts').performSessionRun;
-    let sessionStore: typeof import('../../src/sessionStore.ts').sessionStore;
-    let getCliVersion: typeof import('../../src/version.ts').getCliVersion;
+    let performSessionRun: typeof import("../../src/cli/sessionRunner.ts").performSessionRun;
+    let sessionStore: typeof import("../../src/sessionStore.ts").sessionStore;
+    let getCliVersion: typeof import("../../src/version.ts").getCliVersion;
     const log = () => {};
     const write = () => true;
 
     beforeAll(async () => {
-      tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-live-write-'));
+      tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "oracle-live-write-"));
       setOracleHomeDirOverrideForTest(tmpHome);
-      ({ performSessionRun } = await import('../../src/cli/sessionRunner.ts'));
-      ({ sessionStore } = await import('../../src/sessionStore.ts'));
-      ({ getCliVersion } = await import('../../src/version.ts'));
+      ({ performSessionRun } = await import("../../src/cli/sessionRunner.ts"));
+      ({ sessionStore } = await import("../../src/sessionStore.ts"));
+      ({ getCliVersion } = await import("../../src/version.ts"));
     });
 
     afterAll(async () => {
@@ -39,13 +40,13 @@ if (!ENABLE_LIVE) {
     });
 
     test(
-      'saves assistant output file from live API run',
+      "saves assistant output file from live API run",
       async () => {
         await sessionStore.ensureStorage();
-        const outputPath = path.join(tmpHome, 'write-output-live.md');
+        const outputPath = path.join(tmpHome, "write-output-live.md");
         const runOptions: RunOracleOptions = {
           prompt: 'Reply with "write-output e2e" on a single line.',
-          model: 'gpt-4.1',
+          model: "gpt-4.1",
           writeOutputPath: outputPath,
           silent: true,
           heartbeatIntervalMs: 0,
@@ -53,7 +54,7 @@ if (!ENABLE_LIVE) {
         const sessionMeta: SessionMetadata = await sessionStore.createSession(
           {
             ...runOptions,
-            mode: 'api',
+            mode: "api",
           },
           process.cwd(),
         );
@@ -62,7 +63,7 @@ if (!ENABLE_LIVE) {
           await performSessionRun({
             sessionMeta,
             runOptions: { ...runOptions, sessionId: sessionMeta.id },
-            mode: 'api',
+            mode: "api",
             cwd: process.cwd(),
             log,
             write,
@@ -77,8 +78,8 @@ if (!ENABLE_LIVE) {
           throw error;
         }
 
-        const saved = await fs.readFile(outputPath, 'utf8');
-        expect(saved.toLowerCase()).toContain('write-output e2e');
+        const saved = await fs.readFile(outputPath, "utf8");
+        expect(saved.toLowerCase()).toContain("write-output e2e");
       },
       10 * 60 * 1000,
     );

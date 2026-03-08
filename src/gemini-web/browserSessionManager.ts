@@ -1,16 +1,16 @@
-import path from 'node:path';
-import os from 'node:os';
-import { mkdir } from 'node:fs/promises';
-import type { BrowserRunOptions, BrowserLogger, ChromeClient } from '../browser/types.js';
-import { launchChrome, connectWithNewTab, closeTab } from '../browser/chromeLifecycle.js';
-import { resolveBrowserConfig } from '../browser/config.js';
+import path from "node:path";
+import os from "node:os";
+import { mkdir } from "node:fs/promises";
+import type { BrowserRunOptions, BrowserLogger, ChromeClient } from "../browser/types.js";
+import { launchChrome, connectWithNewTab, closeTab } from "../browser/chromeLifecycle.js";
+import { resolveBrowserConfig } from "../browser/config.js";
 import {
   readDevToolsPort,
   writeDevToolsActivePort,
   writeChromePid,
   cleanupStaleProfileState,
   verifyDevToolsReachable,
-} from '../browser/profileState.js';
+} from "../browser/profileState.js";
 
 export interface GeminiBrowserSession {
   profileDir: string;
@@ -21,7 +21,7 @@ export interface GeminiBrowserSession {
 }
 
 export interface OpenGeminiBrowserSessionInput {
-  browserConfig: BrowserRunOptions['config'];
+  browserConfig: BrowserRunOptions["config"];
   keepBrowserDefault: boolean;
   purpose: string;
   log?: BrowserLogger;
@@ -31,8 +31,8 @@ export async function openGeminiBrowserSession(
   input: OpenGeminiBrowserSessionInput,
 ): Promise<GeminiBrowserSession> {
   const { browserConfig, keepBrowserDefault, purpose, log } = input;
-  const profileDir = browserConfig?.manualLoginProfileDir
-    ?? path.join(os.homedir(), '.oracle', 'browser-profile');
+  const profileDir =
+    browserConfig?.manualLoginProfileDir ?? path.join(os.homedir(), ".oracle", "browser-profile");
   await mkdir(profileDir, { recursive: true });
 
   const resolvedConfig = resolveBrowserConfig({
@@ -51,7 +51,7 @@ export async function openGeminiBrowserSession(
     const probe = await verifyDevToolsReachable({ port });
     if (!probe.ok) {
       log?.(`[gemini-web] Stale DevTools port ${port}; launching fresh Chrome for ${purpose}.`);
-      await cleanupStaleProfileState(profileDir, log, { lockRemovalMode: 'if_oracle_pid_dead' });
+      await cleanupStaleProfileState(profileDir, log, { lockRemovalMode: "if_oracle_pid_dead" });
       port = null;
     }
   }
@@ -75,18 +75,32 @@ export async function openGeminiBrowserSession(
 
   const close = async (): Promise<void> => {
     if (keepBrowser) {
-      try { await client.close(); } catch { /* ignore */ }
+      try {
+        await client.close();
+      } catch {
+        /* ignore */
+      }
       return;
     }
 
     if (targetId && port) {
       await closeTab(port, targetId, log ?? (() => {})).catch(() => undefined);
     }
-    try { await client.close(); } catch { /* ignore */ }
+    try {
+      await client.close();
+    } catch {
+      /* ignore */
+    }
 
     if (chromeWasLaunched && launchedChrome) {
-      try { launchedChrome.kill(); } catch { /* ignore */ }
-      await cleanupStaleProfileState(profileDir, log, { lockRemovalMode: 'never' }).catch(() => undefined);
+      try {
+        launchedChrome.kill();
+      } catch {
+        /* ignore */
+      }
+      await cleanupStaleProfileState(profileDir, log, { lockRemovalMode: "never" }).catch(
+        () => undefined,
+      );
     }
   };
 

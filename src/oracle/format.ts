@@ -1,6 +1,6 @@
 export function formatUSD(value: number): string {
   if (!Number.isFinite(value)) {
-    return 'n/a';
+    return "n/a";
   }
   // Display with 4 decimal places, rounding to $0.0001 minimum granularity.
   return `$${value.toFixed(4)}`;
@@ -11,9 +11,9 @@ export function formatNumber(
   { estimated = false }: { estimated?: boolean } = {},
 ): string {
   if (value == null) {
-    return 'n/a';
+    return "n/a";
   }
-  const suffix = estimated ? ' (est.)' : '';
+  const suffix = estimated ? " (est.)" : "";
   return `${value.toLocaleString()}${suffix}`;
 }
 

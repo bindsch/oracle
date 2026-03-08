@@ -1,15 +1,15 @@
-import { describe, expect, test } from 'vitest';
-import fs from 'node:fs/promises';
-import { runBrowserMode } from '../../src/browser/index.js';
-import { resumeBrowserSession } from '../../src/browser/reattach.js';
-import type { BrowserLogger } from '../../src/browser/types.js';
-import { getCookies } from '@steipete/sweet-cookie';
-import { acquireLiveTestLock, releaseLiveTestLock } from './liveLock.js';
+import { describe, expect, test } from "vitest";
+import fs from "node:fs/promises";
+import { runBrowserMode } from "../../src/browser/index.js";
+import { resumeBrowserSession } from "../../src/browser/reattach.js";
+import type { BrowserLogger } from "../../src/browser/types.js";
+import { getCookies } from "@steipete/sweet-cookie";
+import { acquireLiveTestLock, releaseLiveTestLock } from "./liveLock.js";
 
-const LIVE = process.env.ORACLE_LIVE_TEST === '1';
+const LIVE = process.env.ORACLE_LIVE_TEST === "1";
 const DEFAULT_PROJECT_URLS = [
-  'https://chatgpt.com/g/g-p-69505ed97e3081918a275477a647a682/project',
-  'https://chatgpt.com/g/g-p-691edc9fec088191b553a35093da1ea8-oracle/project',
+  "https://chatgpt.com/g/g-p-69505ed97e3081918a275477a647a682/project",
+  "https://chatgpt.com/g/g-p-691edc9fec088191b553a35093da1ea8-oracle/project",
 ];
 const PROJECT_URLS = process.env.ORACLE_CHATGPT_PROJECT_URL
   ? [process.env.ORACLE_CHATGPT_PROJECT_URL]
@@ -17,18 +17,20 @@ const PROJECT_URLS = process.env.ORACLE_CHATGPT_PROJECT_URL
 
 async function hasChatGptCookies(): Promise<boolean> {
   const { cookies } = await getCookies({
-    url: 'https://chatgpt.com',
-    origins: ['https://chatgpt.com', 'https://chat.openai.com', 'https://atlas.openai.com'],
-    browsers: ['chrome'],
-    mode: 'merge',
-    chromeProfile: 'Default',
+    url: "https://chatgpt.com",
+    origins: ["https://chatgpt.com", "https://chat.openai.com", "https://atlas.openai.com"],
+    browsers: ["chrome"],
+    mode: "merge",
+    chromeProfile: "Default",
     timeoutMs: 5_000,
   });
   // Learned: reuse the same session cookie check as other live browser tests.
-  const hasSession = cookies.some((cookie) => cookie.name.startsWith('__Secure-next-auth.session-token'));
+  const hasSession = cookies.some((cookie) =>
+    cookie.name.startsWith("__Secure-next-auth.session-token"),
+  );
   if (!hasSession) {
     console.warn(
-      'Skipping ChatGPT browser live tests (missing __Secure-next-auth.session-token). Open chatgpt.com in Chrome and retry.',
+      "Skipping ChatGPT browser live tests (missing __Secure-next-auth.session-token). Open chatgpt.com in Chrome and retry.",
     );
     return false;
   }
@@ -39,16 +41,16 @@ function createLogger(): BrowserLogger {
   return (() => {}) as BrowserLogger;
 }
 
-(LIVE ? describe : describe.skip)('ChatGPT browser live reattach', () => {
+(LIVE ? describe : describe.skip)("ChatGPT browser live reattach", () => {
   test(
-    'reattaches from project list after closing Chrome (pro request)',
+    "reattaches from project list after closing Chrome (pro request)",
     async () => {
       if (!(await hasChatGptCookies())) return;
       // Learned: reattach needs exclusive access to the profile to avoid target mismatch.
-      await acquireLiveTestLock('chatgpt-browser');
+      await acquireLiveTestLock("chatgpt-browser");
       try {
-        if (!PROJECT_URLS.some((url) => url.includes('/g/'))) {
-          console.warn('Skipping live reattach test (project URL missing).');
+        if (!PROJECT_URLS.some((url) => url.includes("/g/"))) {
+          console.warn("Skipping live reattach test (project URL missing).");
           return;
         }
 
@@ -68,7 +70,7 @@ function createLogger(): BrowserLogger {
         } = {};
 
         let result: Awaited<ReturnType<typeof runBrowserMode>> | null = null;
-        let lastErrorMessage = '';
+        let lastErrorMessage = "";
         let selectedProjectUrl: string | undefined;
         for (const projectUrl of PROJECT_URLS) {
           for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -77,10 +79,10 @@ function createLogger(): BrowserLogger {
               result = await runBrowserMode({
                 prompt,
                 config: {
-                  chromeProfile: 'Default',
+                  chromeProfile: "Default",
                   url: projectUrl,
                   keepBrowser: true,
-                  desiredModel: 'GPT-5.2 Pro',
+                  desiredModel: "GPT-5.2 Pro",
                   timeoutMs: 1_200_000,
                 },
                 log,
@@ -95,12 +97,12 @@ function createLogger(): BrowserLogger {
                 return;
               }
               const missingProject =
-                message.includes('Unable to locate prior ChatGPT conversation in sidebar') ||
-                message.includes('project URL missing');
+                message.includes("Unable to locate prior ChatGPT conversation in sidebar") ||
+                message.includes("project URL missing");
               const transient =
-                message.includes('Prompt did not appear in conversation before timeout') ||
-                message.includes('Chrome window closed before oracle finished') ||
-                message.includes('Reattach target did not respond');
+                message.includes("Prompt did not appear in conversation before timeout") ||
+                message.includes("Chrome window closed before oracle finished") ||
+                message.includes("Reattach target did not respond");
               if (missingProject) {
                 console.warn(`Project URL unavailable (${projectUrl}); trying fallback.`);
                 break;
@@ -118,16 +120,18 @@ function createLogger(): BrowserLogger {
           }
         }
         if (!result) {
-          throw new Error(`Live reattach run did not return a result: ${lastErrorMessage || 'unknown error'}`);
+          throw new Error(
+            `Live reattach run did not return a result: ${lastErrorMessage || "unknown error"}`,
+          );
         }
         if (!selectedProjectUrl) {
-          throw new Error('Live reattach run succeeded but no project URL was selected.');
+          throw new Error("Live reattach run succeeded but no project URL was selected.");
         }
 
         expect(result.answerText.toLowerCase()).toContain(promptToken.toLowerCase());
         const tabUrl = result.tabUrl ?? selectedProjectUrl;
         const conversationId = (() => {
-          const marker = '/c/';
+          const marker = "/c/";
           const idx = tabUrl.indexOf(marker);
           if (idx === -1) return undefined;
           const rest = tabUrl.slice(idx + marker.length);
@@ -137,7 +141,7 @@ function createLogger(): BrowserLogger {
         runtime = {
           chromePid: result.chromePid,
           chromePort: result.chromePort,
-          chromeHost: result.chromeHost ?? '127.0.0.1',
+          chromeHost: result.chromeHost ?? "127.0.0.1",
           chromeTargetId: result.chromeTargetId,
           tabUrl,
           userDataDir: result.userDataDir,
@@ -161,7 +165,7 @@ function createLogger(): BrowserLogger {
             chromePort: undefined,
             chromeTargetId: undefined,
           },
-          { chromeProfile: 'Default', url: selectedProjectUrl, timeoutMs: 1_200_000 },
+          { chromeProfile: "Default", url: selectedProjectUrl, timeoutMs: 1_200_000 },
           Object.assign(createLogger(), { verbose: true }),
           { promptPreview: promptToken },
         );
@@ -172,7 +176,7 @@ function createLogger(): BrowserLogger {
           await fs.rm(runtime.userDataDir, { recursive: true, force: true });
         }
       } finally {
-        await releaseLiveTestLock('chatgpt-browser');
+        await releaseLiveTestLock("chatgpt-browser");
       }
     },
     15 * 60 * 1000,

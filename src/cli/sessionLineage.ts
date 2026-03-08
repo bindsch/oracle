@@ -1,4 +1,4 @@
-import type { SessionMetadata } from '../sessionStore.js';
+import type { SessionMetadata } from "../sessionStore.js";
 
 type ResponseRecord = { responseId?: unknown; id?: unknown };
 
@@ -10,8 +10,12 @@ export interface SessionLineage {
 function readResponseId(record: ResponseRecord | undefined | null): string | null {
   if (!record) return null;
   const candidate =
-    typeof record.responseId === 'string' ? record.responseId : typeof record.id === 'string' ? record.id : null;
-  if (!candidate || !candidate.startsWith('resp_')) {
+    typeof record.responseId === "string"
+      ? record.responseId
+      : typeof record.id === "string"
+        ? record.id
+        : null;
+  if (!candidate || !candidate.startsWith("resp_")) {
     return null;
   }
   return candidate;
@@ -25,7 +29,9 @@ export function collectSessionResponseIds(meta: SessionMetadata): string[] {
   }
   const runs = Array.isArray(meta.models) ? meta.models : [];
   for (const run of runs) {
-    const runResponse = readResponseId((run as unknown as { response?: ResponseRecord | null }).response);
+    const runResponse = readResponseId(
+      (run as unknown as { response?: ResponseRecord | null }).response,
+    );
     if (runResponse) {
       ids.add(runResponse);
     }

@@ -1,6 +1,6 @@
-import type { GeminiWebModelId } from './client.js';
+import type { GeminiWebModelId } from "./client.js";
 
-export type GeminiExecutionMode = 'dom' | 'http';
+export type GeminiExecutionMode = "dom" | "http";
 
 export interface GeminiExecutionModeSelection {
   mode: GeminiExecutionMode;
@@ -14,23 +14,23 @@ export interface GeminiExecutionModeInput {
   editImagePath?: string;
 }
 
-export function selectGeminiExecutionMode(input: GeminiExecutionModeInput): GeminiExecutionModeSelection {
+export function selectGeminiExecutionMode(
+  input: GeminiExecutionModeInput,
+): GeminiExecutionModeSelection {
   const reasons: string[] = [];
-  if (input.model !== 'gemini-3-pro-deep-think') {
-    return { mode: 'http', reasons: ['model'] };
+  if (input.model !== "gemini-3-pro-deep-think") {
+    return { mode: "http", reasons: ["model"] };
   }
 
   if (input.attachmentPaths.length > 0) {
-    reasons.push('attachments');
+    reasons.push("attachments");
   }
   if (input.generateImagePath) {
-    reasons.push('image-generation');
+    reasons.push("image-generation");
   }
   if (input.editImagePath) {
-    reasons.push('image-edit');
+    reasons.push("image-edit");
   }
 
-  return reasons.length === 0
-    ? { mode: 'dom', reasons: [] }
-    : { mode: 'http', reasons };
+  return reasons.length === 0 ? { mode: "dom", reasons: [] } : { mode: "http", reasons };
 }

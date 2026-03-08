@@ -1,6 +1,6 @@
-import type { BrowserSessionConfig } from '../sessionStore.js';
-import type { BrowserRunResult } from '../browserMode.js';
-import type { BrowserAttachment } from '../browser/types.js';
+import type { BrowserSessionConfig } from "../sessionStore.js";
+import type { BrowserRunResult } from "../browserMode.js";
+import type { BrowserAttachment } from "../browser/types.js";
 
 export interface RemoteAttachmentPayload {
   fileName: string;
@@ -20,9 +20,9 @@ export interface RemoteRunPayload {
 }
 
 export type RemoteRunEvent =
-  | { type: 'log'; message: string }
-  | { type: 'result'; result: BrowserRunResult }
-  | { type: 'error'; message: string };
+  | { type: "log"; message: string }
+  | { type: "result"; result: BrowserRunResult }
+  | { type: "error"; message: string };
 
 export interface SerializedAttachment extends BrowserAttachment {
   fileName: string;

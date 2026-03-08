@@ -1,4 +1,4 @@
-import type { ChromeClient, BrowserLogger } from '../types.js';
+import type { ChromeClient, BrowserLogger } from "../types.js";
 import {
   ANSWER_SELECTORS,
   ASSISTANT_ROLE_SELECTOR,
@@ -6,62 +6,84 @@ import {
   COPY_BUTTON_SELECTOR,
   FINISHED_ACTIONS_SELECTOR,
   STOP_BUTTON_SELECTOR,
-} from '../constants.js';
-import { delay } from '../utils.js';
-import { logDomFailure, logConversationSnapshot, buildConversationDebugExpression } from '../domDebug.js';
-import { buildClickDispatcher } from './domEvents.js';
+} from "../constants.js";
+import { delay } from "../utils.js";
+import {
+  logDomFailure,
+  logConversationSnapshot,
+  buildConversationDebugExpression,
+} from "../domDebug.js";
+import { buildClickDispatcher } from "./domEvents.js";
 
-const ASSISTANT_POLL_TIMEOUT_ERROR = 'assistant-response-watchdog-timeout';
+const ASSISTANT_POLL_TIMEOUT_ERROR = "assistant-response-watchdog-timeout";
 
 function isAnswerNowPlaceholderText(normalized: string): boolean {
   const text = normalized.trim();
   if (!text) return false;
   // Learned: "Pro thinking" shows a placeholder turn that contains "Answer now".
   // That is not the final answer and must be ignored in browser automation.
-  if (text === 'chatgpt said:' || text === 'chatgpt said') return true;
-  if (text.includes('file upload request') && (text.includes('pro thinking') || text.includes('chatgpt said'))) {
+  if (text === "chatgpt said:" || text === "chatgpt said") return true;
+  if (
+    text.includes("file upload request") &&
+    (text.includes("pro thinking") || text.includes("chatgpt said"))
+  ) {
     return true;
   }
-  return text.includes('answer now') && (text.includes('pro thinking') || text.includes('chatgpt said'));
+  return (
+    text.includes("answer now") && (text.includes("pro thinking") || text.includes("chatgpt said"))
+  );
 }
 
 export async function waitForAssistantResponse(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   logger: BrowserLogger,
   minTurnIndex?: number,
-): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } }> {
+): Promise<{
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+}> {
   const start = Date.now();
-  logger('Waiting for ChatGPT response');
+  logger("Waiting for ChatGPT response");
   // Learned: two paths are needed:
   // 1) DOM observer (fast when mutations fire),
   // 2) snapshot poller (fallback when observers miss or JS stalls).
   const expression = buildResponseObserverExpression(timeoutMs, minTurnIndex);
-  const evaluationPromise = Runtime.evaluate({ expression, awaitPromise: true, returnByValue: true });
+  const evaluationPromise = Runtime.evaluate({
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+  });
   const raceReadyEvaluation = evaluationPromise.then(
-    (value) => ({ kind: 'evaluation' as const, value }),
+    (value) => ({ kind: "evaluation" as const, value }),
     (error) => {
-      throw { source: 'evaluation' as const, error };
+      throw { source: "evaluation" as const, error };
     },
   );
   // Use AbortController to stop the poller when the evaluation wins the race,
   // preventing abandoned polling loops from consuming resources.
   const pollerAbort = new AbortController();
-  const pollerPromise = pollAssistantCompletion(Runtime, timeoutMs, minTurnIndex, pollerAbort.signal).then(
-    (value) => ({ kind: 'poll' as const, value }),
+  const pollerPromise = pollAssistantCompletion(
+    Runtime,
+    timeoutMs,
+    minTurnIndex,
+    pollerAbort.signal,
+  ).then(
+    (value) => ({ kind: "poll" as const, value }),
     (error) => {
-      throw { source: 'poll' as const, error };
+      throw { source: "poll" as const, error };
     },
   );
 
-  let evaluation: Awaited<ReturnType<ChromeClient['Runtime']['evaluate']>> | null = null;
+  let evaluation: Awaited<ReturnType<ChromeClient["Runtime"]["evaluate"]>> | null = null;
   try {
     const winner = await Promise.race([raceReadyEvaluation, pollerPromise]);
-    if (winner.kind === 'poll') {
+    if (winner.kind === "poll") {
       if (!winner.value) {
-        throw { source: 'poll' as const, error: new Error(ASSISTANT_POLL_TIMEOUT_ERROR) };
+        throw { source: "poll" as const, error: new Error(ASSISTANT_POLL_TIMEOUT_ERROR) };
       }
-      logger('Captured assistant response via snapshot watchdog');
+      logger("Captured assistant response via snapshot watchdog");
       evaluationPromise.catch(() => undefined);
       await terminateRuntimeExecution(Runtime);
       return winner.value;
@@ -70,19 +92,28 @@ export async function waitForAssistantResponse(
     pollerAbort.abort();
     evaluation = winner.value;
   } catch (wrappedError) {
-    if (wrappedError && typeof wrappedError === 'object' && 'source' in wrappedError && 'error' in wrappedError) {
+    if (
+      wrappedError &&
+      typeof wrappedError === "object" &&
+      "source" in wrappedError &&
+      "error" in wrappedError
+    ) {
       const { source, error } = wrappedError as { source: string; error: unknown };
-      if (source === 'poll' && error instanceof Error && error.message === ASSISTANT_POLL_TIMEOUT_ERROR) {
+      if (
+        source === "poll" &&
+        error instanceof Error &&
+        error.message === ASSISTANT_POLL_TIMEOUT_ERROR
+      ) {
         evaluation = await evaluationPromise;
-      } else if (source === 'poll') {
+      } else if (source === "poll") {
         throw error;
-      } else if (source === 'evaluation') {
+      } else if (source === "evaluation") {
         const recovered = await recoverAssistantResponse(Runtime, timeoutMs, logger, minTurnIndex);
         if (recovered) {
           return recovered;
         }
-        await logDomFailure(Runtime, logger, 'assistant-response');
-        throw error ?? new Error('Failed to capture assistant response');
+        await logDomFailure(Runtime, logger, "assistant-response");
+        throw error ?? new Error("Failed to capture assistant response");
       }
     } else {
       throw wrappedError;
@@ -90,8 +121,8 @@ export async function waitForAssistantResponse(
   }
 
   if (!evaluation) {
-    await logDomFailure(Runtime, logger, 'assistant-response');
-    throw new Error('Failed to capture assistant response');
+    await logDomFailure(Runtime, logger, "assistant-response");
+    throw new Error("Failed to capture assistant response");
   }
 
   const parsed = await parseAssistantEvaluationResult(Runtime, evaluation, logger);
@@ -108,13 +139,13 @@ export async function waitForAssistantResponse(
           pollerPromise.catch(() => null),
           delay(remainingMs).then(() => null),
         ]);
-        if (polled && polled.kind === 'poll' && polled.value) {
+        if (polled && polled.kind === "poll" && polled.value) {
           return polled.value;
         }
       }
     }
-    await logDomFailure(Runtime, logger, 'assistant-response');
-    throw new Error('Unable to capture assistant response');
+    await logDomFailure(Runtime, logger, "assistant-response");
+    throw new Error("Unable to capture assistant response");
   }
 
   const refreshed = await refreshAssistantSnapshot(Runtime, parsed, logger, minTurnIndex);
@@ -128,7 +159,7 @@ export async function waitForAssistantResponse(
       isCompletionVisible(Runtime),
     ]);
     if (stopVisible) {
-      logger('Assistant still generating; waiting for completion');
+      logger("Assistant still generating; waiting for completion");
       const completed = await pollAssistantCompletion(Runtime, remainingMs, minTurnIndex);
       if (completed) {
         return completed;
@@ -142,7 +173,7 @@ export async function waitForAssistantResponse(
 }
 
 export async function readAssistantSnapshot(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   minTurnIndex?: number,
 ): Promise<AssistantSnapshot | null> {
   const { result } = await Runtime.evaluate({
@@ -150,10 +181,10 @@ export async function readAssistantSnapshot(
     returnByValue: true,
   });
   const value = result?.value;
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     const snapshot = value as AssistantSnapshot;
-    if (typeof minTurnIndex === 'number' && Number.isFinite(minTurnIndex)) {
-      const turnIndex = typeof snapshot.turnIndex === 'number' ? snapshot.turnIndex : null;
+    if (typeof minTurnIndex === "number" && Number.isFinite(minTurnIndex)) {
+      const turnIndex = typeof snapshot.turnIndex === "number" ? snapshot.turnIndex : null;
       if (turnIndex === null) {
         return snapshot;
       }
@@ -167,7 +198,7 @@ export async function readAssistantSnapshot(
 }
 
 export async function captureAssistantMarkdown(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   meta: { messageId?: string | null; turnId?: string | null },
   logger: BrowserLogger,
 ): Promise<string | null> {
@@ -176,16 +207,16 @@ export async function captureAssistantMarkdown(
     returnByValue: true,
     awaitPromise: true,
   });
-  if (result?.value?.success && typeof result.value.markdown === 'string') {
+  if (result?.value?.success && typeof result.value.markdown === "string") {
     return result.value.markdown;
   }
   const status = result?.value?.status;
-  if (status && status !== 'missing-button') {
+  if (status && status !== "missing-button") {
     logger(`Copy button fallback status: ${status}`);
-    await logDomFailure(Runtime, logger, 'copy-markdown');
+    await logDomFailure(Runtime, logger, "copy-markdown");
   }
   if (!status) {
-    await logDomFailure(Runtime, logger, 'copy-markdown');
+    await logDomFailure(Runtime, logger, "copy-markdown");
   }
   return null;
 }
@@ -198,7 +229,7 @@ export function buildConversationDebugExpressionForTest(): string {
   return buildConversationDebugExpression();
 }
 
-export function buildMarkdownFallbackExtractorForTest(minTurnLiteral = '0'): string {
+export function buildMarkdownFallbackExtractorForTest(minTurnLiteral = "0"): string {
   return buildMarkdownFallbackExtractor(minTurnLiteral);
 }
 
@@ -209,11 +240,15 @@ export function buildCopyExpressionForTest(
 }
 
 async function recoverAssistantResponse(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   logger: BrowserLogger,
   minTurnIndex?: number,
-): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null> {
+): Promise<{
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+} | null> {
   const recoveryTimeoutMs = Math.max(0, timeoutMs);
   if (recoveryTimeoutMs === 0) {
     return null;
@@ -227,7 +262,7 @@ async function recoverAssistantResponse(
     400,
   );
   if (recovered) {
-    logger('Recovered assistant response via polling fallback');
+    logger("Recovered assistant response via polling fallback");
     return recovered;
   }
   await logConversationSnapshot(Runtime, logger).catch(() => undefined);
@@ -235,32 +270,42 @@ async function recoverAssistantResponse(
 }
 
 async function parseAssistantEvaluationResult(
-  _Runtime: ChromeClient['Runtime'],
-  evaluation: Awaited<ReturnType<ChromeClient['Runtime']['evaluate']>>,
+  _Runtime: ChromeClient["Runtime"],
+  evaluation: Awaited<ReturnType<ChromeClient["Runtime"]["evaluate"]>>,
   _logger: BrowserLogger,
-): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null> {
+): Promise<{
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+} | null> {
   const { result } = evaluation;
-  if (result.type === 'object' && result.value && typeof result.value === 'object' && 'text' in result.value) {
+  if (
+    result.type === "object" &&
+    result.value &&
+    typeof result.value === "object" &&
+    "text" in result.value
+  ) {
     const html =
-      typeof (result.value as { html?: unknown }).html === 'string'
+      typeof (result.value as { html?: unknown }).html === "string"
         ? ((result.value as { html?: string }).html ?? undefined)
         : undefined;
     const turnId =
-      typeof (result.value as { turnId?: unknown }).turnId === 'string'
+      typeof (result.value as { turnId?: unknown }).turnId === "string"
         ? ((result.value as { turnId?: string }).turnId ?? undefined)
         : undefined;
     const messageId =
-      typeof (result.value as { messageId?: unknown }).messageId === 'string'
+      typeof (result.value as { messageId?: unknown }).messageId === "string"
         ? ((result.value as { messageId?: string }).messageId ?? undefined)
         : undefined;
-    const text = cleanAssistantText(String((result.value as { text: unknown }).text ?? ''));
+    const text = cleanAssistantText(String((result.value as { text: unknown }).text ?? ""));
     const normalized = text.toLowerCase();
     if (isAnswerNowPlaceholderText(normalized)) {
       return null;
     }
     return { text, html, meta: { turnId, messageId } };
   }
-  const fallbackText = typeof result.value === 'string' ? cleanAssistantText(result.value as string) : '';
+  const fallbackText =
+    typeof result.value === "string" ? cleanAssistantText(result.value as string) : "";
   if (!fallbackText) {
     return null;
   }
@@ -271,13 +316,25 @@ async function parseAssistantEvaluationResult(
 }
 
 async function refreshAssistantSnapshot(
-  Runtime: ChromeClient['Runtime'],
-  current: { text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } },
+  Runtime: ChromeClient["Runtime"],
+  current: {
+    text: string;
+    html?: string;
+    meta: { turnId?: string | null; messageId?: string | null };
+  },
   logger: BrowserLogger,
   minTurnIndex?: number,
-): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null> {
+): Promise<{
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+} | null> {
   const deadline = Date.now() + 5_000;
-  let best: { text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null = null;
+  let best: {
+    text: string;
+    html?: string;
+    meta: { turnId?: string | null; messageId?: string | null };
+  } | null = null;
   let stableCycles = 0;
   const stableTarget = 3;
   while (Date.now() < deadline) {
@@ -310,14 +367,14 @@ async function refreshAssistantSnapshot(
   const isLonger = latestLength > currentLength;
   const hasDifferentText = best.text.trim() !== current.text.trim();
   if (isLonger || hasBetterId || hasDifferentText) {
-    logger('Refreshed assistant response via latest snapshot');
+    logger("Refreshed assistant response via latest snapshot");
     return best;
   }
   return null;
 }
 
-async function terminateRuntimeExecution(Runtime: ChromeClient['Runtime']): Promise<void> {
-  if (typeof Runtime.terminateExecution !== 'function') {
+async function terminateRuntimeExecution(Runtime: ChromeClient["Runtime"]): Promise<void> {
+  if (typeof Runtime.terminateExecution !== "function") {
     return;
   }
   try {
@@ -328,11 +385,15 @@ async function terminateRuntimeExecution(Runtime: ChromeClient['Runtime']): Prom
 }
 
 async function pollAssistantCompletion(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   minTurnIndex?: number,
   abortSignal?: AbortSignal,
-): Promise<{ text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null> {
+): Promise<{
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+} | null> {
   const watchdogDeadline = Date.now() + timeoutMs;
   let previousLength = 0;
   let stableCycles = 0;
@@ -385,7 +446,7 @@ async function pollAssistantCompletion(
   return null;
 }
 
-async function isStopButtonVisible(Runtime: ChromeClient['Runtime']): Promise<boolean> {
+async function isStopButtonVisible(Runtime: ChromeClient["Runtime"]): Promise<boolean> {
   try {
     const { result } = await Runtime.evaluate({
       expression: `Boolean(document.querySelector('${STOP_BUTTON_SELECTOR}'))`,
@@ -397,7 +458,7 @@ async function isStopButtonVisible(Runtime: ChromeClient['Runtime']): Promise<bo
   }
 }
 
-async function isCompletionVisible(Runtime: ChromeClient['Runtime']): Promise<boolean> {
+async function isCompletionVisible(Runtime: ChromeClient["Runtime"]): Promise<boolean> {
   try {
     const { result } = await Runtime.evaluate({
       expression: `(() => {
@@ -442,10 +503,12 @@ async function isCompletionVisible(Runtime: ChromeClient['Runtime']): Promise<bo
   }
 }
 
-function normalizeAssistantSnapshot(
-  snapshot: AssistantSnapshot | null,
-): { text: string; html?: string; meta: { turnId?: string | null; messageId?: string | null } } | null {
-  const text = snapshot?.text ? cleanAssistantText(snapshot.text) : '';
+function normalizeAssistantSnapshot(snapshot: AssistantSnapshot | null): {
+  text: string;
+  html?: string;
+  meta: { turnId?: string | null; messageId?: string | null };
+} | null {
+  const text = snapshot?.text ? cleanAssistantText(snapshot.text) : "";
   if (!text.trim()) {
     return null;
   }
@@ -456,7 +519,7 @@ function normalizeAssistantSnapshot(
     return null;
   }
   // Ignore user echo turns that can show up in project view fallbacks.
-  if (normalized.startsWith('you said')) {
+  if (normalized.startsWith("you said")) {
     return null;
   }
   return {
@@ -466,7 +529,11 @@ function normalizeAssistantSnapshot(
   };
 }
 
-async function waitForCondition<T>(getter: () => Promise<T | null>, timeoutMs: number, pollIntervalMs = 400): Promise<T | null> {
+async function waitForCondition<T>(
+  getter: () => Promise<T | null>,
+  timeoutMs: number,
+  pollIntervalMs = 400,
+): Promise<T | null> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const value = await getter();
@@ -480,13 +547,13 @@ async function waitForCondition<T>(getter: () => Promise<T | null>, timeoutMs: n
 
 function buildAssistantSnapshotExpression(minTurnIndex?: number): string {
   const minTurnLiteral =
-    typeof minTurnIndex === 'number' && Number.isFinite(minTurnIndex) && minTurnIndex >= 0
+    typeof minTurnIndex === "number" && Number.isFinite(minTurnIndex) && minTurnIndex >= 0
       ? Math.floor(minTurnIndex)
       : -1;
   return `(() => {
     const MIN_TURN_INDEX = ${minTurnLiteral};
     // Learned: the default turn DOM misses project view; keep a fallback extractor.
-    ${buildAssistantExtractor('extractAssistantTurn')}
+    ${buildAssistantExtractor("extractAssistantTurn")}
     const extracted = extractAssistantTurn();
     const isPlaceholder = (snapshot) => {
       const normalized = String(snapshot?.text ?? '').toLowerCase().trim();
@@ -500,7 +567,7 @@ function buildAssistantSnapshotExpression(minTurnIndex?: number): string {
       return extracted;
     }
     // Fallback for ChatGPT project view: answers can live outside conversation turns.
-    const fallback = ${buildMarkdownFallbackExtractor('MIN_TURN_INDEX')};
+    const fallback = ${buildMarkdownFallbackExtractor("MIN_TURN_INDEX")};
     return fallback ?? extracted;
   })()`;
 }
@@ -510,7 +577,7 @@ function buildResponseObserverExpression(timeoutMs: number, minTurnIndex?: numbe
   const conversationLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
   const assistantLiteral = JSON.stringify(ASSISTANT_ROLE_SELECTOR);
   const minTurnLiteral =
-    typeof minTurnIndex === 'number' && Number.isFinite(minTurnIndex) && minTurnIndex >= 0
+    typeof minTurnIndex === "number" && Number.isFinite(minTurnIndex) && minTurnIndex >= 0
       ? Math.floor(minTurnIndex)
       : -1;
   return `(() => {
@@ -544,9 +611,9 @@ function buildResponseObserverExpression(timeoutMs: number, minTurnIndex?: numbe
     };
 
     const MIN_TURN_INDEX = ${minTurnLiteral};
-    ${buildAssistantExtractor('extractFromTurns')}
+    ${buildAssistantExtractor("extractFromTurns")}
     // Learned: some layouts (project view) render markdown without assistant turn wrappers.
-    const extractFromMarkdownFallback = ${buildMarkdownFallbackExtractor('MIN_TURN_INDEX')};
+    const extractFromMarkdownFallback = ${buildMarkdownFallbackExtractor("MIN_TURN_INDEX")};
 
     const acceptSnapshot = (snapshot) => {
       if (!snapshot) return null;
@@ -794,7 +861,9 @@ function buildAssistantExtractor(functionName: string): string {
 }
 
 function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
-  const turnIndexValue = minTurnLiteral ? `(${minTurnLiteral} >= 0 ? ${minTurnLiteral} : null)` : 'null';
+  const turnIndexValue = minTurnLiteral
+    ? `(${minTurnLiteral} >= 0 ? ${minTurnLiteral} : null)`
+    : "null";
   return `(() => {
     const __minTurn = ${turnIndexValue};
     const roots = [
@@ -1111,44 +1180,47 @@ interface AssistantSnapshot {
 
 const LANGUAGE_TAGS = new Set(
   [
-    'copy code',
-    'markdown',
-    'bash',
-    'sh',
-    'shell',
-    'javascript',
-    'typescript',
-    'ts',
-    'js',
-    'yaml',
-    'json',
-    'python',
-    'py',
-    'go',
-    'java',
-    'c',
-    'c++',
-    'cpp',
-    'c#',
-    'php',
-    'ruby',
-    'rust',
-    'swift',
-    'kotlin',
-    'html',
-    'css',
-    'sql',
-    'text',
+    "copy code",
+    "markdown",
+    "bash",
+    "sh",
+    "shell",
+    "javascript",
+    "typescript",
+    "ts",
+    "js",
+    "yaml",
+    "json",
+    "python",
+    "py",
+    "go",
+    "java",
+    "c",
+    "c++",
+    "cpp",
+    "c#",
+    "php",
+    "ruby",
+    "rust",
+    "swift",
+    "kotlin",
+    "html",
+    "css",
+    "sql",
+    "text",
   ].map((token) => token.toLowerCase()),
 );
 
 function cleanAssistantText(text: string): string {
-  const normalized = text.replace(/\u00a0/g, ' ');
+  const normalized = text.replace(/\u00a0/g, " ");
   const lines = normalized.split(/\r?\n/);
   const filtered = lines.filter((line) => {
     const trimmed = line.trim().toLowerCase();
     if (LANGUAGE_TAGS.has(trimmed)) return false;
     return true;
   });
-  return filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return filtered
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

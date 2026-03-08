@@ -25,6 +25,7 @@ and run the live API suite before shipping major transport changes.
 Run this whenever you touch the Gemini web client or the `--generate-image` / `--edit-image` plumbing.
 
 Prereqs:
+
 - Chrome profile is signed into `gemini.google.com`.
 
 1. Generate an image:
@@ -41,12 +42,12 @@ Run this whenever you touch the session store, CLI session views, or TUI wiring 
 1. Kick off an API multi-run:  
    `pnpm run oracle -- --models "gpt-5.1-pro,gemini-3-pro" --prompt "Compare the moon & sun."`
    - Expect stdout to print sequential sections, one per model (`[gpt-5.1-pro] …` followed by `[gemini-3-pro] …`). No interleaved tokens.
-2. Capture the session ID from the summary line. Run `oracle session --status --model gpt-5.1-pro`.  
+2. Capture the session ID from the summary line. Run `oracle session --status --model gpt-5.1-pro`.
    - Table should collapse to sessions that include GPT-5.1 Pro and show status icons (✓/⌛/✖) per model.
 3. Inspect detailed logs: `oracle session <id>`
    - The metadata header now includes a `Models:` block with one line per model plus token counts.
    - When prompted, pick `View gemini-3-pro log` and confirm only that model’s stream renders. Refresh should keep completed models intact even if others still run.
-4. Model filter path: `oracle session <id> --model gemini-3-pro`  
+4. Model filter path: `oracle session <id> --model gemini-3-pro`
    - Attach mode should error if that model is missing (double-check by filtering for a bogus model), otherwise it should render the prompt + single-model log only.
 
 ### Write-output export (API)
@@ -86,7 +87,7 @@ This mirrors Mario Zechner’s “What if you don’t need MCP?” technique and
 Debug note: when you have a live ChatGPT tab open under a DevTools port and need a quick DOM dump of the last assistant turn, run `pnpm tsx scripts/debug/extract-chatgpt-response.ts <port>`.
 
 1. **Prompt Submission & Model Switching**
-   - With Chrome signed in and cookie sync enabled, run  
+   - With Chrome signed in and cookie sync enabled, run
      ```bash
      pnpm run oracle -- --engine browser --model "GPT-5.2" \
        --prompt "Line 1\nLine 2\nLine 3"
@@ -108,12 +109,14 @@ Debug note: when you have a live ChatGPT tab open under a DevTools port and need
      - Session log (`oracle session <id>`) should show the assistant markdown (confirm via `grep -n '```' ~/.oracle/sessions/<id>/output.log`).
 
 3. **Stop Button Handling**
-  - Start a long prompt (`"Write a detailed essay about browsers"`) and once ChatGPT responds, manually click “Stop generating” inside Chrome.
-  - Oracle should detect the assistant message (partial) and still store the markdown.
+
+- Start a long prompt (`"Write a detailed essay about browsers"`) and once ChatGPT responds, manually click “Stop generating” inside Chrome.
+- Oracle should detect the assistant message (partial) and still store the markdown.
 
 4. **Override Flag**
-  - Run with `--browser-allow-cookie-errors` while intentionally breaking bindings.
-  - Confirm log shows `Cookie sync failed (continuing with override)` and the run proceeds headless/logged-out.
+
+- Run with `--browser-allow-cookie-errors` while intentionally breaking bindings.
+- Confirm log shows `Cookie sync failed (continuing with override)` and the run proceeds headless/logged-out.
 - Remember: the browser composer now pastes only the user prompt (plus any inline file blocks). If you see the default “You are Oracle…” text or other system-prefixed content in the ChatGPT composer, something regressed in `assembleBrowserPrompt` and you should stop and file a bug.
 - Heartbeats: Browser runs do **not** emit `--heartbeat` logs today. Heartbeat settings apply to streaming API runs only; ignore heartbeat toggles when validating browser mode.
 
@@ -195,11 +198,13 @@ Capture the pass/fail result (include the helper’s log snippet) in your PR des
 Use this when you need to inspect the live ChatGPT composer (DOM state, markdown text, screenshots, etc.). For smaller ad‑hoc pokes, you can often rely on `pnpm tsx scripts/browser-tools.ts …` instead.
 
 1. **Launch within tmux**
+
    ```bash
    tmux new -d -s oracle-browser \\
      "pnpm run oracle -- --engine browser --browser-keep-browser \\
        --model 'GPT-5.4 Pro' --prompt 'Debug via DevTools.'"
    ```
+
    Keeping the run in tmux prevents your shell from blocking and ensures Chrome stays open afterward.
 
 2. **Grab the DevTools port**
@@ -217,12 +222,7 @@ Use this when you need to inspect the live ChatGPT composer (DOM state, markdown
      {
        "chrome-devtools": {
          "command": "npx",
-         "args": [
-           "-y",
-           "chrome-devtools-mcp@latest",
-           "--browserUrl",
-           "http://127.0.0.1:<PORT>"
-         ]
+         "args": ["-y", "chrome-devtools-mcp@latest", "--browserUrl", "http://127.0.0.1:<PORT>"]
        }
      }
      ```

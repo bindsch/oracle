@@ -1,4 +1,4 @@
-import { attachSession, showStatus, type ShowStatusOptions } from './sessionDisplay.js';
+import { attachSession, showStatus, type ShowStatusOptions } from "./sessionDisplay.js";
 
 export interface StatusAliasOptions {
   status?: boolean;

@@ -1,20 +1,27 @@
-import { countTokens as countTokensGpt5 } from 'gpt-tokenizer/model/gpt-5';
-import { countTokens as countTokensGpt5Pro } from 'gpt-tokenizer/model/gpt-5-pro';
-import type { ModelConfig, ModelName, KnownModelName, ProModelName, TokenizerFn } from './types.js';
-import { countTokens as countTokensAnthropicRaw } from '@anthropic-ai/tokenizer';
-import { stringifyTokenizerInput } from './tokenStringifier.js';
+import { countTokens as countTokensGpt5 } from "gpt-tokenizer/model/gpt-5";
+import { countTokens as countTokensGpt5Pro } from "gpt-tokenizer/model/gpt-5-pro";
+import type { ModelConfig, ModelName, KnownModelName, ProModelName, TokenizerFn } from "./types.js";
+import { countTokens as countTokensAnthropicRaw } from "@anthropic-ai/tokenizer";
+import { stringifyTokenizerInput } from "./tokenStringifier.js";
 
-export const DEFAULT_MODEL: ModelName = 'gpt-5.4-pro';
-export const PRO_MODELS = new Set<ProModelName>(['gpt-5.4-pro', 'gpt-5.1-pro', 'gpt-5-pro', 'gpt-5.2-pro', 'claude-4.5-sonnet', 'claude-4.1-opus']);
+export const DEFAULT_MODEL: ModelName = "gpt-5.4-pro";
+export const PRO_MODELS = new Set<ProModelName>([
+  "gpt-5.4-pro",
+  "gpt-5.1-pro",
+  "gpt-5-pro",
+  "gpt-5.2-pro",
+  "claude-4.5-sonnet",
+  "claude-4.1-opus",
+]);
 
 const countTokensAnthropic: TokenizerFn = (input: unknown): number =>
   countTokensAnthropicRaw(stringifyTokenizerInput(input));
 
 export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
-  'gpt-5.1-pro': {
-    model: 'gpt-5.1-pro',
-    apiModel: 'gpt-5.4-pro',
-    provider: 'openai',
+  "gpt-5.1-pro": {
+    model: "gpt-5.1-pro",
+    apiModel: "gpt-5.4-pro",
+    provider: "openai",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 196000,
     pricing: {
@@ -23,9 +30,9 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     },
     reasoning: null,
   },
-  'gpt-5-pro': {
-    model: 'gpt-5-pro',
-    provider: 'openai',
+  "gpt-5-pro": {
+    model: "gpt-5-pro",
+    provider: "openai",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 196000,
     pricing: {
@@ -34,65 +41,65 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     },
     reasoning: null,
   },
-  'gpt-5.1': {
-    model: 'gpt-5.1',
-    provider: 'openai',
+  "gpt-5.1": {
+    model: "gpt-5.1",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 1.25 / 1_000_000,
       outputPerToken: 10 / 1_000_000,
     },
-    reasoning: { effort: 'high' },
+    reasoning: { effort: "high" },
   },
-  'gpt-5.1-codex': {
-    model: 'gpt-5.1-codex',
-    provider: 'openai',
+  "gpt-5.1-codex": {
+    model: "gpt-5.1-codex",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 1.25 / 1_000_000,
       outputPerToken: 10 / 1_000_000,
     },
-    reasoning: { effort: 'high' },
+    reasoning: { effort: "high" },
   },
-  'gpt-5.4': {
-    model: 'gpt-5.4',
-    provider: 'openai',
+  "gpt-5.4": {
+    model: "gpt-5.4",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 2.5 / 1_000_000,
       outputPerToken: 15 / 1_000_000,
     },
-    reasoning: { effort: 'xhigh' },
+    reasoning: { effort: "xhigh" },
   },
-  'gpt-5.4-pro': {
-    model: 'gpt-5.4-pro',
-    provider: 'openai',
+  "gpt-5.4-pro": {
+    model: "gpt-5.4-pro",
+    provider: "openai",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 30 / 1_000_000,
       outputPerToken: 180 / 1_000_000,
     },
-    reasoning: { effort: 'xhigh' },
+    reasoning: { effort: "xhigh" },
   },
-  'gpt-5.2': {
-    model: 'gpt-5.2',
-    provider: 'openai',
+  "gpt-5.2": {
+    model: "gpt-5.2",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 1.75 / 1_000_000,
       outputPerToken: 14 / 1_000_000,
     },
-    reasoning: { effort: 'xhigh' },
+    reasoning: { effort: "xhigh" },
   },
-  'gpt-5.2-instant': {
-    model: 'gpt-5.2-instant',
-    apiModel: 'gpt-5.2-chat-latest',
-    provider: 'openai',
+  "gpt-5.2-instant": {
+    model: "gpt-5.2-instant",
+    apiModel: "gpt-5.2-chat-latest",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: 196000,
     pricing: {
@@ -101,21 +108,21 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     },
     reasoning: null,
   },
-  'gpt-5.2-pro': {
-    model: 'gpt-5.2-pro',
-    apiModel: 'gpt-5.4-pro',
-    provider: 'openai',
+  "gpt-5.2-pro": {
+    model: "gpt-5.2-pro",
+    apiModel: "gpt-5.4-pro",
+    provider: "openai",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 196000,
     pricing: {
       inputPerToken: 30 / 1_000_000,
       outputPerToken: 180 / 1_000_000,
     },
-    reasoning: { effort: 'xhigh' },
+    reasoning: { effort: "xhigh" },
   },
-  'gemini-3.1-pro': {
-    model: 'gemini-3.1-pro',
-    provider: 'google',
+  "gemini-3.1-pro": {
+    model: "gemini-3.1-pro",
+    provider: "google",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 200000,
     pricing: {
@@ -126,9 +133,9 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: true,
   },
-  'gemini-3-pro': {
-    model: 'gemini-3-pro',
-    provider: 'google',
+  "gemini-3-pro": {
+    model: "gemini-3-pro",
+    provider: "google",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 200000,
     pricing: {
@@ -139,10 +146,10 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: true,
   },
-  'claude-4.5-sonnet': {
-    model: 'claude-4.5-sonnet',
-    apiModel: 'claude-sonnet-4-5',
-    provider: 'anthropic',
+  "claude-4.5-sonnet": {
+    model: "claude-4.5-sonnet",
+    apiModel: "claude-sonnet-4-5",
+    provider: "anthropic",
     tokenizer: countTokensAnthropic,
     inputLimit: 200000,
     pricing: {
@@ -153,24 +160,24 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: false,
   },
-  'claude-4.1-opus': {
-    model: 'claude-4.1-opus',
-    apiModel: 'claude-opus-4-1',
-    provider: 'anthropic',
+  "claude-4.1-opus": {
+    model: "claude-4.1-opus",
+    apiModel: "claude-opus-4-1",
+    provider: "anthropic",
     tokenizer: countTokensAnthropic,
     inputLimit: 200000,
     pricing: {
       inputPerToken: 15 / 1_000_000,
       outputPerToken: 75 / 1_000_000,
     },
-    reasoning: { effort: 'high' },
+    reasoning: { effort: "high" },
     supportsBackground: false,
     supportsSearch: false,
   },
-  'grok-4.1': {
-    model: 'grok-4.1',
-    apiModel: 'grok-4-1-fast-reasoning',
-    provider: 'xai',
+  "grok-4.1": {
+    model: "grok-4.1",
+    apiModel: "grok-4-1-fast-reasoning",
+    provider: "xai",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 2_000_000,
     pricing: {
@@ -180,13 +187,13 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     reasoning: null,
     supportsBackground: false,
     supportsSearch: true,
-    searchToolType: 'web_search',
+    searchToolType: "web_search",
   },
 };
 
 export const DEFAULT_SYSTEM_PROMPT = [
-  'You are Oracle, a focused one-shot problem solver.',
-  'Emphasize direct answers and cite any files referenced.',
-].join(' ');
+  "You are Oracle, a focused one-shot problem solver.",
+  "Emphasize direct answers and cite any files referenced.",
+].join(" ");
 
-export const TOKENIZER_OPTIONS = { allowedSpecial: 'all' } as const;
+export const TOKENIZER_OPTIONS = { allowedSpecial: "all" } as const;

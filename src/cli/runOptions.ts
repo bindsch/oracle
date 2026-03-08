@@ -1,13 +1,18 @@
-import type { RunOracleOptions, ModelName } from '../oracle.js';
-import { DEFAULT_MODEL, MODEL_CONFIGS } from '../oracle.js';
-import type { UserConfig } from '../config.js';
-import type { EngineMode } from './engine.js';
-import { resolveEngine } from './engine.js';
-import { normalizeModelOption, inferModelFromLabel, resolveApiModel, normalizeBaseUrl } from './options.js';
-import { resolveGeminiModelId } from '../oracle/gemini.js';
-import { PromptValidationError } from '../oracle/errors.js';
-import { normalizeChatGptModelForBrowser } from './browserConfig.js';
-import { resolveConfiguredMaxFileSizeBytes } from './fileSize.js';
+import type { RunOracleOptions, ModelName } from "../oracle.js";
+import { DEFAULT_MODEL, MODEL_CONFIGS } from "../oracle.js";
+import type { UserConfig } from "../config.js";
+import type { EngineMode } from "./engine.js";
+import { resolveEngine } from "./engine.js";
+import {
+  normalizeModelOption,
+  inferModelFromLabel,
+  resolveApiModel,
+  normalizeBaseUrl,
+} from "./options.js";
+import { resolveGeminiModelId } from "../oracle/gemini.js";
+import { PromptValidationError } from "../oracle/errors.js";
+import { normalizeChatGptModelForBrowser } from "./browserConfig.js";
+import { resolveConfiguredMaxFileSizeBytes } from "./fileSize.js";
 
 export interface ResolveRunOptionsInput {
   prompt: string;
@@ -35,54 +40,60 @@ export function resolveRunOptionsFromConfig({
   env = process.env,
 }: ResolveRunOptionsInput): ResolvedRunOptions {
   const resolvedEngine = resolveEngineWithConfig({ engine, configEngine: userConfig?.engine, env });
-  const browserRequested = engine === 'browser';
-  const browserConfigured = userConfig?.engine === 'browser';
+  const browserRequested = engine === "browser";
+  const browserConfigured = userConfig?.engine === "browser";
   const requestedModelList = Array.isArray(models) ? models : [];
-  const normalizedRequestedModels = requestedModelList.map((entry) => normalizeModelOption(entry)).filter(Boolean);
+  const normalizedRequestedModels = requestedModelList
+    .map((entry) => normalizeModelOption(entry))
+    .filter(Boolean);
 
   const cliModelArg = normalizeModelOption(model ?? userConfig?.model) || DEFAULT_MODEL;
   const inferredModel =
-    resolvedEngine === 'browser' && normalizedRequestedModels.length === 0
+    resolvedEngine === "browser" && normalizedRequestedModels.length === 0
       ? inferModelFromLabel(cliModelArg)
       : resolveApiModel(cliModelArg);
   // Browser engine maps Pro/legacy aliases to the latest ChatGPT picker targets (GPT-5.4 / GPT-5.4 Pro).
-  const resolvedModel = resolvedEngine === 'browser' ? normalizeChatGptModelForBrowser(inferredModel) : inferredModel;
-  const isCodex = resolvedModel.startsWith('gpt-5.1-codex');
-  const isClaude = resolvedModel.startsWith('claude');
-  const isGrok = resolvedModel.startsWith('grok');
-  const isGeminiApiOnly = resolvedModel === 'gemini-3.1-pro';
+  const resolvedModel =
+    resolvedEngine === "browser" ? normalizeChatGptModelForBrowser(inferredModel) : inferredModel;
+  const isCodex = resolvedModel.startsWith("gpt-5.1-codex");
+  const isClaude = resolvedModel.startsWith("claude");
+  const isGrok = resolvedModel.startsWith("grok");
+  const isGeminiApiOnly = resolvedModel === "gemini-3.1-pro";
 
-  const engineWasBrowser = resolvedEngine === 'browser';
+  const engineWasBrowser = resolvedEngine === "browser";
   const allModels: ModelName[] =
     normalizedRequestedModels.length > 0
       ? Array.from(new Set(normalizedRequestedModels.map((entry) => resolveApiModel(entry))))
       : [resolvedModel];
-  const includesGeminiApiOnly = allModels.some((m) => m === 'gemini-3.1-pro');
+  const includesGeminiApiOnly = allModels.some((m) => m === "gemini-3.1-pro");
   if ((browserRequested || browserConfigured) && includesGeminiApiOnly) {
     throw new PromptValidationError(
-      'gemini-3.1-pro is API-only today. Use --engine api or switch to gemini-3-pro for Gemini web.',
-      { engine: 'browser', models: allModels },
+      "gemini-3.1-pro is API-only today. Use --engine api or switch to gemini-3-pro for Gemini web.",
+      { engine: "browser", models: allModels },
     );
   }
-  const isBrowserCompatible = (m: string) => m.startsWith('gpt-') || m.startsWith('gemini');
-  const hasNonBrowserCompatibleTarget = (browserRequested || browserConfigured) && allModels.some((m) => !isBrowserCompatible(m));
+  const isBrowserCompatible = (m: string) => m.startsWith("gpt-") || m.startsWith("gemini");
+  const hasNonBrowserCompatibleTarget =
+    (browserRequested || browserConfigured) && allModels.some((m) => !isBrowserCompatible(m));
   if (hasNonBrowserCompatibleTarget) {
     throw new PromptValidationError(
-      'Browser engine only supports GPT and Gemini models. Re-run with --engine api for Grok, Claude, or other models.',
-      { engine: 'browser', models: allModels },
+      "Browser engine only supports GPT and Gemini models. Re-run with --engine api for Grok, Claude, or other models.",
+      { engine: "browser", models: allModels },
     );
   }
 
   const engineCoercedToApi = engineWasBrowser && (isCodex || isClaude || isGrok || isGeminiApiOnly);
   const fixedEngine: EngineMode =
-    isCodex || isClaude || isGrok || isGeminiApiOnly || normalizedRequestedModels.length > 0 ? 'api' : resolvedEngine;
+    isCodex || isClaude || isGrok || isGeminiApiOnly || normalizedRequestedModels.length > 0
+      ? "api"
+      : resolvedEngine;
 
   const promptWithSuffix =
     userConfig?.promptSuffix && userConfig.promptSuffix.trim().length > 0
       ? `${prompt.trim()}\n${userConfig.promptSuffix}`
       : prompt;
 
-  const search = userConfig?.search !== 'off';
+  const search = userConfig?.search !== "off";
 
   const heartbeatIntervalMs =
     userConfig?.heartbeatSeconds !== undefined ? userConfig.heartbeatSeconds * 1000 : 30_000;
@@ -93,7 +104,9 @@ export function resolveRunOptionsFromConfig({
       (isClaude ? env.ANTHROPIC_BASE_URL : isGrok ? env.XAI_BASE_URL : env.OPENAI_BASE_URL),
   );
   const uniqueMultiModels: ModelName[] = normalizedRequestedModels.length > 0 ? allModels : [];
-  const includesCodexMultiModel = uniqueMultiModels.some((entry) => entry.startsWith('gpt-5.1-codex'));
+  const includesCodexMultiModel = uniqueMultiModels.some((entry) =>
+    entry.startsWith("gpt-5.1-codex"),
+  );
   if (includesCodexMultiModel && browserRequested) {
     // Silent coerce; multi-model still forces API.
   }
@@ -128,8 +141,8 @@ function resolveEngineWithConfig({
   env: NodeJS.ProcessEnv;
 }): EngineMode {
   if (engine) return engine;
-  const envOverride = (env.ORACLE_ENGINE ?? '').trim().toLowerCase();
-  if (envOverride === 'api' || envOverride === 'browser') {
+  const envOverride = (env.ORACLE_ENGINE ?? "").trim().toLowerCase();
+  if (envOverride === "api" || envOverride === "browser") {
     return envOverride as EngineMode;
   }
   if (configEngine) return configEngine;
@@ -137,7 +150,7 @@ function resolveEngineWithConfig({
 }
 
 function resolveEffectiveModelId(model: ModelName): string {
-  if (typeof model === 'string' && model.startsWith('gemini')) {
+  if (typeof model === "string" && model.startsWith("gemini")) {
     return resolveGeminiModelId(model);
   }
   const config = MODEL_CONFIGS[model as keyof typeof MODEL_CONFIGS];

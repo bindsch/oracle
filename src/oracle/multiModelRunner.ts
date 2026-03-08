@@ -1,7 +1,7 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import type { SessionMetadata } from '../sessionStore.js';
-import type { RunOracleOptions, ModelName, UsageSummary } from '../oracle.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { SessionMetadata } from "../sessionStore.js";
+import type { RunOracleOptions, ModelName, UsageSummary } from "../oracle.js";
 import {
   runOracle,
   OracleResponseError,
@@ -9,10 +9,10 @@ import {
   extractResponseMetadata,
   asOracleUserError,
   extractTextOutput,
-} from '../oracle.js';
-import type { SessionStore } from '../sessionStore.js';
-import { sessionStore } from '../sessionStore.js';
-import { findOscProgressSequences, OSC_PROGRESS_PREFIX } from 'osc-progress';
+} from "../oracle.js";
+import type { SessionStore } from "../sessionStore.js";
+import { sessionStore } from "../sessionStore.js";
+import { findOscProgressSequences, OSC_PROGRESS_PREFIX } from "osc-progress";
 
 export interface MultiModelRunParams {
   sessionMeta: SessionMetadata;
@@ -98,7 +98,7 @@ export async function runMultiModelApiSession(
   const rejected: Array<{ model: ModelName; reason: unknown }> = [];
   settled.forEach((result, index) => {
     const exec = executions[index];
-    if (result.status === 'fulfilled') {
+    if (result.status === "fulfilled") {
       fulfilled.push(result.value);
     } else {
       rejected.push({ model: exec.model, reason: result.reason });
@@ -135,7 +135,7 @@ function startModelExecution({
     sessionId: `${sessionMeta.id}:${model}`,
   };
   const perModelLog = (message?: string): void => {
-    logWriter.logLine(message ?? '');
+    logWriter.logLine(message ?? "");
   };
   const mirrorOscProgress = process.stdout.isTTY === true;
   const perModelWrite = (chunk: string): boolean => {
@@ -146,7 +146,7 @@ function startModelExecution({
 
   const promise = (async () => {
     await store.updateModelRun(sessionMeta.id, model, {
-      status: 'running',
+      status: "running",
       queuedAt: new Date().toISOString(),
       startedAt: new Date().toISOString(),
     });
@@ -165,12 +165,12 @@ function startModelExecution({
         write: perModelWrite,
       },
     );
-    if (result.mode !== 'live') {
-      throw new Error('Unexpected preview result while running a session.');
+    if (result.mode !== "live") {
+      throw new Error("Unexpected preview result while running a session.");
     }
     const answerText = extractTextOutput(result.response);
     await store.updateModelRun(sessionMeta.id, model, {
-      status: 'completed',
+      status: "completed",
       completedAt: new Date().toISOString(),
       usage: result.usage,
       response: extractResponseMetadata(result.response),
@@ -188,9 +188,10 @@ function startModelExecution({
     .catch(async (error) => {
       const userError = asOracleUserError(error);
       const responseMetadata = error instanceof OracleResponseError ? error.metadata : undefined;
-      const transportMetadata = error instanceof OracleTransportError ? { reason: error.reason } : undefined;
+      const transportMetadata =
+        error instanceof OracleTransportError ? { reason: error.reason } : undefined;
       await store.updateModelRun(sessionMeta.id, model, {
-        status: 'error',
+        status: "error",
         completedAt: new Date().toISOString(),
         response: responseMetadata,
         transport: transportMetadata,

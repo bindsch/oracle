@@ -1,7 +1,7 @@
-import type { BrowserLogger, ChromeClient } from './types.js';
-import { CONVERSATION_TURN_SELECTOR } from './constants.js';
-import { delay } from './utils.js';
-import { readAssistantSnapshot } from './pageActions.js';
+import type { BrowserLogger, ChromeClient } from "./types.js";
+import { CONVERSATION_TURN_SELECTOR } from "./constants.js";
+import { delay } from "./utils.js";
+import { readAssistantSnapshot } from "./pageActions.js";
 
 export type TargetInfoLite = {
   targetId?: string;
@@ -32,10 +32,10 @@ export function pickTarget(
   if (runtime.tabUrl) {
     const byUrl =
       targets.find((t) => t.url?.startsWith(runtime.tabUrl as string)) ||
-      targets.find((t) => (runtime.tabUrl as string).startsWith(t.url || ''));
+      targets.find((t) => (runtime.tabUrl as string).startsWith(t.url || ""));
     if (byUrl) return byUrl;
   }
-  return targets.find((t) => t.type === 'page') ?? targets[0];
+  return targets.find((t) => t.type === "page") ?? targets[0];
 }
 
 export function extractConversationIdFromUrl(url: string): string | undefined {
@@ -49,7 +49,7 @@ export function buildConversationUrl(
   baseUrl: string,
 ): string | null {
   if (runtime.tabUrl) {
-    if (runtime.tabUrl.includes('/c/')) {
+    if (runtime.tabUrl.includes("/c/")) {
       return runtime.tabUrl;
     }
     return null;
@@ -60,8 +60,8 @@ export function buildConversationUrl(
   }
   try {
     const base = new URL(baseUrl);
-    const pathRoot = base.pathname.replace(/\/$/, '');
-    const prefix = pathRoot === '/' ? '' : pathRoot;
+    const pathRoot = base.pathname.replace(/\/$/, "");
+    const prefix = pathRoot === "/" ? "" : pathRoot;
     return `${base.origin}${prefix}/c/${conversationId}`;
   } catch {
     return null;
@@ -81,7 +81,7 @@ export async function withTimeout<T>(task: Promise<T>, ms: number, label: string
 }
 
 export async function openConversationFromSidebar(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   options: { conversationId?: string; preferProjects?: boolean; promptPreview?: string },
   attempt = 0,
 ): Promise<boolean> {
@@ -199,7 +199,7 @@ export async function openConversationFromSidebar(
 }
 
 export async function openConversationFromSidebarWithRetry(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   options: { conversationId?: string; preferProjects?: boolean; promptPreview?: string },
   timeoutMs: number,
 ): Promise<boolean> {
@@ -225,12 +225,12 @@ export async function openConversationFromSidebarWithRetry(
 }
 
 export async function waitForPromptPreview(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   promptPreview: string,
   timeoutMs: number,
 ): Promise<boolean> {
   const needleFull = promptPreview.trim().toLowerCase().slice(0, 120);
-  const needleShort = needleFull.replace(/\\s*\\d{4,}\\s*$/, '').trim();
+  const needleShort = needleFull.replace(/\\s*\\d{4,}\\s*$/, "").trim();
   const needles = Array.from(new Set([needleFull, needleShort].filter(Boolean)));
   if (needles.length === 0) return false;
   const selectorLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
@@ -275,12 +275,15 @@ export async function waitForPromptPreview(
   return false;
 }
 
-export async function waitForLocationChange(Runtime: ChromeClient['Runtime'], timeoutMs: number): Promise<void> {
+export async function waitForLocationChange(
+  Runtime: ChromeClient["Runtime"],
+  timeoutMs: number,
+): Promise<void> {
   const start = Date.now();
-  let lastHref = '';
+  let lastHref = "";
   while (Date.now() - start < timeoutMs) {
-    const { result } = await Runtime.evaluate({ expression: 'location.href', returnByValue: true });
-    const href = typeof result?.value === 'string' ? result.value : '';
+    const { result } = await Runtime.evaluate({ expression: "location.href", returnByValue: true });
+    const href = typeof result?.value === "string" ? result.value : "";
     if (lastHref && href !== lastHref) {
       return;
     }
@@ -290,7 +293,7 @@ export async function waitForLocationChange(Runtime: ChromeClient['Runtime'], ti
 }
 
 export async function readConversationTurnIndex(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger?: BrowserLogger,
 ): Promise<number | null> {
   const selectorLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
@@ -299,30 +302,37 @@ export async function readConversationTurnIndex(
       expression: `document.querySelectorAll(${selectorLiteral}).length`,
       returnByValue: true,
     });
-    const raw = typeof result?.value === 'number' ? result.value : Number(result?.value);
+    const raw = typeof result?.value === "number" ? result.value : Number(result?.value);
     if (!Number.isFinite(raw)) {
-      throw new Error('Turn count not numeric');
+      throw new Error("Turn count not numeric");
     }
     return Math.max(0, Math.floor(raw) - 1);
   } catch (error) {
     if (logger?.verbose) {
-      logger(`Failed to read conversation turn index: ${error instanceof Error ? error.message : String(error)}`);
+      logger(
+        `Failed to read conversation turn index: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
     return null;
   }
 }
 
 function normalizeForComparison(text: string): string {
-  return String(text || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+  return String(text || "")
+    .toLowerCase()
+    .replace(/\\s+/g, " ")
+    .trim();
 }
 
 export function buildPromptEchoMatcher(promptPreview?: string | null): PromptEchoMatcher | null {
-  const normalizedPrompt = normalizeForComparison(promptPreview ?? '');
+  const normalizedPrompt = normalizeForComparison(promptPreview ?? "");
   if (!normalizedPrompt) {
     return null;
   }
   const promptPrefix =
-    normalizedPrompt.length >= 80 ? normalizedPrompt.slice(0, Math.min(200, normalizedPrompt.length)) : '';
+    normalizedPrompt.length >= 80
+      ? normalizedPrompt.slice(0, Math.min(200, normalizedPrompt.length))
+      : "";
   const minFragment = Math.min(40, normalizedPrompt.length);
   return {
     isEcho: (text: string) => {
@@ -333,11 +343,11 @@ export function buildPromptEchoMatcher(promptPreview?: string | null): PromptEch
       if (normalized.length >= minFragment && normalizedPrompt.startsWith(normalized)) {
         return true;
       }
-      if (normalized.includes('…') || normalized.includes('...')) {
-        const marker = normalized.includes('…') ? '…' : '...';
+      if (normalized.includes("…") || normalized.includes("...")) {
+        const marker = normalized.includes("…") ? "…" : "...";
         const [prefixRaw, suffixRaw] = normalized.split(marker);
-        const prefix = prefixRaw?.trim() ?? '';
-        const suffix = suffixRaw?.trim() ?? '';
+        const prefix = prefixRaw?.trim() ?? "";
+        const suffix = suffixRaw?.trim() ?? "";
         if (!prefix && !suffix) return false;
         if (prefix && !normalizedPrompt.includes(prefix)) return false;
         if (suffix && !normalizedPrompt.includes(suffix)) return false;
@@ -350,7 +360,7 @@ export function buildPromptEchoMatcher(promptPreview?: string | null): PromptEch
 }
 
 export async function recoverPromptEcho(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   answer: AssistantPayload,
   matcher: PromptEchoMatcher | null,
   logger: BrowserLogger,
@@ -360,13 +370,15 @@ export async function recoverPromptEcho(
   if (!matcher || !matcher.isEcho(answer.text)) {
     return answer;
   }
-  logger('Detected prompt echo while reattaching; waiting for assistant response...');
+  logger("Detected prompt echo while reattaching; waiting for assistant response...");
   const deadline = Date.now() + Math.min(timeoutMs, 15_000);
   let bestText: string | null = null;
   let stableCount = 0;
   while (Date.now() < deadline) {
-    const snapshot = await readAssistantSnapshot(Runtime, minTurnIndex ?? undefined).catch(() => null);
-    const text = typeof snapshot?.text === 'string' ? snapshot.text.trim() : '';
+    const snapshot = await readAssistantSnapshot(Runtime, minTurnIndex ?? undefined).catch(
+      () => null,
+    );
+    const text = typeof snapshot?.text === "string" ? snapshot.text.trim() : "";
     if (!text || matcher.isEcho(text)) {
       await delay(300);
       continue;
@@ -383,7 +395,7 @@ export async function recoverPromptEcho(
     await delay(300);
   }
   if (bestText) {
-    logger('Recovered assistant response after prompt echo during reattach');
+    logger("Recovered assistant response after prompt echo during reattach");
     return { ...answer, text: bestText };
   }
   return answer;
@@ -437,8 +449,8 @@ export function alignPromptEchoMarkdown(
   logger: BrowserLogger,
 ): { answerText: string; answerMarkdown: string } {
   const aligned = alignPromptEchoPair(answerText, answerMarkdown, matcher, logger, {
-    text: 'Aligned prompt-echo text to copied markdown during reattach',
-    markdown: 'Aligned prompt-echo markdown to response text during reattach',
+    text: "Aligned prompt-echo text to copied markdown during reattach",
+    markdown: "Aligned prompt-echo markdown to response text during reattach",
   });
   return { answerText: aligned.answerText, answerMarkdown: aligned.answerMarkdown };
 }

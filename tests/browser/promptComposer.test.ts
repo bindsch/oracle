@@ -1,8 +1,8 @@
-import { describe, expect, test, vi } from 'vitest';
-import { __test__ as promptComposer } from '../../src/browser/actions/promptComposer.js';
+import { describe, expect, test, vi } from "vitest";
+import { __test__ as promptComposer } from "../../src/browser/actions/promptComposer.js";
 
-describe('promptComposer', () => {
-  test('does not treat cleared composer + stop button as committed without a new turn', async () => {
+describe("promptComposer", () => {
+  test("does not treat cleared composer + stop button as committed without a new turn", async () => {
     vi.useFakeTimers();
     try {
       const runtime = {
@@ -27,9 +27,11 @@ describe('promptComposer', () => {
               },
             },
           }),
-      } as unknown as { evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown> };
+      } as unknown as {
+        evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown>;
+      };
 
-      const promise = promptComposer.verifyPromptCommitted(runtime as never, 'hello', 150);
+      const promise = promptComposer.verifyPromptCommitted(runtime as never, "hello", 150);
       // Attach the rejection handler before timers advance to avoid unhandled-rejection warnings.
       const assertion = expect(promise).rejects.toThrow(/prompt did not appear/i);
       await vi.advanceTimersByTimeAsync(250);
@@ -39,12 +41,12 @@ describe('promptComposer', () => {
     }
   });
 
-  test('allows prompt match even if baseline turn count cannot be read', async () => {
+  test("allows prompt match even if baseline turn count cannot be read", async () => {
     const runtime = {
       evaluate: vi
         .fn()
         // Baseline read fails
-        .mockRejectedValueOnce(new Error('turn read failed'))
+        .mockRejectedValueOnce(new Error("turn read failed"))
         // First poll shows prompt match (baseline unknown)
         .mockResolvedValueOnce({
           result: {
@@ -62,8 +64,12 @@ describe('promptComposer', () => {
             },
           },
         }),
-    } as unknown as { evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown> };
+    } as unknown as {
+      evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown>;
+    };
 
-    await expect(promptComposer.verifyPromptCommitted(runtime as never, 'hello', 150)).resolves.toBe(1);
+    await expect(
+      promptComposer.verifyPromptCommitted(runtime as never, "hello", 150),
+    ).resolves.toBe(1);
   });
 });

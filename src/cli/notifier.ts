@@ -1,14 +1,14 @@
-import notifier from 'toasted-notifier';
-import { spawn } from 'node:child_process';
-import { formatUSD, formatNumber } from '../oracle/format.js';
-import { MODEL_CONFIGS } from '../oracle/config.js';
-import { estimateUsdCost } from 'tokentally';
-import type { SessionMode, SessionMetadata } from '../sessionStore.js';
-import type { NotifyConfig } from '../config.js';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import notifier from "toasted-notifier";
+import { spawn } from "node:child_process";
+import { formatUSD, formatNumber } from "../oracle/format.js";
+import { MODEL_CONFIGS } from "../oracle/config.js";
+import { estimateUsdCost } from "tokentally";
+import type { SessionMode, SessionMetadata } from "../sessionStore.js";
+import type { NotifyConfig } from "../config.js";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -28,16 +28,19 @@ export interface NotificationContent {
   characters?: number;
 }
 
-const ORACLE_EMOJI = '🧿';
+const ORACLE_EMOJI = "🧿";
 
-export function resolveNotificationSettings(
-  {
-    cliNotify,
-    cliNotifySound,
-    env,
-    config,
-  }: { cliNotify?: boolean; cliNotifySound?: boolean; env: NodeJS.ProcessEnv; config?: NotifyConfig },
-): NotificationSettings {
+export function resolveNotificationSettings({
+  cliNotify,
+  cliNotifySound,
+  env,
+  config,
+}: {
+  cliNotify?: boolean;
+  cliNotifySound?: boolean;
+  env: NodeJS.ProcessEnv;
+  config?: NotifyConfig;
+}): NotificationSettings {
   const defaultEnabled = !(bool(env.CI) || bool(env.SSH_CONNECTION) || muteByConfig(env, config));
   const envNotify = parseToggle(env.ORACLE_NOTIFY);
   const envSound = parseToggle(env.ORACLE_NOTIFY_SOUND);
@@ -56,7 +59,12 @@ export function deriveNotificationSettingsFromMetadata(
   if (metadata?.notifications) {
     return metadata.notifications;
   }
-  return resolveNotificationSettings({ cliNotify: undefined, cliNotifySound: undefined, env, config });
+  return resolveNotificationSettings({
+    cliNotify: undefined,
+    cliNotifySound: undefined,
+    env,
+    config,
+  });
 }
 
 export async function sendSessionNotification(
@@ -90,7 +98,7 @@ export async function sendSessionNotification(
       const repaired = await repairMacNotifier(log);
       if (repaired) {
         try {
-          await notifier.notify({ title, message, sound: settings.sound, ...(macAppIconOption()) });
+          await notifier.notify({ title, message, sound: settings.sound, ...macAppIconOption() });
           return;
         } catch (retryError) {
           const reason = describeNotifierError(retryError);
@@ -108,7 +116,7 @@ export async function sendSessionNotification(
     log(`(notify skipped: ${reason})`);
   }
   // Last-resort macOS fallback: AppleScript alert (simple, noisy, but works when helpers are blocked).
-  if (process.platform === 'darwin') {
+  if (process.platform === "darwin") {
     try {
       await sendOsascriptAlert(title, message, log);
       return;
@@ -125,7 +133,7 @@ function buildMessage(payload: NotificationContent, answerPreview?: string): str
   parts.push(sessionLabel);
 
   // Show cost only for API runs.
-  if (payload.mode === 'api') {
+  if (payload.mode === "api") {
     const cost = payload.costUsd ?? inferCost(payload);
     if (cost !== undefined) {
       // Round to $0.00 for a concise toast.
@@ -141,26 +149,26 @@ function buildMessage(payload: NotificationContent, answerPreview?: string): str
     parts.push(answerPreview);
   }
 
-  return parts.join(' · ');
+  return parts.join(" · ");
 }
 
 function sanitizePreview(preview?: string): string | undefined {
   if (!preview) return undefined;
   let text = preview;
   // Strip code fences and inline code markers.
-  text = text.replace(/```[\s\S]*?```/g, ' ');
-  text = text.replace(/`([^`]+)`/g, '$1');
+  text = text.replace(/```[\s\S]*?```/g, " ");
+  text = text.replace(/`([^`]+)`/g, "$1");
   // Convert markdown links and images to their visible text.
-  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
-  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1");
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
   // Drop bold/italic markers.
-  text = text.replace(/(\*\*|__|\*|_)/g, '');
+  text = text.replace(/(\*\*|__|\*|_)/g, "");
   // Remove headings / list markers / blockquotes.
-  text = text.replace(/^\s*#+\s*/gm, '');
-  text = text.replace(/^\s*[-*+]\s+/gm, '');
-  text = text.replace(/^\s*>\s+/gm, '');
+  text = text.replace(/^\s*#+\s*/gm, "");
+  text = text.replace(/^\s*[-*+]\s+/gm, "");
+  text = text.replace(/^\s*>\s+/gm, "");
   // Collapse whitespace and trim.
-  text = text.replace(/\s+/g, ' ').trim();
+  text = text.replace(/\s+/g, " ").trim();
   // Limit length to keep notifications short.
   const max = 200;
   if (text.length > max) {
@@ -192,8 +200,8 @@ function inferCost(payload: NotificationContent): number | undefined {
 function parseToggle(value: string | undefined): boolean | undefined {
   if (value == null) return undefined;
   const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
   return undefined;
 }
 
@@ -203,21 +211,21 @@ function bool(value: unknown): boolean {
 
 function isMacExecError(error: unknown): boolean {
   return Boolean(
-    process.platform === 'darwin' &&
+    process.platform === "darwin" &&
     error &&
-    typeof error === 'object' &&
-    'code' in error &&
-    (error as { code?: string }).code === 'EACCES'
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "EACCES",
   );
 }
 
 function isMacBadCpuError(error: unknown): boolean {
   return Boolean(
-    process.platform === 'darwin' &&
+    process.platform === "darwin" &&
     error &&
-    typeof error === 'object' &&
-    'errno' in error &&
-    (error as { errno?: number }).errno === -86
+    typeof error === "object" &&
+    "errno" in error &&
+    (error as { errno?: number }).errno === -86,
   );
 }
 
@@ -229,25 +237,27 @@ async function repairMacNotifier(log: (message: string) => void): Promise<boolea
     return true;
   } catch (chmodError) {
     const reason = chmodError instanceof Error ? chmodError.message : String(chmodError);
-    log(`(notify repair failed: ${reason} — try: xattr -dr com.apple.quarantine "${path.dirname(binPath)}")`);
+    log(
+      `(notify repair failed: ${reason} — try: xattr -dr com.apple.quarantine "${path.dirname(binPath)}")`,
+    );
     return false;
   }
 }
 
 function macNotifierPath(): string | null {
-  if (process.platform !== 'darwin') return null;
+  if (process.platform !== "darwin") return null;
   try {
     const req = createRequire(import.meta.url);
-    const modPath = req.resolve('toasted-notifier');
+    const modPath = req.resolve("toasted-notifier");
     const base = path.dirname(modPath);
     return path.join(
       base,
-      'vendor',
-      'mac.noindex',
-      'terminal-notifier.app',
-      'Contents',
-      'MacOS',
-      'terminal-notifier',
+      "vendor",
+      "mac.noindex",
+      "terminal-notifier.app",
+      "Contents",
+      "MacOS",
+      "terminal-notifier",
     );
   } catch {
     return null;
@@ -255,46 +265,59 @@ function macNotifierPath(): string | null {
 }
 
 async function shouldSkipToastedNotifier(): Promise<boolean> {
-  if (process.platform !== 'darwin') return false;
+  if (process.platform !== "darwin") return false;
   // On Apple Silicon without Rosetta, prefer the native helper and skip x86-only fallback.
   const arch = process.arch;
-  if (arch !== 'arm64') return false;
+  if (arch !== "arm64") return false;
   return !(await hasRosetta());
 }
 
 async function hasRosetta(): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn('pkgutil', ['--files', 'com.apple.pkg.RosettaUpdateAuto'], { stdio: 'ignore' });
-    child.on('exit', (code) => resolve(code === 0));
-    child.on('error', () => resolve(false));
+    const child = spawn("pkgutil", ["--files", "com.apple.pkg.RosettaUpdateAuto"], {
+      stdio: "ignore",
+    });
+    child.on("exit", (code) => resolve(code === 0));
+    child.on("error", () => resolve(false));
   });
 }
 
-async function sendOsascriptAlert(title: string, message: string, _log: (msg: string) => void): Promise<void> {
+async function sendOsascriptAlert(
+  title: string,
+  message: string,
+  _log: (msg: string) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('osascript', ['-e', `display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}"`], {
-      stdio: 'ignore',
-    });
-    child.on('exit', (code) => {
+    const child = spawn(
+      "osascript",
+      [
+        "-e",
+        `display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}"`,
+      ],
+      {
+        stdio: "ignore",
+      },
+    );
+    child.on("exit", (code) => {
       if (code === 0) {
         resolve();
       } else {
         reject(new Error(`osascript exited with code ${code ?? -1}`));
       }
     });
-    child.on('error', reject);
+    child.on("error", reject);
   });
 }
 
 function escapeAppleScript(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function macAppIconOption(): Record<string, string> {
-  if (process.platform !== 'darwin') return {};
+  if (process.platform !== "darwin") return {};
   const iconPaths = [
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets-oracle-icon.png'),
-    path.resolve(process.cwd(), 'assets-oracle-icon.png'),
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../assets-oracle-icon.png"),
+    path.resolve(process.cwd(), "assets-oracle-icon.png"),
   ];
   for (const candidate of iconPaths) {
     if (candidate && fsExistsSync(candidate)) {
@@ -306,29 +329,39 @@ function macAppIconOption(): Record<string, string> {
 
 function fsExistsSync(target: string): boolean {
   try {
-    return Boolean(require('node:fs').statSync(target));
+    return Boolean(require("node:fs").statSync(target));
   } catch {
     return false;
   }
 }
 
-async function tryMacNativeNotifier(title: string, message: string, settings: NotificationSettings): Promise<boolean> {
+async function tryMacNativeNotifier(
+  title: string,
+  message: string,
+  settings: NotificationSettings,
+): Promise<boolean> {
   const binary = macNativeNotifierPath();
   if (!binary) return false;
   return new Promise((resolve) => {
-    const child = spawn(binary, [title, message, settings.sound ? 'Glass' : ''], {
-      stdio: 'ignore',
+    const child = spawn(binary, [title, message, settings.sound ? "Glass" : ""], {
+      stdio: "ignore",
     });
-    child.on('error', () => resolve(false));
-    child.on('exit', (code) => resolve(code === 0));
+    child.on("error", () => resolve(false));
+    child.on("exit", (code) => resolve(code === 0));
   });
 }
 
 function macNativeNotifierPath(): string | null {
-  if (process.platform !== 'darwin') return null;
+  if (process.platform !== "darwin") return null;
   const candidates = [
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../vendor/oracle-notifier/OracleNotifier.app/Contents/MacOS/OracleNotifier'),
-    path.resolve(process.cwd(), 'vendor/oracle-notifier/OracleNotifier.app/Contents/MacOS/OracleNotifier'),
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../vendor/oracle-notifier/OracleNotifier.app/Contents/MacOS/OracleNotifier",
+    ),
+    path.resolve(
+      process.cwd(),
+      "vendor/oracle-notifier/OracleNotifier.app/Contents/MacOS/OracleNotifier",
+    ),
   ];
   for (const candidate of candidates) {
     if (fsExistsSync(candidate)) {
@@ -341,32 +374,32 @@ function macNativeNotifierPath(): string | null {
 function muteByConfig(env: NodeJS.ProcessEnv, config?: NotifyConfig): boolean {
   if (!config?.muteIn) return false;
   return (
-    (config.muteIn.includes('CI') && bool(env.CI)) ||
-    (config.muteIn.includes('SSH') && bool(env.SSH_CONNECTION))
+    (config.muteIn.includes("CI") && bool(env.CI)) ||
+    (config.muteIn.includes("SSH") && bool(env.SSH_CONNECTION))
   );
 }
 
 function isTestEnv(env: NodeJS.ProcessEnv): boolean {
   return (
-    env.ORACLE_DISABLE_NOTIFICATIONS === '1' ||
-    env.NODE_ENV === 'test' ||
+    env.ORACLE_DISABLE_NOTIFICATIONS === "1" ||
+    env.NODE_ENV === "test" ||
     Boolean(env.VITEST || env.VITEST_WORKER_ID || env.JEST_WORKER_ID)
   );
 }
 
 function describeNotifierError(error: unknown): string {
-  if (error && typeof error === 'object') {
+  if (error && typeof error === "object") {
     const err = error as NodeJS.ErrnoException;
-    if (typeof err.errno === 'number' || typeof err.code === 'string') {
-      const errno = typeof err.errno === 'number' ? err.errno : undefined;
+    if (typeof err.errno === "number" || typeof err.code === "string") {
+      const errno = typeof err.errno === "number" ? err.errno : undefined;
       // macOS returns errno -86 for “Bad CPU type in executable” (e.g., wrong arch or quarantined binary).
       if (errno === -86) {
-        return 'notifier binary failed to launch (Bad CPU type/quarantine); try xattr -dr com.apple.quarantine vendor/oracle-notifier && ./vendor/oracle-notifier/build-notifier.sh';
+        return "notifier binary failed to launch (Bad CPU type/quarantine); try xattr -dr com.apple.quarantine vendor/oracle-notifier && ./vendor/oracle-notifier/build-notifier.sh";
       }
     }
-    if (typeof (err as { message?: unknown }).message === 'string') {
+    if (typeof (err as { message?: unknown }).message === "string") {
       return (err as { message: string }).message;
     }
   }
-  return typeof error === 'string' ? error : String(error);
+  return typeof error === "string" ? error : String(error);
 }

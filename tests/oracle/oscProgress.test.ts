@@ -1,51 +1,51 @@
-import { describe, expect, test, vi } from 'vitest';
-import { startOscProgress, supportsOscProgress } from '../../src/oracle/oscProgress.ts';
+import { describe, expect, test, vi } from "vitest";
+import { startOscProgress, supportsOscProgress } from "../../src/oracle/oscProgress.ts";
 
-describe('supportsOscProgress', () => {
+describe("supportsOscProgress", () => {
   const baseEnv = { ...process.env } as NodeJS.ProcessEnv;
   delete baseEnv.CODEX_MANAGED_BY_NPM;
 
-  test('returns false when not a TTY', () => {
+  test("returns false when not a TTY", () => {
     expect(supportsOscProgress(baseEnv, false)).toBe(false);
   });
 
-  test('can be disabled with ORACLE_NO_OSC_PROGRESS', () => {
+  test("can be disabled with ORACLE_NO_OSC_PROGRESS", () => {
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, ORACLE_NO_OSC_PROGRESS: '1' }, true)).toBe(false);
+    expect(supportsOscProgress({ ...baseEnv, ORACLE_NO_OSC_PROGRESS: "1" }, true)).toBe(false);
   });
 
-  test('detects Ghostty / WezTerm / Windows Terminal', () => {
+  test("detects Ghostty / WezTerm / Windows Terminal", () => {
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, TERM_PROGRAM: 'Ghostty' }, true)).toBe(true);
+    expect(supportsOscProgress({ ...baseEnv, TERM_PROGRAM: "Ghostty" }, true)).toBe(true);
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, TERM_PROGRAM: 'WezTerm' }, true)).toBe(true);
+    expect(supportsOscProgress({ ...baseEnv, TERM_PROGRAM: "WezTerm" }, true)).toBe(true);
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, WT_SESSION: '1' }, true)).toBe(true);
+    expect(supportsOscProgress({ ...baseEnv, WT_SESSION: "1" }, true)).toBe(true);
   });
 
-  test('force flag still requires TTY', () => {
+  test("force flag still requires TTY", () => {
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, ORACLE_FORCE_OSC_PROGRESS: '1' }, false)).toBe(false);
+    expect(supportsOscProgress({ ...baseEnv, ORACLE_FORCE_OSC_PROGRESS: "1" }, false)).toBe(false);
     // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-    expect(supportsOscProgress({ ...baseEnv, ORACLE_FORCE_OSC_PROGRESS: '1' }, true)).toBe(true);
+    expect(supportsOscProgress({ ...baseEnv, ORACLE_FORCE_OSC_PROGRESS: "1" }, true)).toBe(true);
   });
 });
 
-describe('startOscProgress', () => {
-  test('emits OSC 9;4 sequences and clears on stop', () => {
+describe("startOscProgress", () => {
+  test("emits OSC 9;4 sequences and clears on stop", () => {
     vi.useFakeTimers();
     const writes: string[] = [];
     const stop = startOscProgress({
-      label: 'Waiting',
+      label: "Waiting",
       targetMs: 2_000,
       // biome-ignore lint/style/useNamingConvention: env keys mirror real process env.
-      env: { ...process.env, ORACLE_FORCE_OSC_PROGRESS: '1' },
+      env: { ...process.env, ORACLE_FORCE_OSC_PROGRESS: "1" },
       isTty: true,
       write: (chunk) => writes.push(chunk),
     });
 
     // initial activate
-    expect(writes.at(0)).toBe('\u001b]9;4;1;0;Waiting\u001b\\');
+    expect(writes.at(0)).toBe("\u001b]9;4;1;0;Waiting\u001b\\");
 
     // advance past target to trigger at least one progress update
     vi.advanceTimersByTime(2_200);
@@ -53,7 +53,7 @@ describe('startOscProgress', () => {
     expect(progressed).toBe(true);
 
     stop();
-    expect(writes.at(-1)).toBe('\u001b]9;4;0;0;Waiting\u001b\\');
+    expect(writes.at(-1)).toBe("\u001b]9;4;0;0;Waiting\u001b\\");
     vi.useRealTimers();
   });
 });

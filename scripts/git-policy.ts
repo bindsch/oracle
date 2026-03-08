@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { resolve } from "node:path";
 
 export type GitInvocation = {
   index: number;
@@ -23,23 +23,23 @@ export type GitPolicyEvaluation = {
   isDestructive: boolean;
 };
 
-const COMMIT_HELPER_SUBCOMMANDS = new Set(['add', 'commit']);
-const GUARDED_SUBCOMMANDS = new Set(['push', 'pull', 'merge', 'rebase', 'cherry-pick']);
+const COMMIT_HELPER_SUBCOMMANDS = new Set(["add", "commit"]);
+const GUARDED_SUBCOMMANDS = new Set(["push", "pull", "merge", "rebase", "cherry-pick"]);
 const DESTRUCTIVE_SUBCOMMANDS = new Set([
-  'reset',
-  'checkout',
-  'clean',
-  'restore',
-  'switch',
-  'stash',
-  'branch',
-  'filter-branch',
-  'fast-import',
+  "reset",
+  "checkout",
+  "clean",
+  "restore",
+  "switch",
+  "stash",
+  "branch",
+  "filter-branch",
+  "fast-import",
 ]);
 
 export function extractGitInvocation(commandArgs: string[]): GitInvocation | null {
   for (const [index, token] of commandArgs.entries()) {
-    if (token === 'git' || token.endsWith('/git')) {
+    if (token === "git" || token.endsWith("/git")) {
       return { index, argv: commandArgs.slice(index) };
     }
   }
@@ -51,7 +51,7 @@ export function findGitSubcommand(commandArgs: string[]): GitCommandInfo | null 
     return null;
   }
 
-  const optionsWithValue = new Set(['-C', '--git-dir', '--work-tree', '-c']);
+  const optionsWithValue = new Set(["-C", "--git-dir", "--work-tree", "-c"]);
   let index = 1;
 
   while (index < commandArgs.length) {
@@ -59,14 +59,14 @@ export function findGitSubcommand(commandArgs: string[]): GitCommandInfo | null 
     if (token === undefined) {
       break;
     }
-    if (token === '--') {
+    if (token === "--") {
       const next = commandArgs[index + 1];
       return next ? { name: next, index: index + 1 } : null;
     }
-    if (!token.startsWith('-')) {
+    if (!token.startsWith("-")) {
       return { name: token, index };
     }
-    if (token.includes('=')) {
+    if (token.includes("=")) {
       index += 1;
       continue;
     }
@@ -79,7 +79,11 @@ export function findGitSubcommand(commandArgs: string[]): GitCommandInfo | null 
   return null;
 }
 
-export function determineGitWorkdir(baseDir: string, gitArgs: string[], command: GitCommandInfo | null): string {
+export function determineGitWorkdir(
+  baseDir: string,
+  gitArgs: string[],
+  command: GitCommandInfo | null,
+): string {
   let workDir = baseDir;
   const limit = command ? command.index : gitArgs.length;
   let index = 1;
@@ -89,7 +93,7 @@ export function determineGitWorkdir(baseDir: string, gitArgs: string[], command:
     if (token === undefined) {
       break;
     }
-    if (token === '-C') {
+    if (token === "-C") {
       const next = gitArgs[index + 1];
       if (next) {
         workDir = resolve(workDir, next);
@@ -97,7 +101,7 @@ export function determineGitWorkdir(baseDir: string, gitArgs: string[], command:
       index += 2;
       continue;
     }
-    if (token.startsWith('-C')) {
+    if (token.startsWith("-C")) {
       const pathSegment = token.slice(2);
       if (pathSegment.length > 0) {
         workDir = resolve(workDir, pathSegment);
@@ -109,10 +113,15 @@ export function determineGitWorkdir(baseDir: string, gitArgs: string[], command:
   return workDir;
 }
 
-export function analyzeGitExecution(commandArgs: string[], workspaceDir: string): GitExecutionContext {
+export function analyzeGitExecution(
+  commandArgs: string[],
+  workspaceDir: string,
+): GitExecutionContext {
   const invocation = extractGitInvocation(commandArgs);
   const command = invocation ? findGitSubcommand(invocation.argv) : null;
-  const workDir = invocation ? determineGitWorkdir(workspaceDir, invocation.argv, command) : workspaceDir;
+  const workDir = invocation
+    ? determineGitWorkdir(workspaceDir, invocation.argv, command)
+    : workspaceDir;
 
   return {
     invocation,
@@ -136,7 +145,10 @@ export function requiresExplicitGitConsent(subcommand: string | null): boolean {
   return GUARDED_SUBCOMMANDS.has(subcommand);
 }
 
-export function isDestructiveGitSubcommand(command: GitCommandInfo | null, gitArgv: string[]): boolean {
+export function isDestructiveGitSubcommand(
+  command: GitCommandInfo | null,
+  gitArgv: string[],
+): boolean {
   if (!command) {
     return false;
   }
@@ -146,9 +158,9 @@ export function isDestructiveGitSubcommand(command: GitCommandInfo | null, gitAr
     return true;
   }
 
-  if (subcommand === 'bisect') {
-    const action = gitArgv[command.index + 1] ?? '';
-    return action === 'reset';
+  if (subcommand === "bisect") {
+    const action = gitArgv[command.index + 1] ?? "";
+    return action === "reset";
   }
 
   return false;

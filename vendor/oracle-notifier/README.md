@@ -18,7 +18,9 @@ export APP_STORE_CONNECT_ISSUER_ID=YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY
 - Output: `OracleNotifier.app` (arm64 only), bundled with `OracleIcon.icns`.
 
 ## Usage
+
 The CLI prefers this helper on macOS; if it fails or is missing, it falls back to toasted-notifier/terminal-notifier.
 
 ## Permissions
+
 After first run, allow notifications for “Oracle Notifier” in System Settings → Notifications.

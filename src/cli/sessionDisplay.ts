@@ -1,24 +1,28 @@
-import chalk from 'chalk';
-import kleur from 'kleur';
+import chalk from "chalk";
+import kleur from "kleur";
 import type {
   SessionMetadata,
   SessionTransportMetadata,
   SessionUserErrorMetadata,
-} from '../sessionStore.js';
-import type { OracleResponseMetadata } from '../oracle.js';
-import { renderMarkdownAnsi } from './markdownRenderer.js';
-import { formatFinishLine } from '../oracle/finishLine.js';
-import { sessionStore, wait } from '../sessionStore.js';
-import { formatTokenCount, formatTokenValue } from '../oracle/runUtils.js';
-import type { BrowserLogger } from '../browser/types.js';
-import { resumeBrowserSession } from '../browser/reattach.js';
-import { estimateTokenCount } from '../browser/utils.js';
-import { formatSessionTableHeader, formatSessionTableRow, resolveSessionCost } from './sessionTable.js';
+} from "../sessionStore.js";
+import type { OracleResponseMetadata } from "../oracle.js";
+import { renderMarkdownAnsi } from "./markdownRenderer.js";
+import { formatFinishLine } from "../oracle/finishLine.js";
+import { sessionStore, wait } from "../sessionStore.js";
+import { formatTokenCount, formatTokenValue } from "../oracle/runUtils.js";
+import type { BrowserLogger } from "../browser/types.js";
+import { resumeBrowserSession } from "../browser/reattach.js";
+import { estimateTokenCount } from "../browser/utils.js";
+import {
+  formatSessionTableHeader,
+  formatSessionTableRow,
+  resolveSessionCost,
+} from "./sessionTable.js";
 import {
   abbreviateResponseId,
   buildResponseOwnerIndex,
   resolveSessionLineage,
-} from './sessionLineage.js';
+} from "./sessionLineage.js";
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY);
 const dim = (text: string): string => (isTty() ? kleur.dim(text) : text);
@@ -31,10 +35,10 @@ function isProcessAlive(pid?: number): boolean {
     return true;
   } catch (error) {
     const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
-    if (code === 'ESRCH' || code === 'EINVAL') {
+    if (code === "ESRCH" || code === "EINVAL") {
       return false;
     }
-    if (code === 'EPERM') {
+    if (code === "EPERM") {
       return true;
     }
     return true;
@@ -60,8 +64,14 @@ export async function showStatus({
   modelFilter,
 }: ShowStatusOptions): Promise<void> {
   const metas = await sessionStore.listSessions();
-  const { entries, truncated, total } = sessionStore.filterSessions(metas, { hours, includeAll, limit });
-  const filteredEntries = modelFilter ? entries.filter((entry) => matchesModel(entry, modelFilter)) : entries;
+  const { entries, truncated, total } = sessionStore.filterSessions(metas, {
+    hours,
+    includeAll,
+    limit,
+  });
+  const filteredEntries = modelFilter
+    ? entries.filter((entry) => matchesModel(entry, modelFilter))
+    : entries;
   const richTty = process.stdout.isTTY && chalk.level > 0;
   const responseOwners = buildResponseOwnerIndex(metas);
   if (!filteredEntries.length) {
@@ -71,7 +81,7 @@ export async function showStatus({
     }
     return;
   }
-  console.log(chalk.bold('Recent Sessions'));
+  console.log(chalk.bold("Recent Sessions"));
   console.log(formatSessionTableHeader(richTty));
   const treeRows = buildStatusTreeRows(filteredEntries, responseOwners);
   for (const row of treeRows) {
@@ -81,7 +91,7 @@ export async function showStatus({
         ? richTty
           ? chalk.gray(` <- ${row.detachedParentLabel}`)
           : ` <- ${row.detachedParentLabel}`
-        : '';
+        : "";
     console.log(`${line}${detachedParent}`);
   }
   if (truncated) {
@@ -114,14 +124,17 @@ type LiveRenderState = {
   noticedFallback: boolean;
 };
 
-export async function attachSession(sessionId: string, options?: AttachSessionOptions): Promise<void> {
+export async function attachSession(
+  sessionId: string,
+  options?: AttachSessionOptions,
+): Promise<void> {
   let metadata = await sessionStore.readSession(sessionId);
   if (!metadata) {
     console.error(chalk.red(`No session found with ID ${sessionId}`));
     process.exitCode = 1;
     return;
   }
-  if (metadata.mode === 'browser' && metadata.status === 'running' && !metadata.browser?.runtime) {
+  if (metadata.mode === "browser" && metadata.status === "running" && !metadata.browser?.runtime) {
     await wait(250);
     const refreshed = await sessionStore.readSession(sessionId);
     if (refreshed) {
@@ -145,19 +158,26 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
   const runtime = metadata.browser?.runtime;
   const controllerAlive = isProcessAlive(runtime?.controllerPid);
 
-  const hasChromeDisconnect = metadata.response?.incompleteReason === 'chrome-disconnected';
-  const statusAllowsReattach = metadata.status === 'running' || (metadata.status === 'error' && hasChromeDisconnect);
-  const hasFallbackSessionInfo = Boolean(runtime?.chromePort || runtime?.tabUrl || runtime?.conversationId);
+  const hasChromeDisconnect = metadata.response?.incompleteReason === "chrome-disconnected";
+  const statusAllowsReattach =
+    metadata.status === "running" || (metadata.status === "error" && hasChromeDisconnect);
+  const hasFallbackSessionInfo = Boolean(
+    runtime?.chromePort || runtime?.tabUrl || runtime?.conversationId,
+  );
   const canReattach =
     statusAllowsReattach &&
-    metadata.mode === 'browser' &&
+    metadata.mode === "browser" &&
     hasFallbackSessionInfo &&
     (hasChromeDisconnect || (runtime?.controllerPid && !controllerAlive));
 
   if (canReattach) {
-    const portInfo = runtime?.chromePort ? `port ${runtime.chromePort}` : 'unknown port';
-    const urlInfo = runtime?.tabUrl ? `url=${runtime.tabUrl}` : 'url=unknown';
-    console.log(chalk.yellow(`Attempting to reattach to the existing Chrome session (${portInfo}, ${urlInfo})...`));
+    const portInfo = runtime?.chromePort ? `port ${runtime.chromePort}` : "unknown port";
+    const urlInfo = runtime?.tabUrl ? `url=${runtime.tabUrl}` : "url=unknown";
+    console.log(
+      chalk.yellow(
+        `Attempting to reattach to the existing Chrome session (${portInfo}, ${urlInfo})...`,
+      ),
+    );
     try {
       const result = await resumeBrowserSession(
         runtime as NonNullable<typeof runtime>,
@@ -174,13 +194,13 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
       );
       const outputTokens = estimateTokenCount(result.answerMarkdown);
       const logWriter = sessionStore.createLogWriter(sessionId);
-      logWriter.logLine('[reattach] captured assistant response from existing Chrome tab');
-      logWriter.logLine('Answer:');
+      logWriter.logLine("[reattach] captured assistant response from existing Chrome tab");
+      logWriter.logLine("Answer:");
       logWriter.logLine(result.answerMarkdown || result.answerText);
       logWriter.stream.end();
       if (metadata.model) {
         await sessionStore.updateModelRun(metadata.id, metadata.model, {
-          status: 'completed',
+          status: "completed",
           usage: {
             inputTokens: 0,
             outputTokens,
@@ -191,7 +211,7 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
         });
       }
       await sessionStore.updateSession(sessionId, {
-        status: 'completed',
+        status: "completed",
         completedAt: new Date().toISOString(),
         usage: {
           inputTokens: 0,
@@ -203,11 +223,11 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
           config: metadata.browser?.config,
           runtime,
         },
-        response: { status: 'completed' },
+        response: { status: "completed" },
         error: undefined,
         transport: undefined,
       });
-      console.log(chalk.green('Reattach succeeded; session marked completed.'));
+      console.log(chalk.green("Reattach succeeded; session marked completed."));
       metadata = (await sessionStore.readSession(sessionId)) ?? metadata;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -226,11 +246,11 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
     console.log(`Created: ${metadata.createdAt}`);
     console.log(`Status: ${metadata.status}`);
     if (metadata.models && metadata.models.length > 0) {
-      console.log('Models:');
+      console.log("Models:");
       for (const run of metadata.models) {
         const usage = run.usage
           ? ` tok=${formatTokenCount(run.usage.outputTokens ?? 0)}/${formatTokenCount(run.usage.totalTokens ?? 0)}`
-          : '';
+          : "";
         console.log(`- ${chalk.cyan(run.model)} — ${run.status}${usage}`);
       }
     } else if (metadata.model) {
@@ -250,19 +270,19 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
     }
   }
 
-  const shouldTrimIntro = initialStatus === 'completed' || initialStatus === 'error';
+  const shouldTrimIntro = initialStatus === "completed" || initialStatus === "error";
   if (options?.renderPrompt !== false) {
     const prompt = await readStoredPrompt(sessionId);
     if (prompt) {
-      console.log(chalk.bold('Prompt:'));
+      console.log(chalk.bold("Prompt:"));
       console.log(renderMarkdownAnsi(prompt));
-      console.log(dim('---'));
+      console.log(dim("---"));
     }
   }
   if (shouldTrimIntro) {
     const fullLog = await buildSessionLogForDisplay(sessionId, metadata, normalizedModelFilter);
     const trimmed = trimBeforeFirstAnswer(fullLog);
-    const size = Buffer.byteLength(trimmed, 'utf8');
+    const size = Buffer.byteLength(trimmed, "utf8");
     const canRender = wantsRender && isTty() && size <= MAX_RENDER_BYTES;
     if (wantsRender && size > MAX_RENDER_BYTES) {
       const msg = `Render skipped (log too large: ${size} bytes > ${MAX_RENDER_BYTES}). Showing raw text.`;
@@ -271,7 +291,7 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
         console.log(dim(`Verbose: renderMarkdown=true tty=${isTty()} size=${size}`));
       }
     } else if (wantsRender && !isTty()) {
-      const msg = 'Render requested but stdout is not a TTY; showing raw text.';
+      const msg = "Render requested but stdout is not a TTY; showing raw text.";
       console.log(dim(msg));
       if (isVerbose) {
         console.log(dim(`Verbose: renderMarkdown=true tty=${isTty()} size=${size}`));
@@ -293,15 +313,23 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
   }
 
   if (wantsRender) {
-    console.log(dim('Render will apply after completion; streaming raw text meanwhile...'));
+    console.log(dim("Render will apply after completion; streaming raw text meanwhile..."));
     if (isVerbose) {
       console.log(dim(`Verbose: streaming phase renderMarkdown=true tty=${isTty()}`));
     }
   }
 
-  const liveRenderState: LiveRenderState | null = wantsRender && isTty()
-    ? { pending: '', inFence: false, inTable: false, renderedBytes: 0, fallback: false, noticedFallback: false }
-    : null;
+  const liveRenderState: LiveRenderState | null =
+    wantsRender && isTty()
+      ? {
+          pending: "",
+          inFence: false,
+          inTable: false,
+          renderedBytes: 0,
+          fallback: false,
+          noticedFallback: false,
+        }
+      : null;
 
   let lastLength = 0;
   const renderLiveChunk = (chunk: string): void => {
@@ -319,19 +347,21 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
     liveRenderState.pending = remainder;
 
     for (const candidate of chunks) {
-      const projected = liveRenderState.renderedBytes + Buffer.byteLength(candidate, 'utf8');
+      const projected = liveRenderState.renderedBytes + Buffer.byteLength(candidate, "utf8");
       if (projected > MAX_RENDER_BYTES) {
         if (!liveRenderState.noticedFallback) {
-          console.log(dim(`Render skipped (log too large: > ${MAX_RENDER_BYTES} bytes). Showing raw text.`));
+          console.log(
+            dim(`Render skipped (log too large: > ${MAX_RENDER_BYTES} bytes). Showing raw text.`),
+          );
           liveRenderState.noticedFallback = true;
         }
         liveRenderState.fallback = true;
         process.stdout.write(candidate + liveRenderState.pending);
-        liveRenderState.pending = '';
+        liveRenderState.pending = "";
         return;
       }
       process.stdout.write(renderMarkdownAnsi(candidate));
-      liveRenderState.renderedBytes += Buffer.byteLength(candidate, 'utf8');
+      liveRenderState.renderedBytes += Buffer.byteLength(candidate, "utf8");
     }
   };
 
@@ -343,11 +373,13 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
       return;
     }
     const text = liveRenderState.pending;
-    liveRenderState.pending = '';
-    const projected = liveRenderState.renderedBytes + Buffer.byteLength(text, 'utf8');
+    liveRenderState.pending = "";
+    const projected = liveRenderState.renderedBytes + Buffer.byteLength(text, "utf8");
     if (projected > MAX_RENDER_BYTES) {
       if (!liveRenderState.noticedFallback) {
-        console.log(dim(`Render skipped (log too large: > ${MAX_RENDER_BYTES} bytes). Showing raw text.`));
+        console.log(
+          dim(`Render skipped (log too large: > ${MAX_RENDER_BYTES} bytes). Showing raw text.`),
+        );
       }
       process.stdout.write(text);
       liveRenderState.fallback = true;
@@ -373,15 +405,15 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
     if (!latest) {
       break;
     }
-    if (latest.status === 'completed' || latest.status === 'error') {
+    if (latest.status === "completed" || latest.status === "error") {
       await printNew();
       flushRemainder();
       if (!options?.suppressMetadata) {
-        if (latest.status === 'error' && latest.errorMessage) {
-          console.log('\nResult:');
+        if (latest.status === "error" && latest.errorMessage) {
+          console.log("\nResult:");
           console.log(`Session failed: ${latest.errorMessage}`);
         }
-        if (latest.status === 'completed' && latest.usage) {
+        if (latest.status === "completed" && latest.usage) {
           const summary = formatCompletionSummary(latest, { includeSlug: true });
           if (summary) {
             console.log(`\n${chalk.green.bold(summary)}`);
@@ -417,7 +449,7 @@ export function formatResponseMetadata(metadata?: OracleResponseMetadata): strin
   if (metadata.incompleteReason) {
     parts.push(`incomplete=${metadata.incompleteReason}`);
   }
-  return parts.length > 0 ? parts.join(' | ') : null;
+  return parts.length > 0 ? parts.join(" | ") : null;
 }
 
 export function formatTransportMetadata(metadata?: SessionTransportMetadata): string | null {
@@ -425,12 +457,12 @@ export function formatTransportMetadata(metadata?: SessionTransportMetadata): st
     return null;
   }
   const reasonLabels: Record<string, string> = {
-    'client-timeout': 'client timeout (deadline exceeded)',
-    'connection-lost': 'connection lost before completion',
-    'client-abort': 'request aborted locally',
-    unknown: 'unknown transport failure',
+    "client-timeout": "client timeout (deadline exceeded)",
+    "connection-lost": "connection lost before completion",
+    "client-abort": "request aborted locally",
+    unknown: "unknown transport failure",
   };
-  const label = reasonLabels[metadata.reason] ?? 'transport error';
+  const label = reasonLabels[metadata.reason] ?? "transport error";
   return `${metadata.reason} — ${label}`;
 }
 
@@ -448,7 +480,7 @@ export function formatUserErrorMetadata(metadata?: SessionUserErrorMetadata): st
   if (metadata.details && Object.keys(metadata.details).length > 0) {
     parts.push(`details=${JSON.stringify(metadata.details)}`);
   }
-  return parts.length > 0 ? parts.join(' | ') : null;
+  return parts.length > 0 ? parts.join(" | ") : null;
 }
 
 export function buildReattachLine(metadata: SessionMetadata): string | null {
@@ -463,14 +495,14 @@ export function buildReattachLine(metadata: SessionMetadata): string | null {
   if (!elapsedLabel) {
     return null;
   }
-  if (metadata.status === 'running') {
+  if (metadata.status === "running") {
     return `Session ${metadata.id} reattached, request started ${elapsedLabel} ago.`;
   }
   return null;
 }
 
 export function trimBeforeFirstAnswer(logText: string): string {
-  const marker = 'Answer:';
+  const marker = "Answer:";
   const index = logText.indexOf(marker);
   if (index === -1) {
     return logText;
@@ -503,7 +535,7 @@ function formatRelativeDuration(referenceIso: string): string | null {
     if (remainingMinutes > 0) {
       parts.push(`${remainingMinutes}m`);
     }
-    return parts.join(' ');
+    return parts.join(" ");
   }
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
@@ -514,18 +546,18 @@ function formatRelativeDuration(referenceIso: string): string | null {
   if (remainingMinutes > 0 && days === 0) {
     parts.push(`${remainingMinutes}m`);
   }
-  return parts.join(' ');
+  return parts.join(" ");
 }
 
 function printStatusExamples(): void {
-  console.log('');
-  console.log(chalk.bold('Usage Examples'));
-  console.log(`${chalk.bold('  oracle status --hours 72 --limit 50')}`);
-  console.log(dim('    Show 72h of history capped at 50 entries.'));
-  console.log(`${chalk.bold('  oracle status --clear --hours 168')}`);
-  console.log(dim('    Delete sessions older than 7 days (use --all to wipe everything).'));
-  console.log(`${chalk.bold('  oracle session <session-id>')}`);
-  console.log(dim('    Attach to a specific running/completed session to stream its output.'));
+  console.log("");
+  console.log(chalk.bold("Usage Examples"));
+  console.log(`${chalk.bold("  oracle status --hours 72 --limit 50")}`);
+  console.log(dim("    Show 72h of history capped at 50 entries."));
+  console.log(`${chalk.bold("  oracle status --clear --hours 168")}`);
+  console.log(dim("    Delete sessions older than 7 days (use --all to wipe everything)."));
+  console.log(`${chalk.bold("  oracle session <session-id>")}`);
+  console.log(dim("    Attach to a specific running/completed session to stream its output."));
   console.log(dim(CLEANUP_TIP));
 }
 
@@ -535,7 +567,8 @@ function matchesModel(entry: SessionMetadata, filter: string): boolean {
     return true;
   }
   const models =
-    entry.models?.map((model) => model.model.toLowerCase()) ?? (entry.model ? [entry.model.toLowerCase()] : []);
+    entry.models?.map((model) => model.model.toLowerCase()) ??
+    (entry.model ? [entry.model.toLowerCase()] : []);
   return models.includes(normalized);
 }
 
@@ -578,8 +611,8 @@ function buildStatusTreeRows(
     }
     visited.add(entry.id);
     const children = childMap.get(entry.id) ?? [];
-    const nodeBranch = isLast ? '└─ ' : '├─ ';
-    const prefix = `${ancestorHasMore.map((hasMore) => (hasMore ? '│  ' : '   ')).join('')}${nodeBranch}`;
+    const nodeBranch = isLast ? "└─ " : "├─ ";
+    const prefix = `${ancestorHasMore.map((hasMore) => (hasMore ? "│  " : "   ")).join("")}${nodeBranch}`;
     rows.push({ entry, displaySlug: `${prefix}${entry.id}` });
 
     children.forEach((child, index) => {
@@ -651,17 +684,16 @@ async function buildSessionLogForDisplay(
     }
     return await sessionStore.readLog(sessionId);
   }
-  const candidates =
-    normalizedFilter
-      ? models.filter((model) => model.model.toLowerCase() === normalizedFilter)
-      : models;
+  const candidates = normalizedFilter
+    ? models.filter((model) => model.model.toLowerCase() === normalizedFilter)
+    : models;
   if (candidates.length === 0) {
-    return '';
+    return "";
   }
   const sections: string[] = [];
   let hasContent = false;
   for (const model of candidates) {
-    const body = (await sessionStore.readModelLog(sessionId, model.model)) ?? '';
+    const body = (await sessionStore.readModelLog(sessionId, model.model)) ?? "";
     if (body.trim().length > 0) {
       hasContent = true;
     }
@@ -671,19 +703,22 @@ async function buildSessionLogForDisplay(
     // Fallback for runs that recorded output only in the session log (e.g., browser runs without per-model logs).
     return await sessionStore.readLog(sessionId);
   }
-  return sections.join('\n\n');
+  return sections.join("\n\n");
 }
 
-function extractRenderableChunks(text: string, state: LiveRenderState): { chunks: string[]; remainder: string } {
+function extractRenderableChunks(
+  text: string,
+  state: LiveRenderState,
+): { chunks: string[]; remainder: string } {
   const chunks: string[] = [];
-  let buffer = '';
+  let buffer = "";
   const lines = text.split(/(\n)/);
   for (let i = 0; i < lines.length; i += 1) {
     const segment = lines[i];
-    if (segment === '\n') {
+    if (segment === "\n") {
       buffer += segment;
       // Detect code fences
-      const prev = lines[i - 1] ?? '';
+      const prev = lines[i - 1] ?? "";
       const fenceMatch = prev.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
       if (!state.inFence && fenceMatch) {
         state.inFence = true;
@@ -695,18 +730,18 @@ function extractRenderableChunks(text: string, state: LiveRenderState): { chunks
 
       const trimmed = prev.trim();
       if (!state.inFence) {
-        if (!state.inTable && trimmed.startsWith('|') && trimmed.includes('|')) {
+        if (!state.inTable && trimmed.startsWith("|") && trimmed.includes("|")) {
           state.inTable = true;
         }
-        if (state.inTable && trimmed === '') {
+        if (state.inTable && trimmed === "") {
           state.inTable = false;
         }
       }
 
-      const safeBreak = !state.inFence && !state.inTable && trimmed === '';
+      const safeBreak = !state.inFence && !state.inTable && trimmed === "";
       if (safeBreak) {
         chunks.push(buffer);
-        buffer = '';
+        buffer = "";
       }
       continue;
     }
@@ -722,7 +757,8 @@ export function formatCompletionSummary(
   if (!metadata.usage || metadata.elapsedMs == null) {
     return null;
   }
-  const modeLabel = metadata.mode === 'browser' ? `${metadata.model ?? 'n/a'}[browser]` : metadata.model ?? 'n/a';
+  const modeLabel =
+    metadata.mode === "browser" ? `${metadata.model ?? "n/a"}[browser]` : (metadata.model ?? "n/a");
   const usage = metadata.usage;
   const cost = resolveSessionCost(metadata);
   const tokensDisplay = [
@@ -732,16 +768,20 @@ export function formatCompletionSummary(
     usage.totalTokens ?? 0,
   ]
     .map((value, index) =>
-      formatTokenValue(value, {
-        input_tokens: usage.inputTokens,
-        output_tokens: usage.outputTokens,
-        reasoning_tokens: usage.reasoningTokens,
-        total_tokens: usage.totalTokens,
-      }, index),
+      formatTokenValue(
+        value,
+        {
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
+          reasoning_tokens: usage.reasoningTokens,
+          total_tokens: usage.totalTokens,
+        },
+        index,
+      ),
     )
-    .join('/');
+    .join("/");
   const tokensPart = (() => {
-    const parts = tokensDisplay.split('/');
+    const parts = tokensDisplay.split("/");
     if (parts.length !== 4) return tokensDisplay;
     return `↑${parts[0]} ↓${parts[1]} ↻${parts[2]} Δ${parts[3]}`;
   })();

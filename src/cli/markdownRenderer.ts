@@ -1,27 +1,22 @@
-import chalk from 'chalk';
-import { render as renderMarkdown } from 'markdansi';
-import {
-  bundledLanguages,
-  bundledThemes,
-  createHighlighter,
-  type BundledTheme,
-} from 'shiki';
+import chalk from "chalk";
+import { render as renderMarkdown } from "markdansi";
+import { bundledLanguages, bundledThemes, createHighlighter, type BundledTheme } from "shiki";
 
 type ShikiHighlighter = Awaited<ReturnType<typeof createHighlighter>>;
 
-const DEFAULT_THEME: BundledTheme = 'github-dark';
-const HIGHLIGHT_LANGS = ['ts', 'tsx', 'js', 'jsx', 'json', 'swift'] as const;
+const DEFAULT_THEME: BundledTheme = "github-dark";
+const HIGHLIGHT_LANGS = ["ts", "tsx", "js", "jsx", "json", "swift"] as const;
 type HighlightLang = (typeof HIGHLIGHT_LANGS)[number];
 
 const SUPPORTED_LANG_ALIASES: Record<string, HighlightLang> = {
-  ts: 'ts',
-  typescript: 'ts',
-  tsx: 'tsx',
-  js: 'js',
-  javascript: 'js',
-  jsx: 'jsx',
-  json: 'json',
-  swift: 'swift',
+  ts: "ts",
+  typescript: "ts",
+  tsx: "tsx",
+  js: "js",
+  javascript: "js",
+  jsx: "jsx",
+  json: "json",
+  swift: "swift",
 };
 
 const shikiPromise = createHighlighter({
@@ -80,9 +75,9 @@ function shikiHighlighter(code: string, lang?: string): string {
             const colored = token.color ? chalk.hex(token.color)(token.content) : token.content;
             return styleToken(colored, token.fontStyle);
           })
-          .join(''),
+          .join(""),
       )
-      .join('\n');
+      .join("\n");
   } catch {
     return code;
   }
