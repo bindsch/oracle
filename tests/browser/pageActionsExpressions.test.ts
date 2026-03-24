@@ -44,5 +44,7 @@ describe("browser automation expressions", () => {
     expect(expression).toContain(ASSISTANT_ROLE_SELECTOR);
     expect(expression).toContain("isAssistantTurn");
     expect(expression).toContain("copy-turn-action-button");
+    expect(expression).toContain("pickPreferredButton");
+    expect(expression).toContain("response");
   });
 });
