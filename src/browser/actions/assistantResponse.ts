@@ -17,8 +17,8 @@ import { buildClickDispatcher } from "./domEvents.js";
 
 const ASSISTANT_POLL_TIMEOUT_ERROR = "assistant-response-watchdog-timeout";
 
-function isAnswerNowPlaceholderText(normalized: string): boolean {
-  const text = normalized.trim();
+function isTransientAssistantPlaceholderText(normalized: string): boolean {
+  const text = normalized.replace(/\s+/g, " ").trim();
   if (!text) return false;
   // Learned: "Pro thinking" shows a placeholder turn that contains "Answer now".
   // That is not the final answer and must be ignored in browser automation.
@@ -29,9 +29,27 @@ function isAnswerNowPlaceholderText(normalized: string): boolean {
   ) {
     return true;
   }
-  return (
-    text.includes("answer now") && (text.includes("pro thinking") || text.includes("chatgpt said"))
-  );
+  if (
+    text.includes("answer now") &&
+    (text.includes("pro thinking") || text.includes("chatgpt said"))
+  ) {
+    return true;
+  }
+  if (
+    /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)(\s*(\.\.\.|…))?$/.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)\s+for\s+\d+/.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return /^(thought|reasoned|analyzed|planned|drafted|summarized)\s+for\s+\d+/.test(text);
 }
 
 export async function waitForAssistantResponse(
@@ -299,7 +317,7 @@ async function parseAssistantEvaluationResult(
         : undefined;
     const text = cleanAssistantText(String((result.value as { text: unknown }).text ?? ""));
     const normalized = text.toLowerCase();
-    if (isAnswerNowPlaceholderText(normalized)) {
+    if (isTransientAssistantPlaceholderText(normalized)) {
       return null;
     }
     return { text, html, meta: { turnId, messageId } };
@@ -309,7 +327,7 @@ async function parseAssistantEvaluationResult(
   if (!fallbackText) {
     return null;
   }
-  if (isAnswerNowPlaceholderText(fallbackText.toLowerCase())) {
+  if (isTransientAssistantPlaceholderText(fallbackText.toLowerCase())) {
     return null;
   }
   return { text: fallbackText, html: undefined, meta: {} };
@@ -515,7 +533,7 @@ function normalizeAssistantSnapshot(snapshot: AssistantSnapshot | null): {
   const normalized = text.toLowerCase();
   // "Pro thinking" often renders a placeholder turn containing an "Answer now" gate.
   // Treat it as incomplete so browser mode keeps waiting for the real assistant text.
-  if (isAnswerNowPlaceholderText(normalized)) {
+  if (isTransientAssistantPlaceholderText(normalized)) {
     return null;
   }
   // Ignore user echo turns that can show up in project view fallbacks.
@@ -555,14 +573,7 @@ function buildAssistantSnapshotExpression(minTurnIndex?: number): string {
     // Learned: the default turn DOM misses project view; keep a fallback extractor.
     ${buildAssistantExtractor("extractAssistantTurn")}
     const extracted = extractAssistantTurn();
-    const isPlaceholder = (snapshot) => {
-      const normalized = String(snapshot?.text ?? '').toLowerCase().trim();
-      if (normalized === 'chatgpt said:' || normalized === 'chatgpt said') return true;
-      if (normalized.includes('file upload request') && (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))) {
-        return true;
-      }
-      return normalized.includes('answer now') && (normalized.includes('pro thinking') || normalized.includes('chatgpt said'));
-    };
+    ${buildAssistantPlaceholderPredicate("isPlaceholder")}
     if (extracted && extracted.text && !isPlaceholder(extracted)) {
       return extracted;
     }
@@ -589,14 +600,7 @@ function buildResponseObserverExpression(timeoutMs: number, minTurnIndex?: numbe
     const ASSISTANT_SELECTOR = ${assistantLiteral};
     // Learned: settling avoids capturing mid-stream HTML; keep short.
     const settleDelayMs = 800;
-    const isAnswerNowPlaceholder = (snapshot) => {
-      const normalized = String(snapshot?.text ?? '').toLowerCase().trim();
-      if (normalized === 'chatgpt said:' || normalized === 'chatgpt said') return true;
-      if (normalized.includes('file upload request') && (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))) {
-        return true;
-      }
-      return normalized.includes('answer now') && (normalized.includes('pro thinking') || normalized.includes('chatgpt said'));
-    };
+    ${buildAssistantPlaceholderPredicate("isAnswerNowPlaceholder")}
 
     // Helper to detect assistant turns - must match buildAssistantExtractor logic for consistency.
     const isAssistantTurn = (node) => {
@@ -825,6 +829,22 @@ function buildAssistantExtractor(functionName: string): string {
         }
       }
     };
+    ${buildAssistantPlaceholderPredicate("isTransientAssistantPlaceholder")}
+    const readNodePayload = (node) => {
+      if (!(node instanceof HTMLElement)) return null;
+      const innerText = node.innerText ?? '';
+      const textContent = node.textContent ?? '';
+      const text = innerText.trim().length > 0 ? innerText : textContent;
+      const trimmed = text.trim();
+      if (!trimmed) {
+        return null;
+      }
+      return {
+        text: trimmed,
+        html: node.innerHTML ?? '',
+        placeholder: isTransientAssistantPlaceholder(trimmed),
+      };
+    };
 
     const turns = Array.from(document.querySelectorAll(CONVERSATION_SELECTOR));
     for (let index = turns.length - 1; index >= 0; index -= 1) {
@@ -834,22 +854,40 @@ function buildAssistantExtractor(functionName: string): string {
       }
       const messageRoot = turn.querySelector(ASSISTANT_SELECTOR) ?? turn;
       expandCollapsibles(messageRoot);
-      const preferred =
-        (messageRoot.matches?.('.markdown') || messageRoot.matches?.('[data-message-content]') ? messageRoot : null) ||
-        messageRoot.querySelector('.markdown') ||
-        messageRoot.querySelector('[data-message-content]') ||
-        messageRoot.querySelector('[data-testid*="message"]') ||
-        messageRoot.querySelector('[data-testid*="assistant"]') ||
-        messageRoot.querySelector('.prose') ||
-        messageRoot.querySelector('[class*="markdown"]');
-      const contentRoot = preferred ?? messageRoot;
-      if (!contentRoot) {
+      const selectors = [
+        '.markdown',
+        '[data-message-content]',
+        '[data-testid*="message"]',
+        '.prose',
+        '[class*="markdown"]',
+      ];
+      let contentRoots = [];
+      for (const selector of selectors) {
+        const matches = Array.from(messageRoot.querySelectorAll(selector)).filter(
+          (node) => node instanceof HTMLElement,
+        );
+        if (matches.length > 0) {
+          contentRoots = matches;
+          break;
+        }
+      }
+      if (contentRoots.length === 0) {
+        contentRoots = [messageRoot];
+      }
+      const payloads = contentRoots
+        .map((node) => readNodePayload(node))
+        .filter(Boolean);
+      if (payloads.length === 0) {
         continue;
       }
-      const innerText = contentRoot?.innerText ?? '';
-      const textContent = contentRoot?.textContent ?? '';
-      const text = innerText.trim().length > 0 ? innerText : textContent;
-      const html = contentRoot?.innerHTML ?? '';
+      const selectedPayloads = payloads.some((payload) => !payload.placeholder)
+        ? payloads.filter((payload) => !payload.placeholder)
+        : [payloads[payloads.length - 1]];
+      const text = selectedPayloads.map((payload) => payload.text).join('\\n\\n').trim();
+      const html = selectedPayloads
+        .map((payload) => payload.html)
+        .filter(Boolean)
+        .join('\\n');
       const messageId = messageRoot.getAttribute('data-message-id');
       const turnId = messageRoot.getAttribute('data-testid');
       if (text.trim()) {
@@ -857,6 +895,41 @@ function buildAssistantExtractor(functionName: string): string {
       }
     }
     return null;
+  };`;
+}
+
+function buildAssistantPlaceholderPredicate(functionName: string): string {
+  return `const ${functionName} = (snapshot) => {
+    const normalized = String(snapshot?.text ?? snapshot ?? '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    if (!normalized) return false;
+    if (normalized === 'chatgpt said:' || normalized === 'chatgpt said') return true;
+    if (
+      normalized.includes('file upload request') &&
+      (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))
+    ) {
+      return true;
+    }
+    if (
+      normalized.includes('answer now') &&
+      (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))
+    ) {
+      return true;
+    }
+    if (
+      /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)(\\s*(\\.\\.\\.|…))?$/.test(
+        normalized,
+      )
+    ) {
+      return true;
+    }
+    if (
+      /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)\\s+for\\s+\\d+/.test(
+        normalized,
+      )
+    ) {
+      return true;
+    }
+    return /^(thought|reasoned|analyzed|planned|drafted|summarized)\\s+for\\s+\\d+/.test(normalized);
   };`;
 }
 
