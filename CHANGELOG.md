@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- Browser: normalize CLI browser-model aliases and direct `desiredModel` config inputs to current ChatGPT picker labels, treat `Extended Pro` as the GPT-5.4 Pro browser-selection alias, use the current ChatGPT selected-model DOM markers so Pro runs do not get stuck reopening the model switcher, and prefer ChatGPT’s `Copy response` action over `Copy message` when capturing browser markdown.
+- Browser: stop treating transient reasoning placeholders as completed answers, and scan all assistant content blocks in the latest turn so runs do not finish early when ChatGPT renders a placeholder block before the real answer.
+- Sessions: fix premature session end detection by increasing Chrome port check timeout from 250ms to 1000ms and adding retry logic (2 retries with 100ms delay). This prevents running browser sessions from being incorrectly marked as error when Chrome is temporarily slow to respond under system load.
+
 ## 0.9.0 — 2026-03-08
 
 ### Changed
