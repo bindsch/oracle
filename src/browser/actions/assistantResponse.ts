@@ -813,17 +813,25 @@ function buildResponseObserverExpression(
       // Learned: short answers can be 1-2 tokens; enforce longer settle windows to avoid truncation.
       // Learned: long streaming responses (esp. thinking models) can pause mid-stream;
       // use progressively longer windows to avoid truncation (#71).
+      // Learned: Extended Pro can pause for MINUTES between tokens during deep thinking.
+      // The settle window must be long enough to survive these pauses OR rely on the
+      // stop button / finished actions to detect true completion.
       const initialLength = snapshot?.text?.length ?? 0;
       const shortAnswer = initialLength > 0 && initialLength < 16;
       const mediumAnswer = initialLength >= 16 && initialLength < 40;
       const longAnswer = initialLength >= 40 && initialLength < 500;
-      const settleWindowMs = shortAnswer ? 12_000 : mediumAnswer ? 5_000 : longAnswer ? 8_000 : 10_000;
-      const settleIntervalMs = 400;
+      // Extended Pro can think for 10-20 minutes mid-stream. Use a long settle window
+      // and only break early if the finished actions appear or the stop button disappears
+      // AND we've been stable for enough cycles.
+      const settleWindowMs = shortAnswer ? 600_000 : mediumAnswer ? 300_000 : longAnswer ? 300_000 : 300_000;
+      const settleIntervalMs = 2_000;
       const deadline = Date.now() + settleWindowMs;
       let latest = snapshot;
       let lastLength = snapshot?.text?.length ?? 0;
       let stableCycles = 0;
-      const stableTarget = shortAnswer ? 6 : mediumAnswer ? 3 : longAnswer ? 5 : 6;
+      // Require many stable cycles before declaring done (stop button must also be gone).
+      // At 2s interval, 30 cycles = 60 seconds of no new text with no stop button.
+      const stableTarget = shortAnswer ? 30 : mediumAnswer ? 15 : longAnswer ? 15 : 15;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, settleIntervalMs));
         const refreshedRaw = extractFromTurns();
@@ -849,8 +857,18 @@ function buildResponseObserverExpression(
         const stopVisible = Boolean(document.querySelector(STOP_SELECTOR));
         const finishedVisible = isLastAssistantTurnFinished();
 
-        if (finishedVisible || (!stopVisible && stableCycles >= stableTarget)) {
+        // Only break if finished actions visible (definitive) OR stop button gone AND
+        // we've been stable for a long time (model truly stopped generating).
+        if (finishedVisible) {
           break;
+        }
+        if (!stopVisible && stableCycles >= stableTarget) {
+          break;
+        }
+        // If stop button is still visible, NEVER break early — the model is still generating,
+        // even if text hasn't changed. Reset stable cycles.
+        if (stopVisible) {
+          stableCycles = 0;
         }
       }
       return latest ?? snapshot;
