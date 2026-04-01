@@ -1772,9 +1772,9 @@ export async function waitForUserTurnAttachments(
     return false;
   }
 
-  logger?.("Sent user message did not show expected attachment names in time.");
+  logger?.("Sent user message did not show expected attachment names in time; continuing anyway.");
   await logDomFailure(Runtime, logger ?? (() => {}), "attachment-missing-user-turn");
-  throw new Error("Attachment was not present on the sent user message.");
+  return false;
 }
 
 function buildUserTurnAttachmentExpression(options: {

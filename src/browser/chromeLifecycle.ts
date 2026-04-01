@@ -126,26 +126,45 @@ export async function hideChromeWindow(
   chrome: LaunchedChrome,
   logger: BrowserLogger,
 ): Promise<void> {
-  if (process.platform !== "darwin") {
-    logger("Window hiding is only supported on macOS");
-    return;
+  // Move window off-screen via CDP (no Space switch) and defocus on macOS.
+  // IMPORTANT: do NOT use `set visible = false` — that triggers macOS App Nap
+  // which suspends Chrome during Extended Pro thinking, causing disconnects.
+  // Instead: move window off-screen via CDP (stays in current Space) + defocus.
+  if (chrome.port) {
+    try {
+      const cdp = await CDP({ port: chrome.port });
+      try {
+        const { windowId } = await cdp.Browser.getWindowForTarget({});
+        await cdp.Browser.setWindowBounds({
+          windowId,
+          bounds: { left: -10000, top: -10000, width: 800, height: 600 },
+        });
+      } finally {
+        await cdp.close().catch(() => {});
+      }
+    } catch {
+      // CDP move failed; window stays where Chrome put it — non-fatal
+    }
   }
-  if (!chrome.pid) {
-    logger("Unable to hide window: missing Chrome PID");
-    return;
+  // On macOS, give focus back to the previous app
+  if (process.platform === "darwin" && chrome.pid) {
+    const script = `tell application "System Events"
+      try
+        set frontApp to name of first process whose frontmost is true
+        set chromeProc to first process whose unix id is ${chrome.pid}
+        set frontmost of chromeProc to false
+        if frontApp is not equal to name of chromeProc then
+          set frontmost of (first process whose name is frontApp) to true
+        end if
+      end try
+    end tell`;
+    try {
+      await execFileAsync("osascript", ["-e", script]);
+    } catch {
+      // non-fatal
+    }
   }
-  const script = `tell application "System Events"
-    try
-      set visible of (first process whose unix id is ${chrome.pid}) to false
-    end try
-  end tell`;
-  try {
-    await execFileAsync("osascript", ["-e", script]);
-    logger("Chrome window hidden (Cmd-H)");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger(`Failed to hide Chrome window: ${message}`);
-  }
+  logger("Chrome window moved off-screen and defocused");
 }
 
 export async function connectToChrome(
@@ -328,7 +347,7 @@ function buildChromeFlags(headless: boolean, debugBindAddress?: string | null): 
     "--safebrowsing-disable-auto-update",
     "--disable-features=TranslateUI,AutomationControlled",
     "--mute-audio",
-    "--window-size=1280,720",
+    "--window-size=800,600",
     "--lang=en-US",
     "--accept-lang=en-US,en",
   ];

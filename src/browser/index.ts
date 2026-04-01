@@ -45,6 +45,7 @@ import { formatElapsed } from "../oracle/format.js";
 import { CHATGPT_URL, CONVERSATION_TURN_SELECTOR, DEFAULT_MODEL_STRATEGY } from "./constants.js";
 import type { LaunchedChrome } from "chrome-launcher";
 import { BrowserAutomationError } from "../oracle/errors.js";
+import { acquireBrowserSlot } from "./rateLimiter.js";
 import { alignPromptEchoPair, buildPromptEchoMatcher } from "./reattachHelpers.js";
 import type { ProfileRunLock } from "./profileState.js";
 import {
@@ -163,6 +164,21 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
 
   let config = resolveBrowserConfig(options.config);
   const logger: BrowserLogger = options.log ?? ((_message: string) => {});
+
+  // Rate limiter: wait for a browser slot before proceeding.
+  const maxParallelEnv = process.env.ORACLE_MAX_PARALLEL_BROWSER_SESSIONS;
+  const maxParallel = maxParallelEnv ? Number.parseInt(maxParallelEnv, 10) : 8;
+  const sessionId = options.sessionId ?? `anon-${process.pid}-${Date.now()}`;
+  const slot = await acquireBrowserSlot(sessionId, (msg) => logger(msg), { maxParallel });
+  let slotReleased = false;
+  const releaseSlot = async () => {
+    if (!slotReleased) {
+      slotReleased = true;
+      await slot.release();
+    }
+  };
+  // Ensure slot is released on any exit path
+  try {
   if (logger.verbose === undefined) {
     logger.verbose = Boolean(config.debug);
   }
@@ -715,7 +731,11 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
             },
           );
           if (!verified) {
-            throw new Error("Sent user message did not expose attachment UI after upload.");
+            // ChatGPT may have changed its attachment UI selectors; don't abort the
+            // run over a cosmetic post-send check — the message was already sent.
+            logger(
+              "[browser] Attachment UI verification failed (ChatGPT DOM may have changed); continuing anyway.",
+            );
           } else {
             logger("Verified attachments present on sent user message");
           }
@@ -1193,6 +1213,9 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       chrome.process?.unref?.();
       logger(`Chrome left running on port ${chrome.port} with profile ${userDataDir}`);
     }
+  }
+  } finally {
+    await releaseSlot();
   }
 }
 

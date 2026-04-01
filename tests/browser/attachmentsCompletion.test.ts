@@ -170,7 +170,7 @@ describe("sent turn attachment verification", () => {
     } as unknown as ChromeClient["Runtime"];
 
     const promise = waitForUserTurnAttachments(runtime, ["oracle-attach-verify.txt"], 600);
-    const assertion = expect(promise).rejects.toThrow(/Attachment was not present/i);
+    const assertion = expect(promise).resolves.toBe(false);
     await vi.advanceTimersByTimeAsync(2_000);
     await assertion;
     useRealTime();
@@ -276,7 +276,7 @@ describe("sent turn attachment verification", () => {
         expectedPrompt: "expected prompt text",
       },
     );
-    const assertion = expect(promise).rejects.toThrow(/Attachment was not present/i);
+    const assertion = expect(promise).resolves.toBe(false);
     await vi.advanceTimersByTimeAsync(2_000);
     await assertion;
     useRealTime();

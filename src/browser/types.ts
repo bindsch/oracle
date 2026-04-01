@@ -75,6 +75,8 @@ export interface BrowserRunOptions {
   verbose?: boolean;
   /** Optional hook to persist runtime info (port/url/target) as soon as Chrome is ready. */
   runtimeHintCb?: (hint: BrowserRuntimeMetadata) => void | Promise<void>;
+  /** Session ID for rate limiter slot tracking. Auto-generated if not provided. */
+  sessionId?: string;
 }
 
 export interface BrowserRunResult {

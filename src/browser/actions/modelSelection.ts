@@ -145,6 +145,9 @@ function buildModelSelectionExpression(
     const buttonMatchesTarget = () => {
       const normalizedLabel = normalizeText(getButtonLabel());
       if (!normalizedLabel) return false;
+      // ChatGPT may show "Extended Pro" for Pro models (no version number in label).
+      const isExtendedPro = normalizedLabel.includes('extended') && normalizedLabel.includes('pro');
+      if (isExtendedPro && wantsPro) return true;
       if (desiredVersion) {
         if (desiredVersion === '5-4' && !normalizedLabel.includes('5 4')) return false;
         if (desiredVersion === '5-2' && !normalizedLabel.includes('5 2')) return false;
@@ -264,6 +267,10 @@ function buildModelSelectionExpression(
         } else if (normalizedText.includes(normalizedTarget)) {
           score += 380;
         }
+      }
+      // ChatGPT renamed Pro models to "Extended Pro" — boost exact match.
+      if (wantsPro && normalizedText === 'extended pro') {
+        score += 500;
       }
       for (const token of normalizedTokens) {
         // Reward partial matches to the expanded label/token set.
@@ -534,6 +541,8 @@ function buildModelMatchersLiteral(targetModel: string): {
   }
   // Pro / research variants
   if (base.includes("pro")) {
+    push("extended pro", labelTokens);
+    push("extended", labelTokens);
     push("proresearch", labelTokens);
     push("research grade", labelTokens);
     push("advanced reasoning", labelTokens);
@@ -559,6 +568,8 @@ function buildModelMatchersLiteral(targetModel: string): {
     }
     testIdTokens.add("pro");
     testIdTokens.add("proresearch");
+    testIdTokens.add("extended-pro");
+    testIdTokens.add("extended");
   }
   base
     .split(/\s+/)
