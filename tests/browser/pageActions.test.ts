@@ -283,6 +283,58 @@ describe("waitForAssistantResponse", () => {
     }
   });
 
+  test("does not complete on interim assistant text while trailing thinking indicator is present", async () => {
+    vi.useFakeTimers();
+    try {
+      const interim = {
+        text: "I’m verifying the live Polymarket rule text first.",
+        html: "<p>I’m verifying the live Polymarket rule text first.</p>",
+        messageId: "mid",
+        turnId: "tid",
+      };
+      const evaluate = vi
+        .fn()
+        .mockImplementation(async (params: { expression?: string; awaitPromise?: boolean }) => {
+          const expression = String(params?.expression ?? "");
+          const hasTrailingThinkingGuard = expression.includes("hasTrailingThinkingIndicator");
+          if (params?.awaitPromise) {
+            return {
+              result: { type: "object", value: hasTrailingThinkingGuard ? null : interim },
+            };
+          }
+          if (expression.includes("extractAssistantTurn")) {
+            return { result: { value: hasTrailingThinkingGuard ? null : interim } };
+          }
+          return { result: { value: false } };
+        });
+
+      const runtime = { evaluate } as unknown as ChromeClient["Runtime"];
+      const promise = waitForAssistantResponse(runtime, 300, logger);
+      const settled = promise.then(
+        (value) => ({ status: "resolved" as const, value }),
+        (error) => ({ status: "rejected" as const, error }),
+      );
+
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      const result = await settled;
+      expect(result.status).toBe("rejected");
+      expect(
+        evaluate.mock.calls.some((call) =>
+          String((call[0] as { expression?: string } | undefined)?.expression ?? "").includes(
+            "hasTrailingThinkingIndicator",
+          ),
+        ),
+      ).toBe(true);
+      if (result.status === "rejected") {
+        const message = result.error instanceof Error ? result.error.message : String(result.error);
+        expect(message).toMatch(/capture assistant response|response timeout|unable/i);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("aborts poller when evaluation wins (no background polling)", async () => {
     vi.useFakeTimers();
     try {

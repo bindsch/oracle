@@ -27,6 +27,13 @@ describe("browser automation expressions", () => {
     expect(expression).not.toContain("messageRoot.querySelector('.markdown')");
   });
 
+  test("assistant extractor ignores assistant turns followed by active thinking UI", () => {
+    const expression = buildAssistantExtractorForTest("capture");
+    expect(expression).toContain("hasTrailingThinkingIndicator");
+    expect(expression).toContain("current.nextElementSibling");
+    expect(expression).toContain("return null;");
+  });
+
   test("conversation debug expression references conversation selector", () => {
     const expression = buildConversationDebugExpressionForTest();
     expect(expression).toContain(JSON.stringify(CONVERSATION_TURN_SELECTOR));
@@ -46,6 +53,7 @@ describe("browser automation expressions", () => {
     expect(expression).toContain("role !== 'user'");
     expect(expression).toContain("copy-turn-action-button");
     expect(expression).toContain(CONVERSATION_TURN_SELECTOR);
+    expect(expression).toContain("hasTrailingThinkingIndicator");
   });
 
   test("markdown fallback does not self-reference MIN_TURN_INDEX literal", () => {

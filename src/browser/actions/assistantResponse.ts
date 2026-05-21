@@ -930,6 +930,7 @@ function buildAssistantExtractor(functionName: string): string {
       }
     };
     ${buildAssistantPlaceholderPredicate("isTransientAssistantPlaceholder")}
+    ${buildTrailingThinkingIndicatorPredicate("hasTrailingThinkingIndicator")}
     const readNodePayload = (node) => {
       if (!(node instanceof HTMLElement)) return null;
       const innerText = node.innerText ?? '';
@@ -953,6 +954,9 @@ function buildAssistantExtractor(functionName: string): string {
         continue;
       }
       const messageRoot = turn.querySelector(ASSISTANT_SELECTOR) ?? turn;
+      if (hasTrailingThinkingIndicator(turn) || hasTrailingThinkingIndicator(messageRoot)) {
+        return null;
+      }
       expandCollapsibles(messageRoot);
       const selectors = [
         '.markdown',
@@ -1033,6 +1037,61 @@ function buildAssistantPlaceholderPredicate(functionName: string): string {
   };`;
 }
 
+function buildTrailingThinkingIndicatorPredicate(functionName: string): string {
+  return `const ${functionName} = (startNode) => {
+    if (!(startNode instanceof HTMLElement)) return false;
+    const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    const isThinkingText = (value) => {
+      const normalized = normalize(value);
+      if (!normalized) return false;
+      if (
+        /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)(\\s*(\\.\\.\\.|…))?$/.test(
+          normalized,
+        )
+      ) {
+        return true;
+      }
+      if (
+        /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)\\s+for\\s+\\d+/.test(
+          normalized,
+        )
+      ) {
+        return true;
+      }
+      return (
+        normalized.includes('answer now') &&
+        (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))
+      );
+    };
+    const matchesIndicator = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const directText = normalize(node.innerText || node.textContent || '');
+      if (isThinkingText(directText)) {
+        return true;
+      }
+      const candidates = Array.from(
+        node.querySelectorAll('button, [role="status"], [aria-live], .loading-shimmer, [class*="loading"]'),
+      );
+      return candidates.some((candidate) => isThinkingText(candidate.textContent || ''));
+    };
+
+    let current = startNode;
+    let depth = 0;
+    while (current && depth < 4) {
+      let sibling = current.nextElementSibling;
+      while (sibling) {
+        if (matchesIndicator(sibling)) {
+          return true;
+        }
+        sibling = sibling.nextElementSibling;
+      }
+      current = current.parentElement;
+      depth += 1;
+    }
+    return false;
+  };`;
+}
+
 function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
   const turnIndexValue = minTurnLiteral
     ? `(${minTurnLiteral} >= 0 ? ${minTurnLiteral} : null)`
@@ -1086,6 +1145,7 @@ function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
       return idx !== null && idx >= __minTurn;
     };
     const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    ${buildTrailingThinkingIndicatorPredicate("hasTrailingThinkingIndicator")}
     const collectUserText = (scope) => {
       if (!scope?.querySelectorAll) return '';
       const userTurns = Array.from(scope.querySelectorAll('[data-message-author-role="user"], [data-turn="user"]'));
@@ -1158,6 +1218,7 @@ function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
       const node = candidates[i];
       if (!node) continue;
       if (!isAfterMinTurn(node)) continue;
+      if (hasTrailingThinkingIndicator(node)) return null;
       const text = (node.innerText || node.textContent || '').trim();
       if (!text) continue;
       if (isUserEcho(text)) continue;
