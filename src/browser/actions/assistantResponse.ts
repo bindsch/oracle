@@ -886,17 +886,21 @@ function buildResponseObserverExpression(
       // Learned: short answers can be 1-2 tokens; enforce longer settle windows to avoid truncation.
       // Learned: long streaming responses (esp. thinking models) can pause mid-stream;
       // use progressively longer windows to avoid truncation (#71).
+      // Learned: Extended Pro can pause for MINUTES between tokens during deep thinking.
+      // The settle window must survive these pauses; trust the stop button / finished actions
+      // as the real completion signal.
       const initialLength = snapshot?.text?.length ?? 0;
       const shortAnswer = initialLength > 0 && initialLength < 16;
       const mediumAnswer = initialLength >= 16 && initialLength < 40;
       const longAnswer = initialLength >= 40 && initialLength < 500;
-      const settleWindowMs = shortAnswer ? 12_000 : mediumAnswer ? 5_000 : longAnswer ? 8_000 : 10_000;
-      const settleIntervalMs = 400;
+      const settleWindowMs = shortAnswer ? 600_000 : mediumAnswer ? 300_000 : longAnswer ? 300_000 : 300_000;
+      const settleIntervalMs = 2_000;
       const deadline = Date.now() + settleWindowMs;
       let latest = snapshot;
       let lastLength = snapshot?.text?.length ?? 0;
       let stableCycles = 0;
-      const stableTarget = shortAnswer ? 6 : mediumAnswer ? 3 : longAnswer ? 5 : 6;
+      // At 2s interval, 30 cycles = 60s of no new text with no stop button.
+      const stableTarget = shortAnswer ? 30 : mediumAnswer ? 15 : longAnswer ? 15 : 15;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, settleIntervalMs));
         const refreshedRaw = extractFromTurns();
@@ -930,8 +934,15 @@ function buildResponseObserverExpression(
         const stopVisible = Boolean(document.querySelector(STOP_SELECTOR));
         const finishedVisible = isLastAssistantTurnFinished();
 
-        if (finishedVisible || (!stopVisible && stableCycles >= stableTarget)) {
+        if (finishedVisible) {
           break;
+        }
+        if (!stopVisible && stableCycles >= stableTarget) {
+          break;
+        }
+        // Stop button still visible = model still generating, even if text hasn't changed.
+        if (stopVisible) {
+          stableCycles = 0;
         }
       }
       return latest ?? snapshot;
@@ -962,11 +973,67 @@ function buildResponseObserverExpression(
   })()`;
 }
 
+function buildTrailingThinkingIndicatorPredicate(functionName: string): string {
+  return `const ${functionName} = (startNode) => {
+    if (!(startNode instanceof HTMLElement)) return false;
+    const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    const isThinkingText = (value) => {
+      const normalized = normalize(value);
+      if (!normalized) return false;
+      if (
+        /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)(\\s*(\\.\\.\\.|…))?$/.test(
+          normalized,
+        )
+      ) {
+        return true;
+      }
+      if (
+        /^(pro thinking|thinking|reasoning|planning|drafting|summarizing|analyzing)\\s+for\\s+\\d+/.test(
+          normalized,
+        )
+      ) {
+        return true;
+      }
+      return (
+        normalized.includes('answer now') &&
+        (normalized.includes('pro thinking') || normalized.includes('chatgpt said'))
+      );
+    };
+    const matchesIndicator = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const directText = normalize(node.innerText || node.textContent || '');
+      if (isThinkingText(directText)) {
+        return true;
+      }
+      const candidates = Array.from(
+        node.querySelectorAll('button, [role="status"], [aria-live], .loading-shimmer, [class*="loading"]'),
+      );
+      return candidates.some((candidate) => isThinkingText(candidate.textContent || ''));
+    };
+
+    let current = startNode;
+    let depth = 0;
+    while (current && depth < 4) {
+      let sibling = current.nextElementSibling;
+      while (sibling) {
+        if (matchesIndicator(sibling)) {
+          return true;
+        }
+        sibling = sibling.nextElementSibling;
+      }
+      current = current.parentElement;
+      depth += 1;
+    }
+    return false;
+  };`;
+}
+
 function buildAssistantExtractor(functionName: string): string {
   const conversationLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
   const assistantLiteral = JSON.stringify(ASSISTANT_ROLE_SELECTOR);
   return `const ${functionName} = () => {
     ${buildClickDispatcher()}
+    ${buildTrailingThinkingIndicatorPredicate("hasTrailingThinkingIndicator")}
     const CONVERSATION_SELECTOR = ${conversationLiteral};
     const ASSISTANT_SELECTOR = ${assistantLiteral};
     const isAssistantTurn = (node) => {
@@ -1010,6 +1077,9 @@ function buildAssistantExtractor(functionName: string): string {
         continue;
       }
       const messageRoot = turn.querySelector(ASSISTANT_SELECTOR) ?? turn;
+      if (hasTrailingThinkingIndicator(turn) || hasTrailingThinkingIndicator(messageRoot)) {
+        return null;
+      }
       expandCollapsibles(messageRoot);
       const preferred =
         (messageRoot.matches?.('.markdown') || messageRoot.matches?.('[data-message-content]') ? messageRoot : null) ||
@@ -1104,6 +1174,7 @@ function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
       return idx !== null && idx >= __minTurn;
     };
     const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    ${buildTrailingThinkingIndicatorPredicate("hasTrailingThinkingIndicator")}
     const collectUserText = (scope) => {
       if (!scope?.querySelectorAll) return '';
       const userTurns = Array.from(scope.querySelectorAll('[data-message-author-role="user"], [data-turn="user"]'));
@@ -1176,6 +1247,7 @@ function buildMarkdownFallbackExtractor(minTurnLiteral?: string): string {
       const node = candidates[i];
       if (!node) continue;
       if (!isAfterMinTurn(node)) continue;
+      if (hasTrailingThinkingIndicator(node)) return null;
       const text = (node.innerText || node.textContent || '').trim();
       if (!text) continue;
       if (isUserEcho(text)) continue;
@@ -1192,21 +1264,52 @@ function buildCopyExpression(meta: { messageId?: string | null; turnId?: string 
     ${buildClickDispatcher()}
     const BUTTON_SELECTOR = '${COPY_BUTTON_SELECTOR}';
     const TIMEOUT_MS = 10000;
+    const describeButton = (button) =>
+      [
+        button?.getAttribute?.('aria-label') || '',
+        button?.getAttribute?.('title') || '',
+        button?.textContent || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .replace(/\\s+/g, ' ')
+        .trim();
+    const scoreButton = (button) => {
+      const description = describeButton(button);
+      let score = 0;
+      if (!description) return score;
+      if (description.includes('copy')) score += 10;
+      if (description.includes('response')) score += 200;
+      if (description.includes('message')) score += 100;
+      if (description.includes('copied')) score += 20;
+      return score;
+    };
+    const pickPreferredButton = (buttons) => {
+      const list = Array.from(buttons || []).filter((button) => button instanceof HTMLElement);
+      let best = null;
+      let bestScore = -1;
+      for (const button of list) {
+        const score = scoreButton(button);
+        if (score >= bestScore) {
+          best = button;
+          bestScore = score;
+        }
+      }
+      return best;
+    };
 
     const locateButton = () => {
       const hint = ${JSON.stringify(meta ?? {})};
       if (hint?.messageId) {
         const node = document.querySelector('[data-message-id="' + hint.messageId + '"]');
-        const buttons = node ? Array.from(node.querySelectorAll('${COPY_BUTTON_SELECTOR}')) : [];
-        const button = buttons.at(-1) ?? null;
+        const button = node ? pickPreferredButton(node.querySelectorAll(BUTTON_SELECTOR)) : null;
         if (button) {
           return button;
         }
       }
       if (hint?.turnId) {
         const node = document.querySelector('[data-testid="' + hint.turnId + '"]');
-        const buttons = node ? Array.from(node.querySelectorAll('${COPY_BUTTON_SELECTOR}')) : [];
-        const button = buttons.at(-1) ?? null;
+        const button = node ? pickPreferredButton(node.querySelectorAll(BUTTON_SELECTOR)) : null;
         if (button) {
           return button;
         }
@@ -1227,18 +1330,18 @@ function buildCopyExpression(meta: { messageId?: string | null; turnId?: string 
       for (let i = turns.length - 1; i >= 0; i -= 1) {
         const turn = turns[i];
         if (!isAssistantTurn(turn)) continue;
-        const button = turn.querySelector(BUTTON_SELECTOR);
+        const button = pickPreferredButton(turn.querySelectorAll(BUTTON_SELECTOR));
         if (button) {
           return button;
         }
       }
-      const all = Array.from(document.querySelectorAll(BUTTON_SELECTOR));
-      for (let i = all.length - 1; i >= 0; i -= 1) {
-        const button = all[i];
+      const all = Array.from(document.querySelectorAll(BUTTON_SELECTOR)).filter((button) => {
         const turn = button?.closest?.(CONVERSATION_SELECTOR);
-        if (turn && isAssistantTurn(turn)) {
-          return button;
-        }
+        return Boolean(turn && isAssistantTurn(turn));
+      });
+      const button = pickPreferredButton(all);
+      if (button) {
+        return button;
       }
       return null;
     };

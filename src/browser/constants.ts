@@ -83,7 +83,14 @@ export const SEND_BUTTON_SELECTOR = SEND_BUTTON_SELECTORS[0];
 export const MODEL_BUTTON_SELECTOR =
   '[data-testid="model-switcher-dropdown-button"], button.__composer-pill[aria-haspopup="menu"]';
 export const COMPOSER_MODEL_SIGNAL_SELECTOR = '[data-testid="composer-footer-actions"]';
-export const COPY_BUTTON_SELECTOR = 'button[data-testid="copy-turn-action-button"]';
+export const COPY_BUTTON_SELECTORS = [
+  'button[data-testid="copy-turn-action-button"]',
+  'button[aria-label="Copy response"]',
+  'button[aria-label="Response copied"]',
+  'button[aria-label="Copy message"]',
+  'button[aria-label="Message copied"]',
+] as const;
+export const COPY_BUTTON_SELECTOR = COPY_BUTTON_SELECTORS.join(", ");
 // Action buttons that only appear once a turn has finished rendering.
 export const DEEP_RESEARCH_PLUS_BUTTON = '[data-testid="composer-plus-btn"]';
 export const DEEP_RESEARCH_DROPDOWN_ITEM_TEXT = "Deep research";
@@ -91,5 +98,4 @@ export const DEEP_RESEARCH_PILL_LABEL = "Deep research";
 export const DEEP_RESEARCH_POLL_INTERVAL_MS = 5_000;
 export const DEEP_RESEARCH_AUTO_CONFIRM_WAIT_MS = 70_000;
 export const DEEP_RESEARCH_DEFAULT_TIMEOUT_MS = 2_400_000;
-export const FINISHED_ACTIONS_SELECTOR =
-  'button[data-testid="copy-turn-action-button"], button[data-testid="good-response-turn-action-button"], button[data-testid="bad-response-turn-action-button"], button[aria-label="Share"]';
+export const FINISHED_ACTIONS_SELECTOR = `${COPY_BUTTON_SELECTOR}, button[data-testid="good-response-turn-action-button"], button[data-testid="bad-response-turn-action-button"], button[aria-label="Share"]`;
