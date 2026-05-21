@@ -87,7 +87,7 @@ import { collectChatGptFileArtifacts } from "./chatgptFiles.js";
 import { runProviderSubmissionFlow } from "./providerDomFlow.js";
 import { chatgptDomProvider } from "./providers/index.js";
 import { resolveAttachRunningConnection } from "./attachRunning.js";
-import { acquireBrowserSlot } from "./rateLimiter.js";
+import { acquireBrowserSlot, acquireBrowserStartupLock } from "./rateLimiter.js";
 import { connectToExistingChatGptTab } from "./liveTabs.js";
 import { captureBrowserDiagnostics } from "./domDebug.js";
 import {
@@ -920,6 +920,9 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     }
     promptSubmitted = true;
     await emitRuntimeHint();
+    // The Chrome-claim race is over once the prompt is in flight; let the next
+    // queued oracle start its own launch while this one waits for the response.
+    await releaseStartup();
   };
   if (config.debug || process.env.CHATGPT_DEVTOOLS_TRACE === "1") {
     logger(
@@ -1015,6 +1018,16 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     slotReleased = true;
     await slot.release().catch(() => undefined);
   };
+  // Startup mutex: serialize the Chrome-claim phase across processes so that
+  // two oracles cannot fight for the same tab/profile during launch. Released
+  // as soon as the prompt has been submitted; rest of the run executes in parallel.
+  const startup = await acquireBrowserStartupLock(slotSessionId, (msg) => logger(msg));
+  let startupReleased = false;
+  const releaseStartup = async (): Promise<void> => {
+    if (startupReleased) return;
+    startupReleased = true;
+    await startup.release().catch(() => undefined);
+  };
 
   if (manualLogin) {
     tabLease = await acquireBrowserTabLease(userDataDir, {
@@ -1049,6 +1062,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     if (usingCopiedProfile) {
       await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
     }
+    await releaseStartup();
     await releaseSlot();
     throw error;
   }
@@ -2401,6 +2415,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       cleanupProfileLock = null;
       await handle.release().catch(() => undefined);
     }
+    await releaseStartup();
     await releaseSlot();
   }
 }
