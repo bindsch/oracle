@@ -83,6 +83,7 @@ import { collectGeneratedImageArtifacts } from "./chatgptImages.js";
 import { runProviderSubmissionFlow } from "./providerDomFlow.js";
 import { chatgptDomProvider } from "./providers/index.js";
 import { resolveAttachRunningConnection } from "./attachRunning.js";
+import { acquireBrowserSlot } from "./rateLimiter.js";
 import { connectToExistingChatGptTab } from "./liveTabs.js";
 import { captureBrowserDiagnostics } from "./domDebug.js";
 import {
@@ -669,6 +670,18 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     logger(`Created temporary Chrome profile at ${userDataDir}`);
   }
 
+  // Cross-process rate limiter: cap parallel browser sessions to avoid Chrome thrash.
+  const maxParallelEnv = process.env.ORACLE_MAX_PARALLEL_BROWSER_SESSIONS;
+  const maxParallel = maxParallelEnv ? Number.parseInt(maxParallelEnv, 10) : 8;
+  const slotSessionId = options.sessionId ?? `anon-${process.pid}-${Date.now()}`;
+  const slot = await acquireBrowserSlot(slotSessionId, (msg) => logger(msg), { maxParallel });
+  let slotReleased = false;
+  const releaseSlot = async (): Promise<void> => {
+    if (slotReleased) return;
+    slotReleased = true;
+    await slot.release().catch(() => undefined);
+  };
+
   if (manualLogin) {
     tabLease = await acquireBrowserTabLease(userDataDir, {
       maxConcurrentTabs: config.maxConcurrentTabs,
@@ -699,6 +712,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       tabLease = null;
       await handle.release().catch(() => undefined);
     }
+    await releaseSlot();
     throw error;
   }
   const { chrome, reusedChrome } = acquiredChrome;
@@ -1926,6 +1940,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       cleanupProfileLock = null;
       await handle.release().catch(() => undefined);
     }
+    await releaseSlot();
   }
 }
 
