@@ -732,6 +732,102 @@ describe("waitForDeepResearchCompletion", () => {
     }
   });
 
+  it("falls back to a completed in-page frame when the target read is only in-progress", async () => {
+    // Legacy/inline rendering: the target-attach read is in-progress, but the
+    // in-page frame path has a completed report. An incomplete target read must
+    // not suppress the frame fallback.
+    mockRuntime.evaluate.mockImplementation(async (params?: { contextId?: number }) => {
+      if (params?.contextId === 77) {
+        return {
+          result: {
+            value: {
+              completed: true,
+              inProgress: false,
+              textLength: 80,
+              text: "FRAME_REPORT https://example.com/report",
+            },
+          },
+        };
+      }
+      return {
+        result: {
+          value: { finished: false, stopVisible: false, textLength: 0, hasIframe: true },
+        },
+      };
+    });
+
+    const listeners = new Map<string, (params: unknown, sessionId?: string) => void>();
+    const deepResearchUrl =
+      "https://connector_openai_deep_research.web-sandbox.oaiusercontent.com/";
+
+    // Target-attach path returns an in-progress read (no completed target).
+    const mockClient = {
+      on: vi.fn((event: string, listener: (params: unknown, sessionId?: string) => void) => {
+        listeners.set(event, listener);
+      }),
+      removeListener: vi.fn(),
+      send: vi.fn(async (method: string, params?: unknown, sessionId?: string) => {
+        if (method === "Target.setAutoAttach" && (params as { autoAttach?: boolean })?.autoAttach) {
+          listeners.get("Target.attachedToTarget")?.({
+            sessionId: "t-session",
+            targetInfo: { type: "iframe", url: deepResearchUrl },
+          });
+          return {};
+        }
+        if (method === "Page.getFrameTree") {
+          return {
+            frameTree: { frame: { id: "t-frame", name: "root", url: deepResearchUrl } },
+          };
+        }
+        if (method === "Page.createIsolatedWorld") {
+          return { executionContextId: 33 };
+        }
+        if (method === "Runtime.evaluate" && sessionId === "t-session") {
+          return {
+            result: {
+              value: { completed: false, inProgress: true, textLength: 15, text: undefined },
+            },
+          };
+        }
+        return {};
+      }),
+    };
+
+    // In-page frame path has the completed report (isolated world contextId 77).
+    const mockPage = {
+      getFrameTree: vi.fn().mockResolvedValue({
+        frameTree: {
+          frame: { id: "root", url: "https://chatgpt.com/" },
+          childFrames: [{ frame: { id: "deep-frame", url: deepResearchUrl } }],
+        },
+      }),
+      createIsolatedWorld: vi.fn().mockResolvedValue({ executionContextId: 77 }),
+    };
+
+    // Unscoped run so the frame-completed result is not gated by the main-DOM
+    // hasActiveScopedResearch heuristic (this is the legacy inline path).
+    // Date.now bound so a future regression (frame fallback suppressed) fails
+    // fast via timeout instead of spinning.
+    let nowCalls = 0;
+    const dateNowSpy = vi.spyOn(Date, "now").mockImplementation(() => {
+      nowCalls += 1;
+      return nowCalls < 12 ? 1_000 : 2_000;
+    });
+    try {
+      const result = await waitForDeepResearchCompletion(
+        mockRuntime as never,
+        mockLogger,
+        100,
+        undefined,
+        mockPage as never,
+        mockClient as never,
+      );
+      expect(result.text).toBe("FRAME_REPORT https://example.com/report");
+    } finally {
+      dateNowSpy.mockRestore();
+    }
+  });
+
   it("returns an OOPIF report via the target path during a scoped run when the main DOM has no assistant turn", async () => {
     // Regression: ChatGPT renders the Deep Research report inside an
     // out-of-process iframe that is invisible to the main page's frame tree.
