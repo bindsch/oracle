@@ -302,6 +302,18 @@ describe("prompt composer attachment expressions", () => {
     expect(evaluateAttachmentReadyExpression(["attachments-bundle.txt"], document)).toBe(false);
   });
 
+  test("attachment ready check does not match generated bundle stem with a different extension", () => {
+    const document = new FakeDocument([
+      new FakeElement("div", { "data-testid": "unified-composer" }, [
+        new FakeElement("div", { "data-testid": "attachment-chip" }, [
+          new FakeElement("span", {}, [], "attachments-bundle.md"),
+        ]),
+      ]),
+    ]);
+
+    expect(evaluateAttachmentReadyExpression(["attachments-bundle.txt"], document)).toBe(false);
+  });
+
   test("attachment ready check does not let one duplicate-renamed chip satisfy same-stem files", () => {
     const document = new FakeDocument([
       new FakeElement("div", { "data-testid": "unified-composer" }, [

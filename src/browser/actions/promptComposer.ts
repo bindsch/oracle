@@ -378,7 +378,7 @@ function buildAttachmentReadyExpression(attachmentNames: string[]): string {
         const previous = text[index - 1] || '';
         const next = text[index + stem.length] || '';
         const previousOk = !previous || !/[a-z0-9._-]/.test(previous);
-        const nextOk = !next || !/[a-z0-9_-]/.test(next);
+        const nextOk = !next || !/[a-z0-9._-]/.test(next);
         if (previousOk && nextOk) return true;
         from = index + stem.length;
       }
