@@ -113,6 +113,8 @@ export interface BrowserAutomationConfig {
   researchMode?: BrowserResearchMode;
   /** Archive completed ChatGPT conversations after local artifacts are saved. */
   archiveConversations?: BrowserArchiveMode;
+  /** Existing ChatGPT conversation URL to open before submitting the prompt. */
+  resumeConversationUrl?: string | null;
 }
 
 export interface BrowserRunOptions {

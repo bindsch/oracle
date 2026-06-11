@@ -95,14 +95,14 @@ Useful when a transient browser/API error truncated the answer. Restart copies t
 
 ## Follow up
 
-Continue an OpenAI / Azure Responses API session with new context:
+Continue a saved ChatGPT browser conversation or an OpenAI / Azure Responses API session with new context:
 
 ```bash
 oracle --followup <id> -p "Re-evaluate with these files" \
   --file "src/migrations/**"
 ```
 
-For multi-model parents, pick the lineage with `--followup-model`. See [Followup](followup.md) for the full flow and the formats `--followup` accepts (session ids, slugs, or `resp_…` response ids).
+Browser followup reopens the exact saved conversation and inherits its browser configuration and model. For multi-model API parents, pick the lineage with `--followup-model`. See [Followup](followup.md) for the full flow and the formats `--followup` accepts (session ids, slugs, or `resp_…` response ids).
 
 ## Background mode
 
