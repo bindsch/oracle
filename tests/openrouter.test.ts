@@ -42,9 +42,6 @@ describe("OpenRouter helpers", () => {
   });
 
   it("hydrates pricing from OpenRouter string per-token values", async () => {
-    // OpenRouter's live /api/v1/models returns pricing as USD-per-token strings,
-    // e.g. "0.000005". Feeding them to a per-million converter previously threw,
-    // and the bare catch dropped the whole enrichment (pricing, context length).
     resetOpenRouterCatalogCacheForTest();
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
@@ -71,32 +68,31 @@ describe("OpenRouter helpers", () => {
     expect(config.pricing?.outputPerToken).toBeCloseTo(0.000025, 12);
   });
 
-  it("falls back when catalog pricing strings are blank", async () => {
-    // Blank/whitespace prices are malformed remote metadata; they must not be
-    // read as a free ($0) model. Enrichment still applies; pricing falls back.
+  it("preserves catalog metadata and known pricing when catalog pricing is invalid", async () => {
     resetOpenRouterCatalogCacheForTest();
+    const known = await resolveModelConfig("gpt-5.1");
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({
         data: [
           {
-            id: "anthropic/claude-opus-4.8",
+            id: "openai/gpt-5.1",
             context_length: 123456,
-            pricing: { prompt: "", completion: "  " },
+            pricing: { prompt: "-1", completion: "-1" },
           },
         ],
       }),
     }) as unknown as typeof fetch;
 
-    const config = await resolveModelConfig("anthropic/claude-opus-4.8", {
+    const config = await resolveModelConfig("gpt-5.1", {
       openRouterApiKey: "dummy-blank",
       fetcher,
     });
 
-    expect(config.apiModel).toBe("anthropic/claude-opus-4.8");
+    expect(config.apiModel).toBe("openai/gpt-5.1");
     expect(config.inputLimit).toBe(123456);
-    expect(config.pricing ?? null).toBeNull();
+    expect(config.pricing).toEqual(known.pricing);
   });
 
   it("falls back to OpenRouter when provider key is missing but OPENROUTER_API_KEY is present", async () => {

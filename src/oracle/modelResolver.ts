@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import type { ModelConfig, ModelName, KnownModelName, TokenizerFn, ProModelName } from "./types.js";
 import { MODEL_CONFIGS, PRO_MODELS } from "./config.js";
+import { pricingFromUsdPerToken } from "tokentally";
 
 const OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api/v1";
 const OPENROUTER_MODELS_ENDPOINT = "https://openrouter.ai/api/v1/models";
@@ -56,9 +57,30 @@ interface OpenRouterModelInfo {
   id: string;
   context_length?: number;
   pricing?: {
-    // OpenRouter returns these as USD-per-token numeric strings (e.g. "0.000005").
     prompt?: string | number;
     completion?: string | number;
+  };
+}
+
+function openRouterPricing(pricing: OpenRouterModelInfo["pricing"]): ModelConfig["pricing"] {
+  const parsePrice = (value: string | number | undefined): number | null => {
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string" && value.trim() !== ""
+          ? Number(value)
+          : NaN;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
+
+  const inputUsdPerToken = parsePrice(pricing?.prompt);
+  const outputUsdPerToken = parsePrice(pricing?.completion);
+  if (inputUsdPerToken === null || outputUsdPerToken === null) return null;
+
+  const normalized = pricingFromUsdPerToken({ inputUsdPerToken, outputUsdPerToken });
+  return {
+    inputPerToken: normalized.inputUsdPerToken,
+    outputPerToken: normalized.outputUsdPerToken,
   };
 }
 
@@ -167,22 +189,7 @@ export async function resolveModelConfig(
           openRouterId: targetId,
           provider: known?.provider ?? "other",
           inputLimit: info.context_length ?? known?.inputLimit ?? 200_000,
-          pricing: (() => {
-            // OpenRouter publishes USD-per-token prices, often as strings (e.g. "0.000005").
-            // Treat null/undefined/blank/non-numeric values as malformed so they fall back.
-            const toPerToken = (v: string | number | undefined): number =>
-              typeof v === "number"
-                ? v
-                : typeof v === "string" && v.trim() !== ""
-                  ? Number(v)
-                  : NaN;
-            const input = toPerToken(info.pricing?.prompt);
-            const output = toPerToken(info.pricing?.completion);
-            if (Number.isFinite(input) && input >= 0 && Number.isFinite(output) && output >= 0) {
-              return { inputPerToken: input, outputPerToken: output };
-            }
-            return known?.pricing ?? null;
-          })(),
+          pricing: openRouterPricing(info.pricing) ?? known?.pricing ?? null,
           supportsBackground: known?.supportsBackground ?? true,
           supportsSearch: known?.supportsSearch ?? true,
         };
