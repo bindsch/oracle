@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.1 — Unreleased
+## 0.14.0 — 2026-06-12
 
 ### Added
 
@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Browser/MCP: save ChatGPT image-generation responses delivered as current-turn “Download…” behavior buttons, validating downloaded bytes as real images before returning typed artifacts instead of waiting for an inline image until timeout.
 - Gemini: refresh browser mappings for Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.1 Pro, and Pro Deep Think; add current Flash API model configs; keep legacy browser aliases working; and make the live text smoke fail on stale mappings instead of skipping. Fixes #242. Thanks @goldengrape!
 - Browser: restore Deep Research report capture from ChatGPT's out-of-process report iframe, prefer completed page-scoped reads with legacy frame fallback, and bind/filter CDP auto-attach by the active page session so other tabs or unrelated iframes cannot be harvested. Thanks @umutkeltek!
 - API/OpenRouter: parse catalog prompt/completion prices as USD-per-token strings, preserving model/context metadata and accurate cost estimates while malformed prices fall back cleanly. Thanks @devYRPauli!
