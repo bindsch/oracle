@@ -117,6 +117,7 @@ import { collectChatGptFileArtifacts } from "./chatgptFiles.js";
 import { runProviderSubmissionFlow } from "./providerDomFlow.js";
 import { chatgptDomProvider } from "./providers/index.js";
 import { resolveAttachRunningConnection } from "./attachRunning.js";
+import { acquireBrowserSlot, acquireBrowserStartupLock } from "./rateLimiter.js";
 import { connectToExistingChatGptTab } from "./liveTabs.js";
 import { captureBrowserDiagnostics } from "./domDebug.js";
 import {
@@ -940,6 +941,9 @@ async function runBrowserModeInternal(
     submittedPromptHash = null;
     await emitRuntimeHint();
     void conversationUrlMonitor?.schedule("post-submit", config.timeoutMs ?? 120_000);
+    // The Chrome-claim race is over once the prompt is in flight; let the next
+    // queued oracle start its own launch while this one waits for the response.
+    await releaseStartup();
   };
   if (config.debug || process.env.CHATGPT_DEVTOOLS_TRACE === "1") {
     logger(
@@ -1042,6 +1046,28 @@ async function runBrowserModeInternal(
     throw error;
   }
 
+  // Cross-process rate limiter: cap parallel browser sessions to avoid Chrome thrash.
+  const maxParallelEnv = process.env.ORACLE_MAX_PARALLEL_BROWSER_SESSIONS;
+  const maxParallel = maxParallelEnv ? Number.parseInt(maxParallelEnv, 10) : 8;
+  const slotSessionId = options.sessionId ?? `anon-${process.pid}-${Date.now()}`;
+  const slot = await acquireBrowserSlot(slotSessionId, (msg) => logger(msg), { maxParallel });
+  let slotReleased = false;
+  const releaseSlot = async (): Promise<void> => {
+    if (slotReleased) return;
+    slotReleased = true;
+    await slot.release().catch(() => undefined);
+  };
+  // Startup mutex: serialize the Chrome-claim phase across processes so that
+  // two oracles cannot fight for the same tab/profile during launch. Released
+  // as soon as the prompt has been submitted; rest of the run executes in parallel.
+  const startup = await acquireBrowserStartupLock(slotSessionId, (msg) => logger(msg));
+  let startupReleased = false;
+  const releaseStartup = async (): Promise<void> => {
+    if (startupReleased) return;
+    startupReleased = true;
+    await startup.release().catch(() => undefined);
+  };
+
   if (manualLogin) {
     tabLease = await cancellation.acquire(
       () =>
@@ -1088,6 +1114,8 @@ async function runBrowserModeInternal(
       if (!manualLogin)
         await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
     });
+    await releaseStartup();
+    await releaseSlot();
     throw error;
   }
   const { chrome, reusedChrome } = acquiredChrome;
@@ -2662,6 +2690,8 @@ async function runBrowserModeInternal(
         );
       }
     });
+    await releaseStartup();
+    await releaseSlot();
   }
 }
 
