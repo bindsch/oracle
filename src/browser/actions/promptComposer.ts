@@ -776,9 +776,18 @@ async function attemptSendButton(
       }
       const hit = document.elementFromPoint(x, y);
       if (!hit || !button.contains(hit)) return { status: 'settling' };
-      return { status: 'point', x, y };
     }
-    // Last-resort fallback for unusual DOMs where the button is visible but has no useful rect.
+    // Fork patch: click the send button element directly with a synthetic
+    // pointer/mouse sequence, unconditionally.
+    //
+    // Upstream returns viewport coordinates here for a trusted CDP click
+    // (Input.dispatchMouseEvent). Trusted input is only delivered to a
+    // composited window, so oracle's off-screen / hidden Chrome (shared
+    // profile, parallel runs) silently swallows the click: attemptSendButton
+    // still reports success, but the prompt never leaves the composer and the
+    // run dies in commit verification ("Prompt did not appear ... send may
+    // have failed"). An element-targeted synthetic click does not depend on
+    // window compositing or focus and is what 0.15.0 used reliably here.
     dispatchClickSequence(button);
     return { status: 'clicked' };
   })()`;
