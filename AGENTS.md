@@ -28,3 +28,12 @@ Browser-mode debug notes (ChatGPT URL override)
 - Double-hop nav is implemented (root then target URL), but Cloudflare may still need manual clearance or inline cookies.
 - After finishing a feature, ask whether it matters to end users; if yes, update the changelog. Read the top ~100 lines first and group related edits into one entry instead of scattering multiple bullets.
 - Beta publishing: when asked to ship a beta to npm, bump the version with a beta suffix (e.g., `0.4.4-beta.1`) before publishing; npm will not let you overwrite an existing beta tag without a new version.
+
+Fork maintenance (bindsch/oracle over steipete/oracle)
+
+- This checkout is a fork: `origin` = bindsch/oracle, `upstream` = steipete/oracle. The global `oracle` command runs THIS repo's `dist/` (launcher `~/Library/pnpm/oracle` hardcodes `ORACLE_ROOT`). After any source change you MUST `pnpm run build` for it to take effect — but NEVER rebuild while an oracle run is live; swapping `dist/` mid-run breaks in-flight jobs.
+- Sync workflow: snapshot main (`git branch fork-snapshot-pre-sync-<sha>`), then `git rebase --onto upstream/main <old-base> main`. Resolve conflicts by preferring upstream for browser-capture/completion logic (upstream reworks it aggressively) and keeping only the fork patches below. After sync: typecheck, lint, build, full `vitest run`, then ONE live send smoke (`oracle -p "reply PING" --slug ...`) — commit verification is where env-specific send regressions surface.
+- The fork carries exactly three patches on top of upstream; keep them, drop everything else as superseded:
+  1. Cross-process rate limiter (`src/browser/rateLimiter.ts` + `index.ts`), `ORACLE_MAX_PARALLEL_BROWSER_SESSIONS` default 8 — caps parallel CLI invocations. No upstream equivalent.
+  2. Chrome-claim startup mutex (`rateLimiter.ts` + `index.ts`) — serializes the launch/tab-claim window across processes; released at prompt submit. No upstream equivalent.
+  3. Element-targeted DOM send click (`promptComposer.ts`) — since upstream #282 the send button is clicked with a trusted CDP event at viewport coords, which is swallowed by oracle's off-screen/hidden Chrome (shared profile, parallel runs) and fails commit verification ("Prompt did not appear ... send may have failed"). The fork clicks the button element directly with `dispatchClickSequence`. Upstream #302's focus-emulation + fallback did NOT fix it here. If a future upstream release makes trusted input land reliably in hidden windows, this patch can be dropped — verify with a live send first.
