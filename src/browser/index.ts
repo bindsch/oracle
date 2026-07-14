@@ -1523,9 +1523,25 @@ async function runBrowserModeInternal(
           },
         ),
       ).catch((error) => {
-        // Login has already been verified above. Preserve the picker failure instead of
-        // misdiagnosing an unavailable model as missing cookies.
-        throw normalizeAuthenticatedModelSelectionError(error);
+        const base = error instanceof Error ? error.message : String(error);
+        const hint =
+          appliedCookies === 0
+            ? " No cookies were applied; log in to ChatGPT in Chrome or provide inline cookies (--browser-inline-cookies[(-file)] or ORACLE_BROWSER_COOKIES_JSON)."
+            : "";
+        if (appliedCookies === 0) {
+          // A missing session is a real failure, not a picker miss — surface it
+          // with upstream's authenticated-state diagnostics.
+          throw normalizeAuthenticatedModelSelectionError(new Error(`${base}${hint}`));
+        }
+        // Fork: model selection is a best-effort default, not a hard requirement.
+        // If the picker can't match the desired model (e.g. ChatGPT's evolving
+        // GPT-5.6 "Sol" submenu), warn and continue with whatever model is active
+        // rather than failing the whole run. Set the desired model as the ChatGPT
+        // project/account default so this fallback still lands on it.
+        logger(
+          `Model picker: could not select "${config.desiredModel}" (${base}); continuing with the currently selected model.`,
+        );
+        return buildSkippedModelSelectionEvidence(config.desiredModel, modelStrategy);
       });
       await raceWithDisconnect(ensurePromptReady(Runtime, config.inputTimeoutMs, logger));
       logger(
@@ -1560,7 +1576,15 @@ async function runBrowserModeInternal(
             },
           },
         ),
-      );
+      ).catch((error) => {
+        // Fork: effort/thinking-time selection is best-effort too — don't fail the
+        // run if ChatGPT's effort picker can't be matched; continue with the
+        // current effort.
+        const base = error instanceof Error ? error.message : String(error);
+        logger(
+          `Thinking time: could not apply "${config.thinkingTime}" (${base}); continuing with current effort.`,
+        );
+      });
     }
     const profileLockTimeoutMs = manualLogin ? (config.profileLockTimeoutMs ?? 0) : 0;
     let profileLock: ProfileRunLock | null = null;
@@ -3165,7 +3189,15 @@ async function runRemoteBrowserMode(
             }
           },
         },
-      );
+      ).catch((error) => {
+        // Fork: best-effort model selection (see local path). Continue with the
+        // current model rather than failing the run on a picker miss.
+        const base = error instanceof Error ? error.message : String(error);
+        logger(
+          `Model picker: could not select "${config.desiredModel}" (${base}); continuing with the currently selected model.`,
+        );
+        return buildSkippedModelSelectionEvidence(config.desiredModel, modelStrategy);
+      });
       await ensurePromptReady(Runtime, config.inputTimeoutMs, logger);
       logger(
         `Prompt textarea ready (after model switch, ${promptText.length.toLocaleString()} chars queued)`,
@@ -3197,7 +3229,11 @@ async function runRemoteBrowserMode(
             }
           },
         },
-      );
+      ).catch((error) => {
+        // Fork: best-effort effort selection (see local path).
+        const base = error instanceof Error ? error.message : String(error);
+        logger(`Thinking time: could not apply "${thinkingTime}" (${base}); continuing with current effort.`);
+      });
     }
     const submitOnce = async (prompt: string, submissionAttachments: BrowserAttachment[]) => {
       await claimBrowserTarget(Runtime, targetClaimId);
