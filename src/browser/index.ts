@@ -1584,6 +1584,7 @@ async function runBrowserModeInternal(
         logger(
           `Thinking time: could not apply "${config.thinkingTime}" (${base}); continuing with current effort.`,
         );
+        return undefined;
       });
     }
     const profileLockTimeoutMs = manualLogin ? (config.profileLockTimeoutMs ?? 0) : 0;
@@ -3232,7 +3233,10 @@ async function runRemoteBrowserMode(
       ).catch((error) => {
         // Fork: best-effort effort selection (see local path).
         const base = error instanceof Error ? error.message : String(error);
-        logger(`Thinking time: could not apply "${thinkingTime}" (${base}); continuing with current effort.`);
+        logger(
+          `Thinking time: could not apply "${config.thinkingTime}" (${base}); continuing with current effort.`,
+        );
+        return undefined;
       });
     }
     const submitOnce = async (prompt: string, submissionAttachments: BrowserAttachment[]) => {
